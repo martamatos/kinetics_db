@@ -1,12 +1,11 @@
 from datetime import datetime
 
-from app.main.forms import EditProfileForm, PostForm
+from app.main.forms import EditProfileForm, PostForm, EnzymeForm, GeneForm
 from flask import render_template, flash, redirect, url_for, request
 from flask_login import current_user, login_required
 
-
 from app import current_app, db
-from app.models import User, Post
+from app.models import User, Post, Enzyme, Gene
 from app.main import bp
 
 
@@ -114,4 +113,67 @@ def explore():
         if posts.has_prev else None
     return render_template("index.html", title='Explore', posts=posts.items,
                           next_url=next_url, prev_url=prev_url)
+
+
+@bp.route('/add_enzyme', methods=['GET', 'POST'])
+@login_required
+def add_enzyme():
+    form = EnzymeForm()
+    if form.validate_on_submit():
+        enzyme = Enzyme(name=form.name.data,
+                        acronym=form.acronym.data,
+                        isoenzyme=form.isoenzyme.data,
+                        ec_number=form.ec_number.data)
+        db.session.add(enzyme)
+
+        gene = Gene(name=form.gene_name.data,
+                    bigg_id=form.gene_bigg_id.data)
+        db.session.add(gene)
+        enzyme.add_encoding_genes(gene)
+
+        db.session.commit()
+        flash('Your enzyme is now live!')
+        return redirect(url_for('main.see_enzymes'))
+    return render_template('add_data.html', title='Add enzyme', form=form, header='enzyme')
+
+
+@bp.route('/add_gene', methods=['GET', 'POST'])
+@login_required
+def add_gene():
+    form = GeneForm()
+    if form.validate_on_submit():
+        gene = Enzyme(name=form.name.data,
+                        bigg_id=form.bigg_id.data)
+        db.session.add(gene)
+        db.session.commit()
+        flash('Your enzyme is now live!')
+        return redirect(url_for('main.see_enzymes'))
+    return render_template('add_data.html', title='Add gene', form=form, header='gene')
+
+
+@bp.route('/see_enzymes')
+@login_required
+def see_enzymes():
+    page = request.args.get('page', 1, type=int)
+    enzymes = Enzyme.query.order_by(Enzyme.timestamp.desc()).paginate(
+        page, current_app.config['POSTS_PER_PAGE'], False)
+    next_url = url_for('main.see_enzymes', page=enzymes.next_num) \
+        if enzymes.has_next else None
+    prev_url = url_for('main.see_enzymes', page=enzymes.prev_num) \
+        if enzymes.has_prev else None
+    return render_template("see_data.html", title='See enzymes', data=enzymes.items,
+                            data_type='enzyme', next_url=next_url, prev_url=prev_url)
+
+@bp.route('/see_genes')
+@login_required
+def see_genes():
+    page = request.args.get('page', 1, type=int)
+    genes = Gene.query.order_by(Gene.timestamp.desc()).paginate(
+        page, current_app.config['POSTS_PER_PAGE'], False)
+    next_url = url_for('main.see_genes', page=genes.next_num) \
+        if genes.has_next else None
+    prev_url = url_for('main.see_genes', page=genes.prev_num) \
+        if genes.has_prev else None
+    return render_template("see_data.html", title='See genes', data=genes.items,
+                           data_type='gene', next_url=next_url, prev_url=prev_url)
 

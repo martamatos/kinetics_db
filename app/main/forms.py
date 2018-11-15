@@ -23,3 +23,23 @@ class PostForm(FlaskForm):
     post = TextAreaField('Say something', validators=[
         DataRequired(), Length(min=1, max=140)])
     submit = SubmitField('Submit')
+
+#def check_if_exists(table_name, field, field_value):
+#    data = table_name.query.filter_by(field=field_value).first()
+#    return data
+
+class EnzymeForm(FlaskForm):
+    name = StringField('Enzyme name (e.g. phosphofructokinase)', validators=[DataRequired()])
+    acronym = StringField('Enzyme acronym (eg. PFK)', validators=[DataRequired()])
+    isoenzyme = StringField('Isoenzyme (e.g. PFK1)', validators=[DataRequired()])
+    ec_number = StringField('EC number', validators=[DataRequired()])
+    gene_name = StringField('Encoding gene name', validators=[DataRequired()])
+    gene_bigg_id = StringField('Encoding gene bigg ID', validators=[DataRequired()])
+
+    submit = SubmitField('Submit')
+
+class GeneForm(FlaskForm):
+    name = StringField('Gene name (e.g. phosphofructokinase)', validators=[DataRequired()])
+    bigg_id = StringField('Bigg Id (eg. g6p)', validators=[DataRequired()])
+
+    submit = SubmitField('Submit')
