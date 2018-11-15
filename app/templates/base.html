@@ -1,10 +1,11 @@
 {% extends 'bootstrap/base.html' %}
 
 {% block title %}
-    {% if title %}{{ title }} - Microblog{% else %}Welcome to Microblog{% endif %}
+    {% if title %}{{ title }} - Kinetics DB {% else %}Welcome to Kinetics DB{% endif %}
 {% endblock %}
 
 {% block navbar %}
+
     <nav class="navbar navbar-default">
         <div class="container">
             <div class="navbar-header">
@@ -14,12 +15,29 @@
                     <span class="icon-bar"></span>
                     <span class="icon-bar"></span>
                 </button>
-                <a class="navbar-brand" href="{{ url_for('main.index') }}">Microblog</a>
+                <a class="navbar-brand" href="{{ url_for('main.index') }}">Kinetics DB</a>
             </div>
+
             <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
                 <ul class="nav navbar-nav">
                     <li><a href="{{ url_for('main.index') }}">Home</a></li>
                     <li><a href="{{ url_for('main.explore') }}">Explore</a></li>
+                    <li class="nav-item dropdown mr-auto">
+                        <a class="nav-link dropdown-toggle"  id="dropdown05" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Add data</a>
+                        <div class="dropdown-menu" aria-labelledby="dropdown05">
+                          <a class="dropdown-item" href="{{ url_for('main.add_enzymes') }}">Add enzyme 1</a> <br>
+                          <a class="dropdown-item" href="{{ url_for('main.add_enzymes') }}">Add enzymes 2</a> <br>
+                          <a class="dropdown-item" href="{{ url_for('main.add_enzymes') }}">Add enzymes 3</a>
+                        </div>
+                    </li>
+                    <li class="nav-item dropdown mr-auto">
+                        <a class="nav-link dropdown-toggle"  id="dropdown05" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">See data</a>
+                        <div class="dropdown-menu" aria-labelledby="dropdown05">
+                          <a class="dropdown-item" href="{{ url_for('main.see_enzymes') }}">See enzymes 1</a> <br>
+                          <a class="dropdown-item" href="{{ url_for('main.see_enzymes') }}">See enzymes 2</a> <br>
+                          <a class="dropdown-item" href="{{ url_for('main.see_enzymes') }}">See enzymes 3</a>
+                        </div>
+                    </li>
                 </ul>
                 <ul class="nav navbar-nav navbar-right">
                     {% if current_user.is_anonymous %}
@@ -32,6 +50,8 @@
             </div>
         </div>
     </nav>
+
+
 {% endblock %}
 
 {% block content %}
