@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% import 'bootstrap/wtf.html' as wtf %}
+
+
+{% block app_content %}
+
+    <h1>Add {{ header }}</h1>
+
+    <div class="row">
+       <div class="col-md-4">
+            {{ wtf.quick_form(form) }}
+       </div>
+    </div>
+{% endblock %}
+
+
+{% block scripts %}
+  {{super()}}
+    <script>
+        var data_in = {{ data | tojson }}
+    </script>
+    <link rel='stylesheet' href="{{ url_for('static', filename='css/easy-autocomplete.css') }}">
+    <script type=text/javascript src="{{ url_for('static', filename='js/jquery.easy-autocomplete.js') }}"></script>
+    <script type=text/javascript src="{{ url_for('static', filename='js/autocomplete.js') }}"></script>
+
+{% endblock %}
