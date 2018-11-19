@@ -28,13 +28,15 @@ class PostForm(FlaskForm):
 #    data = table_name.query.filter_by(field=field_value).first()
 #    return data
 
+
 class EnzymeForm(FlaskForm):
     name = StringField('Enzyme name (e.g. phosphofructokinase)', validators=[DataRequired()])
     acronym = StringField('Enzyme acronym (eg. PFK)', validators=[DataRequired()])
     isoenzyme = StringField('Isoenzyme (e.g. PFK1)', validators=[DataRequired()])
     ec_number = StringField('EC number', validators=[DataRequired()])
-    gene_name = StringField('Encoding gene name', validators=[DataRequired()])
-    gene_bigg_id = StringField('Encoding gene bigg ID', validators=[DataRequired()])
+
+    gene_name = StringField('Encoding gene name', validators=[DataRequired()], id='inputOne')
+    gene_bigg_id = StringField('Encoding gene bigg ID',  validators=[DataRequired()], id='inputTwo')
 
     submit = SubmitField('Submit')
 

@@ -7,6 +7,7 @@ from flask_login import current_user, login_required
 from app import current_app, db
 from app.models import User, Post, Enzyme, Gene
 from app.main import bp
+import json
 
 
 @bp.before_request
@@ -114,11 +115,28 @@ def explore():
     return render_template("index.html", title='Explore', posts=posts.items,
                           next_url=next_url, prev_url=prev_url)
 
+data_in =[
+                {"character": "", "realName": ""},
+                {"character": "Wolverine6", "realName": "James Howlett6"},
+                {"character": "Cyclops", "realName": "Scott Summers"},
+                {"character": "Professor X", "realName": "Charles Francis Xavier"},
+                {"character": "Mystique", "realName": "Raven Darkholme"},
+                {"character": "Magneto", "realName": "Max Eisenhardt"},
+                {"character": "Storm", "realName": "Ororo Monroe"},
+                {"character": "Wolverine", "realName": "James Howlett"},
+                {"character": "Mystique1", "realName": "Raven Darkholme1"},
+                {"character": "Magneto1", "realName": "Max Eisenhardt1"},
+                {"character": "Storm1", "realName": "Ororo Monroe1"},
+                {"character": "Wolverine1", "realName": "James Howlett1"}
+            ]
 
 @bp.route('/add_enzyme', methods=['GET', 'POST'])
 @login_required
 def add_enzyme():
     form = EnzymeForm()
+    genes = Gene.query.all()
+    gene_data = [{'name': gene.name, 'bigg_id':gene.bigg_id} for gene in genes]
+
     if form.validate_on_submit():
         enzyme = Enzyme(name=form.name.data,
                         acronym=form.acronym.data,
@@ -134,7 +152,7 @@ def add_enzyme():
         db.session.commit()
         flash('Your enzyme is now live!')
         return redirect(url_for('main.see_enzymes'))
-    return render_template('add_data.html', title='Add enzyme', form=form, header='enzyme')
+    return render_template('add_data.html', title='Add enzyme', form=form, header='enzyme', data=gene_data)
 
 
 @bp.route('/add_gene', methods=['GET', 'POST'])
