@@ -24,24 +24,36 @@ class PostForm(FlaskForm):
         DataRequired(), Length(min=1, max=140)])
     submit = SubmitField('Submit')
 
-#def check_if_exists(table_name, field, field_value):
-#    data = table_name.query.filter_by(field=field_value).first()
-#    return data
-
 
 class EnzymeForm(FlaskForm):
     name = StringField('Enzyme name (e.g. phosphofructokinase)', validators=[DataRequired()])
     acronym = StringField('Enzyme acronym (eg. PFK)', validators=[DataRequired()])
-    isoenzyme = StringField('Isoenzyme (e.g. PFK1)', validators=[DataRequired()])
+    isoenzyme = StringField('Isoenzyme (e.g. PFK1)')
     ec_number = StringField('EC number', validators=[DataRequired()])
 
-    gene_name = StringField('Encoding gene name', validators=[DataRequired()], id='inputOne')
-    gene_bigg_id = StringField('Encoding gene bigg ID',  validators=[DataRequired()], id='inputTwo')
+    gene_name = StringField('Encoding gene name', id='inputOne')
+    gene_bigg_id = StringField('Encoding gene bigg ID', id='inputTwo')
 
     submit = SubmitField('Submit')
 
+
 class GeneForm(FlaskForm):
     name = StringField('Gene name (e.g. phosphofructokinase)', validators=[DataRequired()])
-    bigg_id = StringField('Bigg Id (eg. g6p)', validators=[DataRequired()])
+    bigg_id = StringField('Bigg Id (eg. g6p)')
+
+    submit = SubmitField('Submit')
+
+
+class ModelForm(FlaskForm):
+    name = StringField('Model name (e.g. E coli - iteration 1)', validators=[DataRequired()])
+    organism_name = StringField('Organism name (eg. E coli)', validators=[DataRequired()], id='inputOne')
+    strain = StringField('Organism strain (e.g. MG1655)')
+    comments = TextAreaField('Comments')
+
+    submit = SubmitField('Submit')
+
+
+class OrganismForm(FlaskForm):
+    name = StringField('Organism name (e.g. E coli)', validators=[DataRequired()], id='inputOne')
 
     submit = SubmitField('Submit')

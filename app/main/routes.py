@@ -1,11 +1,11 @@
 from datetime import datetime
 
-from app.main.forms import EditProfileForm, PostForm, EnzymeForm, GeneForm
+from app.main.forms import EditProfileForm, PostForm, EnzymeForm, GeneForm, ModelForm, OrganismForm
 from flask import render_template, flash, redirect, url_for, request
 from flask_login import current_user, login_required
 
 from app import current_app, db
-from app.models import User, Post, Enzyme, Gene
+from app.models import User, Post, Enzyme, Gene, Model, Organism
 from app.main import bp
 import json
 
@@ -115,27 +115,13 @@ def explore():
     return render_template("index.html", title='Explore', posts=posts.items,
                           next_url=next_url, prev_url=prev_url)
 
-data_in =[
-                {"character": "", "realName": ""},
-                {"character": "Wolverine6", "realName": "James Howlett6"},
-                {"character": "Cyclops", "realName": "Scott Summers"},
-                {"character": "Professor X", "realName": "Charles Francis Xavier"},
-                {"character": "Mystique", "realName": "Raven Darkholme"},
-                {"character": "Magneto", "realName": "Max Eisenhardt"},
-                {"character": "Storm", "realName": "Ororo Monroe"},
-                {"character": "Wolverine", "realName": "James Howlett"},
-                {"character": "Mystique1", "realName": "Raven Darkholme1"},
-                {"character": "Magneto1", "realName": "Max Eisenhardt1"},
-                {"character": "Storm1", "realName": "Ororo Monroe1"},
-                {"character": "Wolverine1", "realName": "James Howlett1"}
-            ]
 
 @bp.route('/add_enzyme', methods=['GET', 'POST'])
 @login_required
 def add_enzyme():
     form = EnzymeForm()
     genes = Gene.query.all()
-    gene_data = [{'name': gene.name, 'bigg_id':gene.bigg_id} for gene in genes]
+    gene_data = [{'field1': gene.name, 'field2':gene.bigg_id} for gene in genes]
 
     if form.validate_on_submit():
         enzyme = Enzyme(name=form.name.data,
@@ -169,6 +155,51 @@ def add_gene():
     return render_template('add_data.html', title='Add gene', form=form, header='gene')
 
 
+@bp.route('/add_model', methods=['GET', 'POST'])
+@login_required
+def add_model():
+    form = ModelForm()
+    organisms = Organism.query.all()
+    organism_data = [{'field1': organism.name} for organism in organisms]
+    if form.validate_on_submit():
+
+        organism= Organism.query.filter_by(name=form.organism_name.data).first()
+        if not organism:
+            organism = Organism(name=form.organism_name.data)
+            db.session.add(organism)
+
+        model = Model(name=form.name.data,
+                      organism_name=form.organism_name.data,
+                      strain=form.strain.data,
+                      comments=form.comments.data)
+
+        db.session.add(model)
+        organism.add_model(model)
+        db.session.commit()
+        flash('Your model is now live!')
+        return redirect(url_for('main.see_models'))
+    return render_template('add_data.html', title='Add model', form=form, header='model', data=organism_data)
+
+
+@bp.route('/add_organism', methods=['GET', 'POST'])
+@login_required
+def add_organism():
+    form = OrganismForm()
+    organisms = Organism.query.all()
+    organism_data = [{'field1': organism.name} for organism in organisms]
+    if form.validate_on_submit():
+
+        organism = Organism(name=form.name.data)
+        db.session.add(organism)
+        db.session.commit()
+
+        flash('Your organism is now live!')
+
+        return redirect(url_for('main.see_organisms'))
+    return render_template('add_data.html', title='Add organism', form=form, header='organism', data=organism_data)
+
+
+
 @bp.route('/see_enzymes')
 @login_required
 def see_enzymes():
@@ -194,4 +225,32 @@ def see_genes():
         if genes.has_prev else None
     return render_template("see_data.html", title='See genes', data=genes.items,
                            data_type='gene', next_url=next_url, prev_url=prev_url)
+
+
+@bp.route('/see_models')
+@login_required
+def see_models():
+    page = request.args.get('page', 1, type=int)
+    models = Model.query.order_by(Model.timestamp.desc()).paginate(
+        page, current_app.config['POSTS_PER_PAGE'], False)
+    next_url = url_for('main.see_models', page=models.next_num) \
+        if models.has_next else None
+    prev_url = url_for('main.see_models', page=models.prev_num) \
+        if models.has_prev else None
+    return render_template("see_data.html", title='See models', data=models.items,
+                            data_type='model', next_url=next_url, prev_url=prev_url)
+
+
+@bp.route('/see_organisms')
+@login_required
+def see_organisms():
+    page = request.args.get('page', 1, type=int)
+    organisms = Organism.query.order_by(Organism.timestamp.desc()).paginate(
+        page, current_app.config['POSTS_PER_PAGE'], False)
+    next_url = url_for('main.see_organisms', page=organisms.next_num) \
+        if organisms.has_next else None
+    prev_url = url_for('main.see_organisms', page=organisms.prev_num) \
+        if organisms.has_prev else None
+    return render_template("see_data.html", title='See organisms', data=organisms.items,
+                           data_type='organism', next_url=next_url, prev_url=prev_url)
 

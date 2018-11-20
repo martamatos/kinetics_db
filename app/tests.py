@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 import unittest
 from app import create_app, db
-from app.models import User, Post
+from app.models import User, Post, Enzyme, Gene, Model, Organism
 from config import Config
 
 
@@ -94,6 +94,206 @@ class UserModelCase(unittest.TestCase):
         self.assertEqual(f2, [p2, p3])
         self.assertEqual(f3, [p3, p4])
         self.assertEqual(f4, [p4])
+
+
+class EnzymeModelCase(unittest.TestCase):
+    def setUp(self):
+        self.app = create_app(TestConfig)
+        self.app_context = self.app.app_context()
+        self.app_context.push()
+        db.create_all()
+
+    def tearDown(self):
+        db.session.remove()
+        db.drop_all()
+        self.app_context.pop()
+
+    def test_add_enzyme_and_create_gene(self):
+        enzyme_name = 'PFK'
+        enzyme_acronym = 'PFK'
+        enzyme_isoenzyme = 'PFK1'
+        enzyme_ec_number = '2.1.34.55'
+
+        gene_name = 'pfkA'
+        gene_bigg_id = 'b0001'
+
+
+        gene = Gene.query.filter_by(name=gene_name).first()
+        if not gene:
+            gene = Gene(name=gene_name, bigg_id=gene_bigg_id)
+            db.session.add(gene)
+
+
+        enzyme = Enzyme(name=enzyme_name,
+                        acronym=enzyme_acronym,
+                        isoenzyme=enzyme_isoenzyme,
+                        ec_number=enzyme_ec_number)
+        db.session.add(enzyme)
+        enzyme.add_encoding_genes(gene)
+
+        db.session.commit()
+
+        self.assertEqual(gene.query.first().name, gene_name)
+        self.assertEqual(gene.query.first().bigg_id, gene_bigg_id)
+        self.assertEqual(gene.enzymes.first().name, enzyme_name)
+
+        self.assertEqual(enzyme.query.first().name, enzyme_name)
+        self.assertEqual(enzyme.query.first().acronym, enzyme_acronym)
+        self.assertEqual(enzyme.query.first().isoenzyme, enzyme_isoenzyme)
+        self.assertEqual(enzyme.query.first().ec_number, enzyme_ec_number)
+        self.assertEqual(enzyme.genes.first().name, gene_name)
+
+
+    def test_add_enzyme_for_existing_gene(self):
+        enzyme_name = 'PFK'
+        enzyme_acronym = 'PFK'
+        enzyme_isoenzyme = 'PFK1'
+        enzyme_ec_number = '2.1.34.55'
+
+        gene_name = 'pfkA'
+        gene_bigg_id = 'b0001'
+
+        gene = Gene(name=gene_name, bigg_id=gene_bigg_id)
+        db.session.add(gene)
+        db.session.commit()
+
+        self.assertEqual(gene.query.first().name, gene_name)
+        self.assertEqual(gene.query.first().bigg_id, gene_bigg_id)
+
+
+        enzyme = Enzyme(name=enzyme_name,
+                        acronym=enzyme_acronym,
+                        isoenzyme=enzyme_isoenzyme,
+                        ec_number=enzyme_ec_number)
+        db.session.add(enzyme)
+        db.session.commit()
+
+        self.assertEqual(enzyme.query.first().name, enzyme_name)
+        self.assertEqual(enzyme.query.first().acronym, enzyme_acronym)
+        self.assertEqual(enzyme.query.first().isoenzyme, enzyme_isoenzyme)
+        self.assertEqual(enzyme.query.first().ec_number, enzyme_ec_number)
+        self.assertEqual(enzyme.genes.first(), None)
+        self.assertEqual(gene.enzymes.first(), None)
+
+        enzyme.add_encoding_genes(gene)
+        db.session.commit()
+        self.assertEqual(enzyme.genes.first().name, gene_name)
+        self.assertEqual(gene.enzymes.first().name, enzyme_name)
+
+
+class GeneModelCase(unittest.TestCase):
+    def setUp(self):
+        self.app = create_app(TestConfig)
+        self.app_context = self.app.app_context()
+        self.app_context.push()
+        db.create_all()
+
+    def tearDown(self):
+        db.session.remove()
+        db.drop_all()
+        self.app_context.pop()
+
+    def test_add_gene(self):
+        gene_name = 'pfkA'
+        gene_bigg_id = 'b0001'
+
+        gene = Gene(name=gene_name, bigg_id=gene_bigg_id)
+        db.session.add(gene)
+        db.session.commit()
+
+        self.assertEqual(gene.query.first().name, gene_name)
+        self.assertEqual(gene.query.first().bigg_id, gene_bigg_id)
+        self.assertEqual(gene.enzymes.first(), None)
+
+
+class ModelModelCase(unittest.TestCase):
+    def setUp(self):
+        self.app = create_app(TestConfig)
+        self.app_context = self.app.app_context()
+        self.app_context.push()
+        db.create_all()
+
+    def tearDown(self):
+        db.session.remove()
+        db.drop_all()
+        self.app_context.pop()
+
+    def test_add_model_and_create_organism(self):
+        organism_name = 'E coli'
+        model_name = 'E coli - test'
+        model_strain = 'MG16555'
+        model_comments = 'just testing'
+
+        organism= Organism.query.filter_by(name=organism_name).first()
+        if not organism:
+            organism = Organism(name=organism_name)
+            db.session.add(organism)
+
+        model = Model(name=model_name,
+                      organism_name=organism_name,
+                      strain=model_strain,
+                      comments=model_comments)
+
+        db.session.add(model)
+        organism.add_model(model)
+        db.session.commit()
+
+        self.assertEqual(organism.query.first().name, organism_name)
+        self.assertEqual(organism.models.first().name, model_name)
+        self.assertEqual(model.query.first().name, model_name)
+        self.assertEqual(model.query.first().strain, model_strain)
+        self.assertEqual(model.query.first().comments, model_comments)
+
+    def test_add_model_for_existing_organism(self):
+        organism_name = 'E coli'
+        model_name = 'E coli - test'
+        model_strain = 'MG16555'
+        model_comments = 'just testing'
+
+        organism = Organism(name=organism_name)
+        db.session.add(organism)
+        db.session.commit()
+
+        self.assertEqual(organism.query.first().name, organism_name)
+        self.assertEqual(organism.models.query.first().name, [])
+
+        model = Model(name=model_name,
+                      organism_name=organism_name,
+                      strain=model_strain,
+                      comments=model_comments)
+
+        db.session.add(model)
+        organism.add_model(model)
+        db.session.commit()
+
+
+        self.assertEqual(organism.models.query.first().name, organism_name)
+        self.assertEqual(model.query.first().name, model_name)
+        self.assertEqual(model.query.first().strain, model_strain)
+        self.assertEqual(model.query.first().comments, model_comments)
+
+
+class OrganismModelCase(unittest.TestCase):
+    def setUp(self):
+        self.app = create_app(TestConfig)
+        self.app_context = self.app.app_context()
+        self.app_context.push()
+        db.create_all()
+
+    def tearDown(self):
+        db.session.remove()
+        db.drop_all()
+        self.app_context.pop()
+
+    def test_add_organism(self):
+        organism_name = 'E coli'
+
+        organism = Organism(name=organism_name)
+        db.session.add(organism)
+        db.session.commit()
+
+        self.assertEqual(organism.query.first().name, organism_name)
+
 
 
 if __name__ == '__main__':

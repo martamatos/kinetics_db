@@ -310,9 +310,9 @@ class Enzyme(db.Model):
     isoenzyme = db.Column(db.String)
     ec_number = db.Column(db.String)
     timestamp = db.Column(db.DateTime, index=True, default=datetime.utcnow)
-    enzyme_structures = db.relationship('EnzymeStructure', back_populates='enzyme')
-    enzyme_organisms = db.relationship('EnzymeOrganism', back_populates='enzyme')
-    enzyme_reaction_models = db.relationship('EnzymeReactionModel', back_populates='enzyme')
+    enzyme_structures = db.relationship('EnzymeStructure', back_populates='enzyme', lazy='dynamic')
+    enzyme_organisms = db.relationship('EnzymeOrganism', back_populates='enzyme', lazy='dynamic')
+    enzyme_reaction_models = db.relationship('EnzymeReactionModel', back_populates='enzyme', lazy='dynamic')
     genes = db.relationship(
         'Gene', secondary=enzyme_gene,
         primaryjoin=(enzyme_gene.c.enzyme_id == id),
@@ -399,8 +399,8 @@ class Compartment(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     name = db.Column(db.String)
     abbreviation = db.Column(db.String)
-    metabolites = db.relationship('Metabolite', back_populates='compartment')
-    reactions = db.relationship('Reaction', back_populates='compartment')
+    metabolites = db.relationship('Metabolite', back_populates='compartment', lazy='dynamic')
+    reactions = db.relationship('Reaction', back_populates='compartment', lazy='dynamic')
 
     def add_metabolite(self, metabolite):
         if not self.met_in_compartment(metabolite):
@@ -456,7 +456,7 @@ class Metabolite(db.Model):
         'ChebiIds', secondary=metabolite_chebi,
         primaryjoin=(metabolite_chebi.c.metabolite_id == id),
         back_populates='metabolites', lazy='dynamic')
-    reactions = db.relationship('ReactionMetabolite', back_populates='metabolite')
+    reactions = db.relationship('ReactionMetabolite', back_populates='metabolite', lazy='dynamic')
 
     def add_chebi_id(self, chebi_id):
         if not self.met_involved_in_reaction(chebi_id):
@@ -514,7 +514,7 @@ class GibbsEnergy(db.Model):
     ph = db.Column(db.Float)
     ionic_strength = db.Column(db.Float)
     reference_id = db.Column(db.Integer, db.ForeignKey(Reference.id))
-    reactions = db.relationship('Reaction', back_populates='gibbs_energy')
+    reactions = db.relationship('Reaction', back_populates='gibbs_energy', lazy='dynamic')
 
 
     def add_reaction(self, reaction):
@@ -543,9 +543,9 @@ class Reaction(db.Model):
     compartment = db.relationship('Compartment', back_populates='reactions')
     gibbs_energy_id = db.Column(db.Integer, db.ForeignKey(GibbsEnergy.id))
     gibbs_energy = db.relationship('GibbsEnergy', back_populates='reactions')
-    enzyme_organisms = db.relationship('EnzymeOrganism', back_populates='reaction')
-    enzyme_reaction_models = db.relationship('EnzymeReactionModel', back_populates='reaction')
-    metabolites = db.relationship('ReactionMetabolite', back_populates='reaction')
+    enzyme_organisms = db.relationship('EnzymeOrganism', back_populates='reaction', lazy='dynamic')
+    enzyme_reaction_models = db.relationship('EnzymeReactionModel', back_populates='reaction', lazy='dynamic')
+    metabolites = db.relationship('ReactionMetabolite', back_populates='reaction', lazy='dynamic')
 
     def add_metabolite(self, metabolite):
         if not self.met_involved_in_reaction(metabolite):
@@ -589,11 +589,12 @@ class Reaction(db.Model):
 class Organism(db.Model):
     __tablename__ = 'organism'
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    name = db.Column(db.String)
-    enzyme_structures = db.relationship('EnzymeStructure', back_populates='organism')
-    models = db.relationship('Model', back_populates='organism')
-    enzyme_organisms = db.relationship('EnzymeOrganism', back_populates='organism')
-    enzyme_reaction_models = db.relationship('EnzymeReactionModel', back_populates='organism')
+    name = db.Column(db.String, unique=True)
+    timestamp = db.Column(db.DateTime, index=True, default=datetime.utcnow)
+    enzyme_structures = db.relationship('EnzymeStructure', back_populates='organism', lazy='dynamic')
+    models = db.relationship('Model', back_populates='organism', lazy='dynamic')
+    enzyme_organisms = db.relationship('EnzymeOrganism', back_populates='organism', lazy='dynamic')
+    enzyme_reaction_models = db.relationship('EnzymeReactionModel', back_populates='organism', lazy='dynamic')
 
     def add_enzyme_organism(self, enzyme_organism):
         if not self.is_part_of_enzyme_organism(enzyme_organism):
@@ -609,16 +610,16 @@ class Organism(db.Model):
 
 
     def add_model(self, model):
-        if not self.is_part_of_enzyme_organism(model):
+        if not self.has_model(model):
             self.models.append(model)
 
     def remove_model(self, model):
-        if self.is_part_of_enzyme_organism(model):
+        if self.has_model(model):
             self.models.remove(model)
 
     def has_model(self, model):
         return self.models.filter(
-            model.organism_id == self.id).count() > 0
+            model.organism_name == self.name).count() > 0
 
 
     def add_structure(self, structure):
@@ -651,10 +652,13 @@ class Model(db.Model):
     __tablename__ = 'model'
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     name = db.Column(db.String)
-    organism_id = db.Column(db.Integer, db.ForeignKey(Organism.id))
+    organism_name = db.Column(db.Integer, db.ForeignKey(Organism.name))
     organism = db.relationship('Organism', back_populates='models')
-    enzyme_reaction_models = db.relationship('EnzymeReactionModel', back_populates='model')
-    model_assumptions = db.relationship('ModelAssumptions', back_populates='model')
+    strain = db.Column(db.String)
+    comments = db.Column(db.Text)
+    timestamp = db.Column(db.DateTime, index=True, default=datetime.utcnow)
+    enzyme_reaction_models = db.relationship('EnzymeReactionModel', back_populates='model', lazy='dynamic')
+    model_assumptions = db.relationship('ModelAssumptions', back_populates='model', lazy='dynamic')
 
     def add_enzyme_reaction_model(self, enzyme_reaction_model):
         if not self.is_part_of_enzyme_reaction_model(enzyme_reaction_model):
@@ -697,7 +701,7 @@ class Mechanism(db.Model):
     __tablename__ = 'mechanism'
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     name = db.Column(db.String)
-    enzyme_reaction_models = db.relationship('EnzymeReactionModel', back_populates='mechanism')
+    enzyme_reaction_models = db.relationship('EnzymeReactionModel', back_populates='mechanism', lazy='dynamic')
 
 
     def add_enzyme_reaction_model(self, enzyme_reaction_model):
@@ -730,12 +734,12 @@ class EvidenceLevel(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     name = db.Column(db.String)
     description = db.Column(db.Text)
-    enzyme_reaction_inhibitors = db.relationship('EnzymeReactionInhibition', back_populates='evidence')
-    enzyme_reaction_activators = db.relationship('EnzymeReactionActivation', back_populates='evidence')
-    enzyme_reaction_effectors = db.relationship('EnzymeReactionEffector', back_populates='evidence')
-    enzyme_reaction_misc_infos = db.relationship('EnzymeReactionMiscInfo', back_populates='evidence')
-    model_assumptions = db.relationship('ModelAssumptions', back_populates='evidence')
-    enz_mechanisms = db.relationship('EnzymeReactionModel', back_populates='mech_evidence')
+    enzyme_reaction_inhibitors = db.relationship('EnzymeReactionInhibition', back_populates='evidence', lazy='dynamic')
+    enzyme_reaction_activators = db.relationship('EnzymeReactionActivation', back_populates='evidence', lazy='dynamic')
+    enzyme_reaction_effectors = db.relationship('EnzymeReactionEffector', back_populates='evidence', lazy='dynamic')
+    enzyme_reaction_misc_infos = db.relationship('EnzymeReactionMiscInfo', back_populates='evidence', lazy='dynamic')
+    model_assumptions = db.relationship('ModelAssumptions', back_populates='evidence', lazy='dynamic')
+    enz_mechanisms = db.relationship('EnzymeReactionModel', back_populates='mech_evidence', lazy='dynamic')
 
 
     def add_enzyme_reaction_inhibitor(self, enzyme_reaction_inhibitor):
@@ -834,10 +838,10 @@ class EnzymeReactionModel(db.Model):
     binding_release_order = db.Column(db.String)
     included_in_model = db.Column(db.Boolean)
     comments = db.Column(db.String)
-    enzyme_reaction_inhibitors = db.relationship('EnzymeReactionInhibition', back_populates='enz_rxn_model')
-    enzyme_reaction_activators = db.relationship('EnzymeReactionActivation', back_populates='enz_rxn_model')
-    enzyme_reaction_effectors = db.relationship('EnzymeReactionEffector', back_populates='enz_rxn_model')
-    enzyme_reaction_misc_infos = db.relationship('EnzymeReactionMiscInfo', back_populates='enz_rxn_model')
+    enzyme_reaction_inhibitors = db.relationship('EnzymeReactionInhibition', back_populates='enz_rxn_model', lazy='dynamic')
+    enzyme_reaction_activators = db.relationship('EnzymeReactionActivation', back_populates='enz_rxn_model', lazy='dynamic')
+    enzyme_reaction_effectors = db.relationship('EnzymeReactionEffector', back_populates='enz_rxn_model', lazy='dynamic')
+    enzyme_reaction_misc_infos = db.relationship('EnzymeReactionMiscInfo', back_populates='enz_rxn_model', lazy='dynamic')
     mechanism_references = db.relationship(
         'Reference', secondary=reference_mechanism,
         primaryjoin=(reference_mechanism.c.mechanism_id == id),
@@ -921,7 +925,7 @@ class EnzymeReactionInhibition(db.Model):
     references = db.relationship(
         'Reference', secondary=reference_inhibition,
         primaryjoin=(reference_inhibition.c.inhibition_id == id),
-        back_populates='enzyme_reaction_inhibitions')
+        back_populates='enzyme_reaction_inhibitions', lazy='dynamic')
 
 
     def add_reference(self, reference):
@@ -950,7 +954,7 @@ class EnzymeReactionActivation(db.Model):
     references = db.relationship(
         'Reference', secondary=reference_activation,
         primaryjoin=(reference_activation.c.activation_id == id),
-        back_populates='enzyme_reaction_activations')
+        back_populates='enzyme_reaction_activations', lazy='dynamic')
 
     def add_reference(self, reference):
         if not self.has_reference(reference):
@@ -983,7 +987,7 @@ class EnzymeReactionEffector(db.Model):
     references = db.relationship(
         'Reference', secondary=reference_effector,
         primaryjoin=(reference_effector.c.effector_id == id),
-        back_populates='enzyme_reaction_effectors')
+        back_populates='enzyme_reaction_effectors', lazy='dynamic')
 
     def add_reference(self, reference):
         if not self.has_reference(reference):
@@ -1011,7 +1015,7 @@ class EnzymeReactionMiscInfo(db.Model):
     references = db.relationship(
         'Reference', secondary=reference_misc_info,
         primaryjoin=(reference_misc_info.c.misc_info_id == id),
-        back_populates='enzyme_reaction_misc_infos')
+        back_populates='enzyme_reaction_misc_infos', lazy='dynamic')
 
     def add_reference(self, reference):
         if not self.has_reference(reference):
@@ -1039,7 +1043,7 @@ class ModelAssumptions(db.Model):
     references = db.relationship(
         'Reference', secondary=reference_model_assumptions,
         primaryjoin=(reference_model_assumptions.c.model_assumptions_id == id),
-        back_populates='model_assumptions')
+        back_populates='model_assumptions', lazy='dynamic')
 
     def add_reference(self, reference):
         if not self.has_reference(reference):

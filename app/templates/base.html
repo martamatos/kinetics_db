@@ -7,7 +7,7 @@
 {% block navbar %}
 
     <nav class="navbar navbar-default">
-        <div class="container">
+        <ul class="container">
             <div class="navbar-header">
                 <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1" aria-expanded="false">
                     <span class="sr-only">Toggle navigation</span>
@@ -22,21 +22,23 @@
                 <ul class="nav navbar-nav">
                     <li><a href="{{ url_for('main.index') }}">Home</a></li>
                     <li><a href="{{ url_for('main.explore') }}">Explore</a></li>
-                    <li class="nav-item dropdown mr-auto">
-                        <a class="nav-link dropdown-toggle"  id="dropdown05" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Add data</a>
-                        <div class="dropdown-menu" aria-labelledby="dropdown05">
-                          <a class="dropdown-item" href="{{ url_for('main.add_enzyme') }}">Add enzyme</a> <br>
-                          <a class="dropdown-item" href="{{ url_for('main.add_gene') }}">Add gene</a> <br>
-                          <a class="dropdown-item" href="{{ url_for('main.add_gene') }}">Add enzymes 3</a>
-                        </div>
+                    <li class="dropdown">
+                      <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">Add data <span class="caret"></span></a>
+                      <ul class="dropdown-menu">
+                          <li><a href="{{ url_for('main.add_enzyme') }}">Add enzyme</a></li>
+                          <li><a href="{{ url_for('main.add_gene') }}">Add gene</a></li>
+                          <li><a href="{{ url_for('main.add_model') }}">Add model</a></li>
+                          <li><a href="{{ url_for('main.add_organism') }}">Add organism</a></li>
+                        </ul>
                     </li>
-                    <li class="nav-item dropdown mr-auto">
-                        <a class="nav-link dropdown-toggle"  id="dropdown05" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">See data</a>
-                        <div class="dropdown-menu" aria-labelledby="dropdown05">
-                          <a class="dropdown-item" href="{{ url_for('main.see_enzymes') }}">See enzymes</a> <br>
-                          <a class="dropdown-item" href="{{ url_for('main.see_genes') }}">See genes</a> <br>
-                          <a class="dropdown-item" href="{{ url_for('main.see_enzymes') }}">See enzymes 3</a>
-                        </div>
+                    <li class="dropdown">
+                      <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">See data <span class="caret"></span></a>
+                      <ul class="dropdown-menu">
+                          <li><a  href="{{ url_for('main.see_enzymes') }}">See enzymes</a></li>
+                          <li><a  href="{{ url_for('main.see_genes') }}">See genes</a></li>
+                          <li><a  href="{{ url_for('main.see_models') }}">See models</a></li>
+                          <li><a  href="{{ url_for('main.see_organisms') }}">See organisms</a></li>
+                        </ul>
                     </li>
                 </ul>
                 <ul class="nav navbar-nav navbar-right">
@@ -48,7 +50,7 @@
                     {% endif %}
                 </ul>
             </div>
-        </div>
+        </ul>
     </nav>
 
 

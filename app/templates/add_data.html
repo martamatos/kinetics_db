@@ -15,12 +15,15 @@
 
 
 {% block scripts %}
-  {{super()}}
-    <script>
-        var data_in = {{ data | tojson }}
-    </script>
-    <link rel='stylesheet' href="{{ url_for('static', filename='css/easy-autocomplete.css') }}">
-    <script type=text/javascript src="{{ url_for('static', filename='js/jquery.easy-autocomplete.js') }}"></script>
-    <script type=text/javascript src="{{ url_for('static', filename='js/autocomplete.js') }}"></script>
+    {{super()}}
 
+    {% if data %}
+        <script>
+            var data_in = {{ data | tojson }}
+        </script>
+
+        <link rel='stylesheet' href="{{ url_for('static', filename='css/easy-autocomplete.css') }}">
+        <script type=text/javascript src="{{ url_for('static', filename='js/jquery.easy-autocomplete.js') }}"></script>
+        <script type=text/javascript src="{{ url_for('static', filename='js/autocomplete.js') }}"></script>
+    {% endif %}
 {% endblock %}
