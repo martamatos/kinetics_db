@@ -1,13 +1,13 @@
 from datetime import datetime
-
 from app.main.forms import EditProfileForm, PostForm, EnzymeForm, GeneForm, ModelForm, OrganismForm
 from flask import render_template, flash, redirect, url_for, request
 from flask_login import current_user, login_required
-
 from app import current_app, db
-from app.models import User, Post, Enzyme, Gene, Model, Organism
+from app.models import User, Post, Enzyme, EnzymeReactionModel, EnzymeOrganism, EnzymeStructure, EvidenceLevel, Gene, \
+    GibbsEnergy, Mechanism, Metabolite, Model, Organism, Reaction, ReactionMetabolite, Reference
 from app.main import bp
-import json
+from app.utils.parsers import ReactionParser, parse_input_list
+import re
 
 
 @bp.before_request
@@ -15,7 +15,6 @@ def before_request():
     if current_user.is_authenticated:
         current_user.last_seen = datetime.utcnow()
         db.session.commit()
-
 
 
 @bp.route('/', methods=['GET', 'POST'])
@@ -72,6 +71,7 @@ def edit_profile():
     return render_template('edit_profile.html', title='Edit Profile',
                            form=form)
 
+
 @bp.route('/follow/<username>')
 @login_required
 def follow(username):
@@ -86,6 +86,7 @@ def follow(username):
     db.session.commit()
     flash('You are following {}!'.format(username))
     return redirect(url_for('main.user', username=username))
+
 
 @bp.route('/unfollow/<username>')
 @login_required
@@ -102,6 +103,7 @@ def unfollow(username):
     flash('You are not following {}.'.format(username))
     return redirect(url_for('main.user', username=username))
 
+
 @bp.route('/explore')
 @login_required
 def explore():
@@ -113,32 +115,104 @@ def explore():
     prev_url = url_for('main.explore', page=posts.prev_num) \
         if posts.has_prev else None
     return render_template("index.html", title='Explore', posts=posts.items,
-                          next_url=next_url, prev_url=prev_url)
+                           next_url=next_url, prev_url=prev_url)
+
+def _add_enzyme_organism(enzyme, organism_id, uniprot_id_list, gene_bigg_ids, number_of_active_sites):
+    for uniprot_id in uniprot_id_list:
+        enzyme_organism_db = EnzymeOrganism.query.filter_by(uniprot_id=uniprot_id).first()
+        if not enzyme_organism_db:
+            enzyme_organism_db = EnzymeOrganism(enzyme_id=enzyme.id,
+                                                organism_id=organism_id,
+                                                uniprot_id=uniprot_id,
+                                                n_active_sites=number_of_active_sites)
+            db.session.add(enzyme_organism_db)
+        enzyme.add_enzyme_organism(enzyme_organism_db)
+
+        # populate genes
+        if gene_bigg_ids:
+            gene_bigg_ids_list = parse_input_list(gene_bigg_ids)
+            for gene_id in gene_bigg_ids_list:
+                gene_id_db = Gene.query.filter_by(bigg_id=gene_id).first()
+                if not gene_id_db:
+                    gene_id_db = Gene(bigg_id=gene_id)
+                    db.session.add(gene_id_db)
+
+                enzyme_organism_db.add_encoding_genes(gene_id_db)
+
+
+def _add_enzyme_structures(enzyme, organism_id, pdb_id_list, strain_list):
+
+    if len(strain_list) == 1 and len(pdb_id_list) > 1:
+        pdb_id_strain_list = zip(pdb_id_list, [strain_list[0] for i in range(len(pdb_id_list))])
+    elif len(strain_list) == 0 and len(pdb_id_list) > 1:
+        pdb_id_strain_list = zip(pdb_id_list, ['' for i in range(len(pdb_id_list))])
+    elif len(strain_list) == len(pdb_id_list):
+        pdb_id_strain_list = zip(pdb_id_list, strain_list)
+
+    for pdb_id, pdb_id_strain in pdb_id_strain_list:
+        enzyme_structure_db = EnzymeStructure.query.filter_by(pdb_id=pdb_id).first()
+        if not enzyme_structure_db:
+            enzyme_structure_db = EnzymeStructure(enzyme_id=enzyme.id,
+                                                  pdb_id=pdb_id,
+                                                  organism_id=organism_id,
+                                                  strain=pdb_id_strain)
+            db.session.add(enzyme_structure_db)
+
+        enzyme.add_structure(enzyme_structure_db)
 
 
 @bp.route('/add_enzyme', methods=['GET', 'POST'])
 @login_required
 def add_enzyme():
     form = EnzymeForm()
+
     genes = Gene.query.all()
-    gene_data = [{'field1': gene.name, 'field2':gene.bigg_id} for gene in genes]
+    gene_bigg_ids = {'id_value': '#gene_bigg_ids', 'input_data': [{'field1': gene.bigg_id} for gene in genes] if genes else []}
+
+    enzyme_structures = EnzymeStructure.query.all()
+    enzyme_structure_strains = set([enzyme_structure.strain for enzyme_structure in enzyme_structures]) if enzyme_structures else []
+    strain = {'id_value': '#strain', 'input_data': [{'field1': strain} for strain in
+              enzyme_structure_strains] if enzyme_structures else []}
+
+    organisms = Organism.query.all()
+    organism_name = {'id_value': '#organism_name', 'input_data': [{'field1': organism.name} for organism in organisms] if organisms else []}
+
+    data_list = [organism_name, gene_bigg_ids, strain]
 
     if form.validate_on_submit():
+
+        enzyme_db_list = Enzyme.query.filter_by(ec_number=form.ec_number.data).all()
+        if enzyme_db_list:
+            enzyme_db_list = [str((enzyme.ec_number, enzyme.acronym)) for enzyme in enzyme_db_list]
+            flash(
+                'An enzyme with the given EC number already exists in the database. Are you sure you want to continue\n' + '\n'.join(
+                    enzyme_db_list), 'warning')
+
         enzyme = Enzyme(name=form.name.data,
                         acronym=form.acronym.data,
                         isoenzyme=form.isoenzyme.data,
                         ec_number=form.ec_number.data)
         db.session.add(enzyme)
 
-        gene = Gene(name=form.gene_name.data,
-                    bigg_id=form.gene_bigg_id.data)
-        db.session.add(gene)
-        enzyme.add_encoding_genes(gene)
+        organism_db = Organism.query.filter_by(name=form.organism_name.data).first()
+        organism_id = organism_db.id
+
+        # populate enzyme_structure
+        if form.pdb_structure_ids.data:
+            pdb_id_list = parse_input_list(form.pdb_structure_ids.data)
+            strain_list = parse_input_list(form.strain.data)
+            _add_enzyme_structures(enzyme, organism_id, pdb_id_list, strain_list)
+
+        # populate enzyme_organism
+        if form.uniprot_id_list.data:
+            uniprot_id_list = parse_input_list(form.uniprot_id_list.data)
+            _add_enzyme_organism(enzyme, organism_id, uniprot_id_list, form.gene_bigg_ids.data, int(form.number_of_active_sites.data))
+
 
         db.session.commit()
         flash('Your enzyme is now live!')
         return redirect(url_for('main.see_enzymes'))
-    return render_template('add_data.html', title='Add enzyme', form=form, header='enzyme', data=gene_data)
+    return render_template('add_data.html', title='Add enzyme', form=form, header='enzyme', data_list=data_list)
 
 
 @bp.route('/add_gene', methods=['GET', 'POST'])
@@ -147,7 +221,7 @@ def add_gene():
     form = GeneForm()
     if form.validate_on_submit():
         gene = Enzyme(name=form.name.data,
-                        bigg_id=form.bigg_id.data)
+                      bigg_id=form.bigg_id.data)
         db.session.add(gene)
         db.session.commit()
         flash('Your enzyme is now live!')
@@ -159,11 +233,14 @@ def add_gene():
 @login_required
 def add_model():
     form = ModelForm()
+
     organisms = Organism.query.all()
-    organism_data = [{'field1': organism.name} for organism in organisms]
+    organism_name = {'id_value': '#organism_name', 'input_data': [{'field1': organism.name} for organism in organisms] if organisms else []}
+    data_list = [organism_name]
+
     if form.validate_on_submit():
 
-        organism= Organism.query.filter_by(name=form.organism_name.data).first()
+        organism = Organism.query.filter_by(name=form.organism_name.data).first()
         if not organism:
             organism = Organism(name=form.organism_name.data)
             db.session.add(organism)
@@ -178,7 +255,8 @@ def add_model():
         db.session.commit()
         flash('Your model is now live!')
         return redirect(url_for('main.see_models'))
-    return render_template('add_data.html', title='Add model', form=form, header='model', data=organism_data)
+    # return render_template('add_data.html', title='Add model', form=form, header='model', data_id_list=id_list, data_list=organism_data)
+    return render_template('add_data.html', title='Add model', form=form, header='model', data_list=data_list)
 
 
 @bp.route('/add_organism', methods=['GET', 'POST'])
@@ -188,16 +266,131 @@ def add_organism():
     organisms = Organism.query.all()
     organism_data = [{'field1': organism.name} for organism in organisms]
     if form.validate_on_submit():
-
         organism = Organism(name=form.name.data)
         db.session.add(organism)
         db.session.commit()
 
-        flash('Your organism is now live!')
+        flash('Your organism is now live!', 'success')
 
         return redirect(url_for('main.see_organisms'))
     return render_template('add_data.html', title='Add organism', form=form, header='organism', data=organism_data)
 
+
+def add_metabolites_to_reaction(reaction, reaction_string):
+    reversible, stoichiometry = ReactionParser().parse_reaction(reaction_string)
+    # (True, OrderedDict([('m_pep_c', -1.0), ('m_adp_c', -1.5), ('m_pyr_c', 1.0), ('m_atp_m', 2.0)]))
+
+    for met, stoich_coef in stoichiometry.items():
+        met_db = Metabolite.query.filter_by(grasp_id=met).first()
+        if not met_db:
+            try:
+                compartment_acronym = re.findall('(?:\S+)_(\w+)', met)[0]
+            except IndexError:
+                print('Did you specify all metabolites in the reaction as met_compartment?', 'danger')
+                return redirect(url_for('main.add_reactions'))
+
+            met_db = Metabolite(grasp_id=met,
+                                compartment_acronym=compartment_acronym)
+
+            db.session.add(met_db)
+            reaction.add_metabolite(met_db, stoich_coef)
+
+    return reaction
+
+
+"""
+@bp.route('/add_reaction', methods=['GET', 'POST'])
+@login_required
+def add_reaction():
+
+    form = ReactionForm()
+
+    enzymes = Enzyme.query.all()
+    isoenzyme_list = [{'field1': enzyme.isoenzyme} for enzyme in enzymes]
+
+
+    if form.validate_on_submit():
+
+        reaction = Reaction(name=form.name.data,
+                            grasp_id=form.grasp_id.data,
+                            metanetx_id=form.metanetx_id.data,
+                            bigg_id=form.bigg_id.data,
+                            kegg_id=form.kegg_id.data,
+                            compartment_name=form.compartment_name.data)
+
+        db.session.add(reaction)
+
+        add_metabolites_to_reaction(reaction, form.reaction_string.data)
+
+        for isoenzyme in form.enzymes.list:
+            enzyme_reaction_model = EnzymeReactionModel(enzyme_isoenzyme=isoenzyme,
+                                                        reaction_grasp_id = form.grasp_id.data,
+                                                        model_name=form.model_name.data,
+                                                        mechanism_name=form.mechanism.data,
+                                                        mech_evidence_level_name=form.mechanism_evidence_level.data,
+                                                        subs_binding_order=form.subs_binding_order.data,
+                                                        prod_release_order=form.prod_release_order.data)
+
+            mech_references = form.mechanism_references.data.strip()
+            if mech_references.find(', ') != -1:
+                mech_references.split(', ')
+            elif mech_references.find(' ') != -1:
+                mech_references.split(' ')
+            elif mech_references.find(',') != -1:
+                mech_references.split(',')
+            else:
+                mech_references = [mech_references]
+
+            for ref_doi in mech_references:
+                ref_db = Reference.query.filter(doi=ref_doi).first()
+                if not ref_db:
+                    ref_db = Reference(doi=ref_doi)
+                    db.session.add(ref_db)
+                enzyme_reaction_model.add_mechanism_reference(ref_db.id)
+
+            gibbs_energy = GibbsEnergy.query.filter(standard_dg=form.std_gibbs_energy.data,
+                                                    standard_dg_std=form.std_gibbs_energy_std.data,
+                                                    ph=form.std_gibbs_energy_ph.data,
+                                                    ionic_strength=form.std_gibbs_energy_ionic_strength.data).all()
+
+            if len(gibbs_energy) == 1:
+                enzyme_reaction_model.gibbs_energy_id = gibbs_energy.id
+            elif len(gibbs_energy) == 0:
+                db.session.add(gibbs_energy)
+
+                if form.std_gibbs_energy_references.data.lower().strip() == 'equilibrator':
+
+                    ref_db = Reference.query.filter(name='equilibrator').first()
+                    if not ref_db:
+                        ref_db = Reference(name='equilibrator')
+                        db.session.add(ref_db)
+                    gibbs_energy.reference_id = ref_db.id
+                else:
+                    gibbs_references = form.std_gibbs_energy_references.data.strip()
+                    if gibbs_references.find(', ') != -1:
+                        gibbs_references.split(', ')
+                    elif gibbs_references.find(' ') != -1:
+                        gibbs_references.split(' ')
+                    elif gibbs_references.find(',') != -1:
+                        gibbs_references.split(',')
+
+
+                    for ref_doi in gibbs_references:
+                        ref_db = Reference.query.filter(doi=ref_doi).first()
+                        if not ref_db:
+                            ref_db = Reference(doi=ref_doi)
+                            db.session.add(ref_db)
+                        gibbs_energy.add_reference(ref_db.id)
+
+            enzyme_reaction_model.gibbs_energy_id = gibbs_energy.id
+
+        db.session.commit()
+
+        flash('Your reaction is now live!', 'success')
+
+        return redirect(url_for('main.see_reactions'))
+    return render_template('add_data.html', title='Add reaction', form=form, header='reaction', data_in=isoenzyme_list)
+"""
 
 
 @bp.route('/see_enzymes')
@@ -211,7 +404,8 @@ def see_enzymes():
     prev_url = url_for('main.see_enzymes', page=enzymes.prev_num) \
         if enzymes.has_prev else None
     return render_template("see_data.html", title='See enzymes', data=enzymes.items,
-                            data_type='enzyme', next_url=next_url, prev_url=prev_url)
+                           data_type='enzyme', next_url=next_url, prev_url=prev_url)
+
 
 @bp.route('/see_genes')
 @login_required
@@ -238,7 +432,7 @@ def see_models():
     prev_url = url_for('main.see_models', page=models.prev_num) \
         if models.has_prev else None
     return render_template("see_data.html", title='See models', data=models.items,
-                            data_type='model', next_url=next_url, prev_url=prev_url)
+                           data_type='model', next_url=next_url, prev_url=prev_url)
 
 
 @bp.route('/see_organisms')
@@ -254,3 +448,19 @@ def see_organisms():
     return render_template("see_data.html", title='See organisms', data=organisms.items,
                            data_type='organism', next_url=next_url, prev_url=prev_url)
 
+
+"""
+@bp.route('/see_reactions')
+@login_required
+def see_reactions():
+    page = request.args.get('page', 1, type=int)
+    reactions = Reaction.query.order_by(Reaction.timestamp.desc()).paginate(
+        page, current_app.config['POSTS_PER_PAGE'], False)
+    next_url = url_for('main.reactions', page=reactions.next_num) \
+        if reactions.has_next else None
+    prev_url = url_for('main.reactions', page=reactions.prev_num) \
+        if reactions.has_prev else None
+    return render_template("see_data.html", title='See reactions', data=reactions.items,
+                           data_type='reaction', next_url=next_url, prev_url=prev_url)
+
+"""
