@@ -124,7 +124,7 @@ class EnzymeModelCase(unittest.TestCase):
         pdb_structure_ids_strains = 'WT, knockout'
 
         uniprot_id_list = 'PW12D, PE45Q'
-        enzyme_number_of_active_sites = '4'
+        enzyme_number_of_active_sites = 4
 
         gene_bigg_ids = 'b0001, b003'
 
@@ -181,8 +181,8 @@ class EnzymeModelCase(unittest.TestCase):
         self.assertEqual(EnzymeStructure.query.all()[1].enzyme.name, enzyme_name)
 
 
-        self.assertEqual(EnzymeOrganism.query.all()[0].n_active_sites, int(enzyme_number_of_active_sites))
-        self.assertEqual(EnzymeOrganism.query.all()[1].n_active_sites, int(enzyme_number_of_active_sites))
+        self.assertEqual(EnzymeOrganism.query.all()[0].n_active_sites, enzyme_number_of_active_sites)
+        self.assertEqual(EnzymeOrganism.query.all()[1].n_active_sites, enzyme_number_of_active_sites)
         self.assertEqual(EnzymeOrganism.query.all()[0].uniprot_id, 'PW12D')
         self.assertEqual(EnzymeOrganism.query.all()[1].uniprot_id, 'PE45Q')
         self.assertEqual(EnzymeOrganism.query.all()[0].organism.name, organism_name)
@@ -193,42 +193,6 @@ class EnzymeModelCase(unittest.TestCase):
         self.assertEqual(EnzymeOrganism.query.all()[0].genes[1].bigg_id, 'b003')
         self.assertEqual(EnzymeOrganism.query.all()[1].genes[0].bigg_id, 'b0001')
         self.assertEqual(EnzymeOrganism.query.all()[1].genes[1].bigg_id, 'b003')
-
-
-    def test_add_enzyme_for_existing_gene(self):
-        enzyme_name = 'PFK'
-        enzyme_acronym = 'PFK'
-        enzyme_isoenzyme = 'PFK1'
-        enzyme_ec_number = '2.1.34.55'
-
-        gene_name = 'pfkA'
-        gene_bigg_id = 'b0001'
-
-        gene = Gene(name=gene_name, bigg_id=gene_bigg_id)
-        db.session.add(gene)
-        db.session.commit()
-
-        self.assertEqual(gene.query.first().name, gene_name)
-        self.assertEqual(gene.query.first().bigg_id, gene_bigg_id)
-
-        enzyme = Enzyme(name=enzyme_name,
-                        acronym=enzyme_acronym,
-                        isoenzyme=enzyme_isoenzyme,
-                        ec_number=enzyme_ec_number)
-        db.session.add(enzyme)
-        db.session.commit()
-
-        self.assertEqual(enzyme.query.first().name, enzyme_name)
-        self.assertEqual(enzyme.query.first().acronym, enzyme_acronym)
-        self.assertEqual(enzyme.query.first().isoenzyme, enzyme_isoenzyme)
-        self.assertEqual(enzyme.query.first().ec_number, enzyme_ec_number)
-        self.assertEqual(enzyme.genes.first(), None)
-        self.assertEqual(gene.enzymes.first(), None)
-
-        enzyme.add_encoding_genes(gene)
-        db.session.commit()
-        self.assertEqual(enzyme.genes.first().name, gene_name)
-        self.assertEqual(gene.enzymes.first().name, enzyme_name)
 
 
 class GeneModelCase(unittest.TestCase):
@@ -253,7 +217,7 @@ class GeneModelCase(unittest.TestCase):
 
         self.assertEqual(gene.query.first().name, gene_name)
         self.assertEqual(gene.query.first().bigg_id, gene_bigg_id)
-        self.assertEqual(gene.enzymes.first(), None)
+        self.assertEqual(gene.query.first().enzyme_organisms.count(), 0)
 
 
 class ModelModelCase(unittest.TestCase):
@@ -305,7 +269,7 @@ class ModelModelCase(unittest.TestCase):
         db.session.commit()
 
         self.assertEqual(organism.query.first().name, organism_name)
-        self.assertEqual(organism.models.query.first().name, [])
+        self.assertEqual(organism.query.first().models.count(), 0)
 
         model = Model(name=model_name,
                       organism_name=organism_name,
@@ -316,10 +280,12 @@ class ModelModelCase(unittest.TestCase):
         organism.add_model(model)
         db.session.commit()
 
-        self.assertEqual(organism.models.query.first().name, organism_name)
+        self.assertEqual(organism.query.first().models.count(), 1)
+        self.assertEqual(organism.query.first().models[0].name, model_name)
         self.assertEqual(model.query.first().name, model_name)
         self.assertEqual(model.query.first().strain, model_strain)
         self.assertEqual(model.query.first().comments, model_comments)
+        self.assertEqual(model.query.first().organism.name, organism_name)
 
 
 class OrganismModelCase(unittest.TestCase):
@@ -343,7 +309,7 @@ class OrganismModelCase(unittest.TestCase):
 
         self.assertEqual(organism.query.first().name, organism_name)
 
-
+"""
 class ReactionModelCase(unittest.TestCase):
     def setUp(self):
         self.app = create_app(TestConfig)
@@ -423,6 +389,6 @@ class ReactionModelCase(unittest.TestCase):
             self.assertEqual(rxn_met.metabolite.grasp_id, met_list[i])
             self.assertEqual(rxn_met.stoich_coef, stoic_coef_list[i])
 
-
+"""
 if __name__ == '__main__':
     unittest.main(verbosity=2)
