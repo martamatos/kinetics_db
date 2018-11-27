@@ -3,8 +3,9 @@ import unittest
 from app import create_app, db
 from app.main.forms import ModelForm
 from app.main.routes import add_model
-from app.models import User, Post, Compartment, Enzyme, EnzymeOrganism, EnzymeStructure, EvidenceLevel, Gene, Mechanism,\
-    Metabolite, Model, Organism, Reaction, ReactionMetabolite
+from app.models import User, Post, Compartment, Enzyme, EnzymeOrganism, EnzymeReactionModel, EnzymeStructure, \
+    EvidenceLevel, Gene, GibbsEnergy, Mechanism, Metabolite, Model, Organism, Reaction, ReactionMetabolite, Reference, \
+    ReferenceType
 from config import Config
 from app.main.routes import add_metabolites_to_reaction, _add_enzyme_organism, _add_enzyme_structures
 from app.utils.parsers import parse_input_list
@@ -865,7 +866,6 @@ class TestAddOrganism(unittest.TestCase):
         self.assertEqual(Organism().query.first().models.count(), 0)
 
 
-
 class TestAddReaction(unittest.TestCase):
     def setUp(self):
         self.app = create_app(TestConfig)
@@ -874,6 +874,15 @@ class TestAddReaction(unittest.TestCase):
         self.app_context.push()
         db.create_all()
 
+        self.populate_db()
+
+
+    def tearDown(self):
+        db.session.remove()
+        db.drop_all()
+        self.app_context.pop()
+
+    def populate_db(self):
         compartment_list = [('Cytosol', 'c'), ('Mitochondria', 'm')]
 
         for name, acronym in compartment_list:
@@ -927,10 +936,19 @@ class TestAddReaction(unittest.TestCase):
         db.session.commit()
 
 
-    def tearDown(self):
-        db.session.remove()
-        db.drop_all()
-        self.app_context.pop()
+        reference_type_list = ['Article', 'Thesis', 'Online database', 'Book']
+
+        for type in reference_type_list:
+            reference_type = ReferenceType(type=type)
+            db.session.add(reference_type)
+        db.session.commit()
+
+
+        reference = Reference(title='eQuilibrator', type_type='Online database')
+        db.session.add(reference)
+        db.session.commit()
+
+
 
     def test_add_first_reaction(self):
 
@@ -949,7 +967,7 @@ class TestAddReaction(unittest.TestCase):
         mechanism_references = 'https://doi.org/10.1093/bioinformatics/bty942'
         mechanism_evidence_level = '1'
         subs_binding_order = 'adp_c, pep_c'
-        prod_release_order = 'atp_c, pyr_c'
+        prod_release_order = 'atp_m, pyr_c'
         std_gibbs_energy = 2.1
         std_gibbs_energy_std = 0.2
         std_gibbs_energy_ph = 7
@@ -964,10 +982,11 @@ class TestAddReaction(unittest.TestCase):
                                     reaction_string=reaction_string,
                                     bigg_id=bigg_id,
                                     kegg_id=kegg_id,
-                                    compartment_name='1',
-                                    model_name='1',
+                                    metanetx_id=metanetx_id,
+                                    compartment_name=compartment_name,
+                                    model_name=model_name,
                                     isoenzyme_acronyms=isoenzyme_acronyms,
-                                    mechanism='1',
+                                    mechanism=mechanism,
                                     mechanism_references=mechanism_references,
                                     mechanism_evidence_level=mechanism_evidence_level,
                                     subs_binding_order=subs_binding_order,
@@ -982,9 +1001,1558 @@ class TestAddReaction(unittest.TestCase):
 
 
         self.assertEqual(response.status_code, 200)
-        print(response.data)
         self.assertTrue(b'<title>\n    See reactions - Kinetics DB \n</title>' in response.data)
         self.assertTrue(b'Your reaction is now live!' in response.data)
+
+
+        self.assertEqual(Enzyme.query.count(), 2)
+        self.assertEqual(GibbsEnergy.query.count(), 1)
+        self.assertEqual(EnzymeReactionModel.query.count(), 1)
+        self.assertEqual(Mechanism.query.count(), 2)
+        self.assertEqual(Reference.query.count(), 2)
+        self.assertEqual(Model.query.count(), 2)
+        self.assertEqual(Organism.query.count(), 2)
+
+        self.assertEqual(Reaction.query.count(), 1)
+        self.assertEqual(Reaction.query.first().name, reaction_name)
+        self.assertEqual(Reaction.query.first().compartment_name, Compartment.query.first().name)
+
+        self.assertEqual(EnzymeReactionModel.query.first().grasp_id, reaction_grasp_id)
+        self.assertEqual(EnzymeReactionModel.query.first().subs_binding_order, subs_binding_order)
+        self.assertEqual(EnzymeReactionModel.query.first().prod_release_order, prod_release_order)
+        self.assertEqual(EnzymeReactionModel.query.first().included_in_model, True)
+        self.assertEqual(EnzymeReactionModel.query.first().reaction.name, reaction_name)
+        self.assertEqual(EnzymeReactionModel.query.first().enzyme.isoenzyme, isoenzyme_acronyms)
+        self.assertEqual(EnzymeReactionModel.query.first().model, Model.query.first())
+        self.assertEqual(EnzymeReactionModel.query.first().mech_evidence, EvidenceLevel.query.first())
+        self.assertEqual(EnzymeReactionModel.query.first().mechanism, Mechanism.query.first())
+        self.assertEqual(EnzymeReactionModel.query.first().gibbs_energy, GibbsEnergy.query.first())
+        self.assertEqual(EnzymeReactionModel.query.first().gibbs_energy.standard_dg, std_gibbs_energy)
+        self.assertEqual(EnzymeReactionModel.query.all()[0].mechanism_references[0].doi, mechanism_references)
+
+        self.assertEqual(GibbsEnergy.query.first().standard_dg, std_gibbs_energy)
+        self.assertEqual(GibbsEnergy.query.first().standard_dg_std, std_gibbs_energy_std)
+        self.assertEqual(GibbsEnergy.query.first().ph, std_gibbs_energy_ph)
+        self.assertEqual(GibbsEnergy.query.first().ionic_strength, std_gibbs_energy_ionic_strength)
+        self.assertEqual(GibbsEnergy.query.first().references[0].title, 'eQuilibrator')
+
+        self.assertEqual(Reference.query.all()[0].title, 'eQuilibrator')
+        self.assertEqual(Reference.query.all()[0].type_type, 'Online database')
+        self.assertEqual(Reference.query.all()[1].doi, mechanism_references)
+
+        self.assertEqual(Metabolite.query.count(), 4)
+        self.assertEqual(Metabolite.query.all()[0].bigg_id, 'pep')
+        self.assertEqual(Metabolite.query.all()[0].grasp_id, 'pep')
+        self.assertEqual(Metabolite.query.all()[0].compartment_acronym, 'c')
+        self.assertEqual(Metabolite.query.all()[1].bigg_id, 'adp')
+        self.assertEqual(Metabolite.query.all()[1].grasp_id, 'adp')
+        self.assertEqual(Metabolite.query.all()[1].compartment_acronym, 'c')
+        self.assertEqual(Metabolite.query.all()[2].bigg_id, 'pyr')
+        self.assertEqual(Metabolite.query.all()[2].grasp_id, 'pyr')
+        self.assertEqual(Metabolite.query.all()[2].compartment_acronym, 'c')
+        self.assertEqual(Metabolite.query.all()[3].bigg_id, 'atp')
+        self.assertEqual(Metabolite.query.all()[3].grasp_id, 'atp')
+        self.assertEqual(Metabolite.query.all()[3].compartment_acronym, 'm')
+
+        self.assertEqual(ReactionMetabolite.query.count(), 4)
+        self.assertEqual(ReactionMetabolite.query.all()[0].metabolite.bigg_id, 'pep')
+        self.assertEqual(ReactionMetabolite.query.all()[0].stoich_coef, -1)
+        self.assertEqual(ReactionMetabolite.query.all()[0].reaction.acronym, reaction_acronym)
+        self.assertEqual(ReactionMetabolite.query.all()[1].metabolite.bigg_id, 'adp')
+        self.assertEqual(ReactionMetabolite.query.all()[1].stoich_coef, -1.5)
+        self.assertEqual(ReactionMetabolite.query.all()[1].reaction.acronym, reaction_acronym)
+        self.assertEqual(ReactionMetabolite.query.all()[2].metabolite.bigg_id, 'pyr')
+        self.assertEqual(ReactionMetabolite.query.all()[2].stoich_coef, 1)
+        self.assertEqual(ReactionMetabolite.query.all()[2].reaction.acronym, reaction_acronym)
+        self.assertEqual(ReactionMetabolite.query.all()[3].metabolite.bigg_id, 'atp')
+        self.assertEqual(ReactionMetabolite.query.all()[3].stoich_coef, 2)
+        self.assertEqual(ReactionMetabolite.query.all()[3].reaction.acronym, reaction_acronym)
+
+    def test_add_reaction_two_isoenzymes(self):
+
+        reaction_name = 'phosphofructokinase'
+        reaction_acronym = 'PFK'
+        reaction_grasp_id = 'PFK1'
+        reaction_string = '1 pep_c + 1.5 adp_c <-> pyr_c + 2.0 atp_m'
+        metanetx_id = ''
+        bigg_id = ''
+        kegg_id = ''
+
+        compartment_name = '1'
+        model_name = '1'
+        isoenzyme_acronyms = 'PFK1, PFK2'
+        mechanism = '1'
+        mechanism_references = 'https://doi.org/10.1093/bioinformatics/bty942'
+        mechanism_evidence_level = '1'
+        subs_binding_order = 'adp_c, pep_c'
+        prod_release_order = 'atp_m, pyr_c'
+        std_gibbs_energy = 2.1
+        std_gibbs_energy_std = 0.2
+        std_gibbs_energy_ph = 7
+        std_gibbs_energy_ionic_strength = 0.2
+        std_gibbs_energy_references = 'equilibrator'
+
+        isoenzyme_list = parse_input_list(isoenzyme_acronyms)
+
+
+        response = self.client.post('/add_reaction', data=dict(
+                                    name=reaction_name,
+                                    acronym=reaction_acronym,
+                                    grasp_id=reaction_grasp_id,
+                                    reaction_string=reaction_string,
+                                    bigg_id=bigg_id,
+                                    kegg_id=kegg_id,
+                                    metanetx_id=metanetx_id,
+                                    compartment_name=compartment_name,
+                                    model_name=model_name,
+                                    isoenzyme_acronyms=isoenzyme_acronyms,
+                                    mechanism=mechanism,
+                                    mechanism_references=mechanism_references,
+                                    mechanism_evidence_level=mechanism_evidence_level,
+                                    subs_binding_order=subs_binding_order,
+                                    prod_release_order=prod_release_order,
+                                    std_gibbs_energy=std_gibbs_energy,
+                                    std_gibbs_energy_std=std_gibbs_energy_std,
+                                    std_gibbs_energy_ph=std_gibbs_energy_ph,
+                                    std_gibbs_energy_ionic_strength=std_gibbs_energy_ionic_strength,
+                                    std_gibbs_energy_references=std_gibbs_energy_references), follow_redirects=True)
+
+
+
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(b'<title>\n    See reactions - Kinetics DB \n</title>' in response.data)
+        self.assertTrue(b'Your reaction is now live!' in response.data)
+
+
+        self.assertEqual(Enzyme.query.count(), 2)
+
+        self.assertEqual(Mechanism.query.count(), 2)
+        self.assertEqual(Reference.query.count(), 2)
+        self.assertEqual(Model.query.count(), 2)
+        self.assertEqual(Organism.query.count(), 2)
+
+        self.assertEqual(Reaction.query.count(), 1)
+        self.assertEqual(Reaction.query.first().name, reaction_name)
+        self.assertEqual(Reaction.query.first().compartment_name, Compartment.query.first().name)
+
+        self.assertEqual(EnzymeReactionModel.query.count(), 2)
+        self.assertEqual(EnzymeReactionModel.query.all()[0].grasp_id, reaction_grasp_id)
+        self.assertEqual(EnzymeReactionModel.query.all()[1].grasp_id, reaction_grasp_id)
+        self.assertEqual(EnzymeReactionModel.query.all()[0].subs_binding_order, subs_binding_order)
+        self.assertEqual(EnzymeReactionModel.query.all()[1].subs_binding_order, subs_binding_order)
+        self.assertEqual(EnzymeReactionModel.query.all()[0].prod_release_order, prod_release_order)
+        self.assertEqual(EnzymeReactionModel.query.all()[1].prod_release_order, prod_release_order)
+        self.assertEqual(EnzymeReactionModel.query.all()[0].included_in_model, True)
+        self.assertEqual(EnzymeReactionModel.query.all()[1].included_in_model, True)
+        self.assertEqual(EnzymeReactionModel.query.all()[0].reaction.name, reaction_name)
+        self.assertEqual(EnzymeReactionModel.query.all()[1].reaction.name, reaction_name)
+        self.assertEqual(EnzymeReactionModel.query.all()[0].enzyme.isoenzyme, isoenzyme_list[0])
+        self.assertEqual(EnzymeReactionModel.query.all()[1].enzyme.isoenzyme, isoenzyme_list[1])
+        self.assertEqual(EnzymeReactionModel.query.all()[0].model, Model.query.first())
+        self.assertEqual(EnzymeReactionModel.query.all()[1].model, Model.query.first())
+        self.assertEqual(EnzymeReactionModel.query.all()[0].mech_evidence, EvidenceLevel.query.first())
+        self.assertEqual(EnzymeReactionModel.query.all()[1].mech_evidence, EvidenceLevel.query.first())
+        self.assertEqual(EnzymeReactionModel.query.all()[0].mechanism, Mechanism.query.first())
+        self.assertEqual(EnzymeReactionModel.query.all()[1].mechanism, Mechanism.query.first())
+        self.assertEqual(EnzymeReactionModel.query.all()[0].gibbs_energy, GibbsEnergy.query.first())
+        self.assertEqual(EnzymeReactionModel.query.all()[1].gibbs_energy, GibbsEnergy.query.first())
+        self.assertEqual(EnzymeReactionModel.query.all()[0].gibbs_energy.standard_dg, std_gibbs_energy)
+        self.assertEqual(EnzymeReactionModel.query.all()[1].gibbs_energy.standard_dg, std_gibbs_energy)
+        self.assertEqual(EnzymeReactionModel.query.all()[0].mechanism_references.count(), 1)
+        self.assertEqual(EnzymeReactionModel.query.all()[0].mechanism_references[0].doi, mechanism_references)
+        self.assertEqual(EnzymeReactionModel.query.all()[1].mechanism_references[0].doi,mechanism_references)
+
+        self.assertEqual(GibbsEnergy.query.count(), 1)
+        self.assertEqual(GibbsEnergy.query.first().standard_dg, std_gibbs_energy)
+        self.assertEqual(GibbsEnergy.query.first().standard_dg_std, std_gibbs_energy_std)
+        self.assertEqual(GibbsEnergy.query.first().ph, std_gibbs_energy_ph)
+        self.assertEqual(GibbsEnergy.query.first().ionic_strength, std_gibbs_energy_ionic_strength)
+        self.assertEqual(GibbsEnergy.query.first().references[0].title, 'eQuilibrator')
+
+        self.assertEqual(Reference.query.all()[0].title, 'eQuilibrator')
+        self.assertEqual(Reference.query.all()[0].type_type, 'Online database')
+        self.assertEqual(Reference.query.all()[1].doi, mechanism_references)
+
+        self.assertEqual(Metabolite.query.count(), 4)
+        self.assertEqual(Metabolite.query.all()[0].bigg_id, 'pep')
+        self.assertEqual(Metabolite.query.all()[0].grasp_id, 'pep')
+        self.assertEqual(Metabolite.query.all()[0].compartment_acronym, 'c')
+        self.assertEqual(Metabolite.query.all()[1].bigg_id, 'adp')
+        self.assertEqual(Metabolite.query.all()[1].grasp_id, 'adp')
+        self.assertEqual(Metabolite.query.all()[1].compartment_acronym, 'c')
+        self.assertEqual(Metabolite.query.all()[2].bigg_id, 'pyr')
+        self.assertEqual(Metabolite.query.all()[2].grasp_id, 'pyr')
+        self.assertEqual(Metabolite.query.all()[2].compartment_acronym, 'c')
+        self.assertEqual(Metabolite.query.all()[3].bigg_id, 'atp')
+        self.assertEqual(Metabolite.query.all()[3].grasp_id, 'atp')
+        self.assertEqual(Metabolite.query.all()[3].compartment_acronym, 'm')
+
+        self.assertEqual(ReactionMetabolite.query.count(), 4)
+        self.assertEqual(ReactionMetabolite.query.all()[0].metabolite.bigg_id, 'pep')
+        self.assertEqual(ReactionMetabolite.query.all()[0].stoich_coef, -1)
+        self.assertEqual(ReactionMetabolite.query.all()[0].reaction.acronym, reaction_acronym)
+        self.assertEqual(ReactionMetabolite.query.all()[1].metabolite.bigg_id, 'adp')
+        self.assertEqual(ReactionMetabolite.query.all()[1].stoich_coef, -1.5)
+        self.assertEqual(ReactionMetabolite.query.all()[1].reaction.acronym, reaction_acronym)
+        self.assertEqual(ReactionMetabolite.query.all()[2].metabolite.bigg_id, 'pyr')
+        self.assertEqual(ReactionMetabolite.query.all()[2].stoich_coef, 1)
+        self.assertEqual(ReactionMetabolite.query.all()[2].reaction.acronym, reaction_acronym)
+        self.assertEqual(ReactionMetabolite.query.all()[3].metabolite.bigg_id, 'atp')
+        self.assertEqual(ReactionMetabolite.query.all()[3].stoich_coef, 2)
+        self.assertEqual(ReactionMetabolite.query.all()[3].reaction.acronym, reaction_acronym)
+
+    def test_add_reaction_two_mechanism_references(self):
+
+        reaction_name = 'phosphofructokinase'
+        reaction_acronym = 'PFK'
+        reaction_grasp_id = 'PFK1'
+        reaction_string = '1 pep_c + 1.5 adp_c <-> pyr_c + 2.0 atp_m'
+        metanetx_id = ''
+        bigg_id = ''
+        kegg_id = ''
+
+        compartment_name = '1'
+        model_name = '1'
+        isoenzyme_acronyms = 'PFK1, PFK2'
+        mechanism = '1'
+        mechanism_references = 'https://doi.org/10.1093/bioinformatics/bty942, https://doi.org/10.1093/bioinformatics/bty943'
+        mechanism_evidence_level = '1'
+        subs_binding_order = 'adp_c, pep_c'
+        prod_release_order = 'atp_m, pyr_c'
+        std_gibbs_energy = 2.1
+        std_gibbs_energy_std = 0.2
+        std_gibbs_energy_ph = 7
+        std_gibbs_energy_ionic_strength = 0.2
+        std_gibbs_energy_references = 'equilibrator'
+
+        isoenzyme_list = parse_input_list(isoenzyme_acronyms)
+        mechanism_reference_list = parse_input_list(mechanism_references)
+
+
+        response = self.client.post('/add_reaction', data=dict(
+                                    name=reaction_name,
+                                    acronym=reaction_acronym,
+                                    grasp_id=reaction_grasp_id,
+                                    reaction_string=reaction_string,
+                                    bigg_id=bigg_id,
+                                    kegg_id=kegg_id,
+                                    metanetx_id=metanetx_id,
+                                    compartment_name=compartment_name,
+                                    model_name=model_name,
+                                    isoenzyme_acronyms=isoenzyme_acronyms,
+                                    mechanism=mechanism,
+                                    mechanism_references=mechanism_references,
+                                    mechanism_evidence_level=mechanism_evidence_level,
+                                    subs_binding_order=subs_binding_order,
+                                    prod_release_order=prod_release_order,
+                                    std_gibbs_energy=std_gibbs_energy,
+                                    std_gibbs_energy_std=std_gibbs_energy_std,
+                                    std_gibbs_energy_ph=std_gibbs_energy_ph,
+                                    std_gibbs_energy_ionic_strength=std_gibbs_energy_ionic_strength,
+                                    std_gibbs_energy_references=std_gibbs_energy_references), follow_redirects=True)
+
+
+
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(b'<title>\n    See reactions - Kinetics DB \n</title>' in response.data)
+        self.assertTrue(b'Your reaction is now live!' in response.data)
+
+
+        self.assertEqual(Enzyme.query.count(), 2)
+        self.assertEqual(Mechanism.query.count(), 2)
+        self.assertEqual(Model.query.count(), 2)
+        self.assertEqual(Organism.query.count(), 2)
+
+        self.assertEqual(Reaction.query.count(), 1)
+        self.assertEqual(Reaction.query.first().name, reaction_name)
+        self.assertEqual(Reaction.query.first().compartment_name, Compartment.query.first().name)
+
+        self.assertEqual(EnzymeReactionModel.query.count(), 2)
+        self.assertEqual(EnzymeReactionModel.query.all()[0].grasp_id, reaction_grasp_id)
+        self.assertEqual(EnzymeReactionModel.query.all()[1].grasp_id, reaction_grasp_id)
+        self.assertEqual(EnzymeReactionModel.query.all()[0].subs_binding_order, subs_binding_order)
+        self.assertEqual(EnzymeReactionModel.query.all()[1].subs_binding_order, subs_binding_order)
+        self.assertEqual(EnzymeReactionModel.query.all()[0].prod_release_order, prod_release_order)
+        self.assertEqual(EnzymeReactionModel.query.all()[1].prod_release_order, prod_release_order)
+        self.assertEqual(EnzymeReactionModel.query.all()[0].included_in_model, True)
+        self.assertEqual(EnzymeReactionModel.query.all()[1].included_in_model, True)
+        self.assertEqual(EnzymeReactionModel.query.all()[0].reaction.name, reaction_name)
+        self.assertEqual(EnzymeReactionModel.query.all()[1].reaction.name, reaction_name)
+        self.assertEqual(EnzymeReactionModel.query.all()[0].enzyme.isoenzyme, isoenzyme_list[0])
+        self.assertEqual(EnzymeReactionModel.query.all()[1].enzyme.isoenzyme, isoenzyme_list[1])
+        self.assertEqual(EnzymeReactionModel.query.all()[0].model, Model.query.first())
+        self.assertEqual(EnzymeReactionModel.query.all()[1].model, Model.query.first())
+        self.assertEqual(EnzymeReactionModel.query.all()[0].mech_evidence, EvidenceLevel.query.first())
+        self.assertEqual(EnzymeReactionModel.query.all()[1].mech_evidence, EvidenceLevel.query.first())
+        self.assertEqual(EnzymeReactionModel.query.all()[0].mechanism, Mechanism.query.first())
+        self.assertEqual(EnzymeReactionModel.query.all()[1].mechanism, Mechanism.query.first())
+        self.assertEqual(EnzymeReactionModel.query.all()[0].gibbs_energy, GibbsEnergy.query.first())
+        self.assertEqual(EnzymeReactionModel.query.all()[1].gibbs_energy, GibbsEnergy.query.first())
+        self.assertEqual(EnzymeReactionModel.query.all()[0].gibbs_energy.standard_dg, std_gibbs_energy)
+        self.assertEqual(EnzymeReactionModel.query.all()[1].gibbs_energy.standard_dg, std_gibbs_energy)
+        self.assertEqual(EnzymeReactionModel.query.all()[0].mechanism_references.count(), 2)
+        self.assertEqual(EnzymeReactionModel.query.all()[0].mechanism_references[0].doi, mechanism_reference_list[0])
+        self.assertEqual(EnzymeReactionModel.query.all()[0].mechanism_references[1].doi, mechanism_reference_list[1])
+        self.assertEqual(EnzymeReactionModel.query.all()[1].mechanism_references.count(), 2)
+        self.assertEqual(EnzymeReactionModel.query.all()[1].mechanism_references[0].doi, mechanism_reference_list[0])
+        self.assertEqual(EnzymeReactionModel.query.all()[1].mechanism_references[1].doi, mechanism_reference_list[1])
+
+        self.assertEqual(GibbsEnergy.query.count(), 1)
+        self.assertEqual(GibbsEnergy.query.first().standard_dg, std_gibbs_energy)
+        self.assertEqual(GibbsEnergy.query.first().standard_dg_std, std_gibbs_energy_std)
+        self.assertEqual(GibbsEnergy.query.first().ph, std_gibbs_energy_ph)
+        self.assertEqual(GibbsEnergy.query.first().ionic_strength, std_gibbs_energy_ionic_strength)
+        self.assertEqual(GibbsEnergy.query.first().references[0].title, 'eQuilibrator')
+
+        self.assertEqual(Reference.query.count(), 3)
+        self.assertEqual(Reference.query.all()[0].title, 'eQuilibrator')
+        self.assertEqual(Reference.query.all()[0].type_type, 'Online database')
+        self.assertEqual(Reference.query.all()[1].doi, mechanism_reference_list[0])
+        self.assertEqual(Reference.query.all()[2].doi, mechanism_reference_list[1])
+
+
+
+        self.assertEqual(Metabolite.query.count(), 4)
+        self.assertEqual(Metabolite.query.all()[0].bigg_id, 'pep')
+        self.assertEqual(Metabolite.query.all()[0].grasp_id, 'pep')
+        self.assertEqual(Metabolite.query.all()[0].compartment_acronym, 'c')
+        self.assertEqual(Metabolite.query.all()[1].bigg_id, 'adp')
+        self.assertEqual(Metabolite.query.all()[1].grasp_id, 'adp')
+        self.assertEqual(Metabolite.query.all()[1].compartment_acronym, 'c')
+        self.assertEqual(Metabolite.query.all()[2].bigg_id, 'pyr')
+        self.assertEqual(Metabolite.query.all()[2].grasp_id, 'pyr')
+        self.assertEqual(Metabolite.query.all()[2].compartment_acronym, 'c')
+        self.assertEqual(Metabolite.query.all()[3].bigg_id, 'atp')
+        self.assertEqual(Metabolite.query.all()[3].grasp_id, 'atp')
+        self.assertEqual(Metabolite.query.all()[3].compartment_acronym, 'm')
+
+        self.assertEqual(ReactionMetabolite.query.count(), 4)
+        self.assertEqual(ReactionMetabolite.query.all()[0].metabolite.bigg_id, 'pep')
+        self.assertEqual(ReactionMetabolite.query.all()[0].stoich_coef, -1)
+        self.assertEqual(ReactionMetabolite.query.all()[0].reaction.acronym, reaction_acronym)
+        self.assertEqual(ReactionMetabolite.query.all()[1].metabolite.bigg_id, 'adp')
+        self.assertEqual(ReactionMetabolite.query.all()[1].stoich_coef, -1.5)
+        self.assertEqual(ReactionMetabolite.query.all()[1].reaction.acronym, reaction_acronym)
+        self.assertEqual(ReactionMetabolite.query.all()[2].metabolite.bigg_id, 'pyr')
+        self.assertEqual(ReactionMetabolite.query.all()[2].stoich_coef, 1)
+        self.assertEqual(ReactionMetabolite.query.all()[2].reaction.acronym, reaction_acronym)
+        self.assertEqual(ReactionMetabolite.query.all()[3].metabolite.bigg_id, 'atp')
+        self.assertEqual(ReactionMetabolite.query.all()[3].stoich_coef, 2)
+        self.assertEqual(ReactionMetabolite.query.all()[3].reaction.acronym, reaction_acronym)
+
+    def test_add_reaction_no_isoenzyme(self):
+
+        reaction_name = 'phosphofructokinase'
+        reaction_acronym = 'PFK'
+        reaction_grasp_id = 'PFK1'
+        reaction_string = '1 pep_c + 1.5 adp_c <-> pyr_c + 2.0 atp_m'
+        metanetx_id = ''
+        bigg_id = ''
+        kegg_id = ''
+
+        compartment_name = '1'
+        model_name = '1'
+        isoenzyme_acronyms = 'PFK3'
+        mechanism = '1'
+        mechanism_references = 'https://doi.org/10.1093/bioinformatics/bty942, https://doi.org/10.1093/bioinformatics/bty943'
+        mechanism_evidence_level = '1'
+        subs_binding_order = 'adp_c, pep_c'
+        prod_release_order = 'atp_m, pyr_c'
+        std_gibbs_energy = 2.1
+        std_gibbs_energy_std = 0.2
+        std_gibbs_energy_ph = 7
+        std_gibbs_energy_ionic_strength = 0.2
+        std_gibbs_energy_references = 'equilibrator'
+
+
+        response = self.client.post('/add_reaction', data=dict(
+                                    name=reaction_name,
+                                    acronym=reaction_acronym,
+                                    grasp_id=reaction_grasp_id,
+                                    reaction_string=reaction_string,
+                                    bigg_id=bigg_id,
+                                    kegg_id=kegg_id,
+                                    metanetx_id=metanetx_id,
+                                    compartment_name=compartment_name,
+                                    model_name=model_name,
+                                    isoenzyme_acronyms=isoenzyme_acronyms,
+                                    mechanism=mechanism,
+                                    mechanism_references=mechanism_references,
+                                    mechanism_evidence_level=mechanism_evidence_level,
+                                    subs_binding_order=subs_binding_order,
+                                    prod_release_order=prod_release_order,
+                                    std_gibbs_energy=std_gibbs_energy,
+                                    std_gibbs_energy_std=std_gibbs_energy_std,
+                                    std_gibbs_energy_ph=std_gibbs_energy_ph,
+                                    std_gibbs_energy_ionic_strength=std_gibbs_energy_ionic_strength,
+                                    std_gibbs_energy_references=std_gibbs_energy_references), follow_redirects=True)
+
+
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(b'<title>\n    Add reaction - Kinetics DB \n</title>' in response.data)
+        self.assertTrue(b'is not part of the database' in response.data)
+
+        self.assertEqual(Reaction.query.count(), 0)
+        self.assertEqual(Enzyme.query.count(), 2)
+        self.assertEqual(GibbsEnergy.query.count(), 0)
+        self.assertEqual(EnzymeReactionModel.query.count(), 0)
+        self.assertEqual(Mechanism.query.count(), 2)
+        self.assertEqual(Reference.query.count(), 1)
+        self.assertEqual(Model.query.count(), 2)
+        self.assertEqual(Organism.query.count(), 2)
+
+    def test_add_reaction_mechanism_and_no_isoenzyme(self):
+
+        reaction_name = 'phosphofructokinase'
+        reaction_acronym = 'PFK'
+        reaction_grasp_id = 'PFK1'
+        reaction_string = '1 pep_c + 1.5 adp_c <-> pyr_c + 2.0 atp_m'
+        metanetx_id = ''
+        bigg_id = ''
+        kegg_id = ''
+
+        compartment_name = '1'
+        model_name = '1'
+        isoenzyme_acronyms = ''
+        mechanism = '1'
+        mechanism_references = 'https://doi.org/10.1093/bioinformatics/bty942, https://doi.org/10.1093/bioinformatics/bty943'
+        mechanism_evidence_level = '1'
+        subs_binding_order = 'adp_c, pep_c'
+        prod_release_order = 'atp_m, pyr_c'
+        std_gibbs_energy = 2.1
+        std_gibbs_energy_std = 0.2
+        std_gibbs_energy_ph = 7
+        std_gibbs_energy_ionic_strength = 0.2
+        std_gibbs_energy_references = 'equilibrator'
+
+
+        response = self.client.post('/add_reaction', data=dict(
+                                    name=reaction_name,
+                                    acronym=reaction_acronym,
+                                    grasp_id=reaction_grasp_id,
+                                    reaction_string=reaction_string,
+                                    bigg_id=bigg_id,
+                                    kegg_id=kegg_id,
+                                    metanetx_id=metanetx_id,
+                                    compartment_name=compartment_name,
+                                    model_name=model_name,
+                                    isoenzyme_acronyms=isoenzyme_acronyms,
+                                    mechanism=mechanism,
+                                    mechanism_references=mechanism_references,
+                                    mechanism_evidence_level=mechanism_evidence_level,
+                                    subs_binding_order=subs_binding_order,
+                                    prod_release_order=prod_release_order,
+                                    std_gibbs_energy=std_gibbs_energy,
+                                    std_gibbs_energy_std=std_gibbs_energy_std,
+                                    std_gibbs_energy_ph=std_gibbs_energy_ph,
+                                    std_gibbs_energy_ionic_strength=std_gibbs_energy_ionic_strength,
+                                    std_gibbs_energy_references=std_gibbs_energy_references), follow_redirects=True)
+
+
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(b'<title>\n    Add reaction - Kinetics DB \n</title>' in response.data)
+        self.assertTrue(b'If you add a reaction mechanism, you need to specify the catalyzing isoenzyme(s).' in response.data)
+
+        self.assertEqual(Reaction.query.count(), 0)
+        self.assertEqual(Enzyme.query.count(), 2)
+        self.assertEqual(GibbsEnergy.query.count(), 0)
+        self.assertEqual(EnzymeReactionModel.query.count(), 0)
+        self.assertEqual(Mechanism.query.count(), 2)
+        self.assertEqual(Reference.query.count(), 1)
+        self.assertEqual(Model.query.count(), 2)
+        self.assertEqual(Organism.query.count(), 2)
+
+    def test_add_reaction_mechanism_evidence_level(self):
+
+        reaction_name = 'phosphofructokinase'
+        reaction_acronym = 'PFK'
+        reaction_grasp_id = 'PFK1'
+        reaction_string = '1 pep_c + 1.5 adp_c <-> pyr_c + 2.0 atp_m'
+        metanetx_id = ''
+        bigg_id = ''
+        kegg_id = ''
+
+        compartment_name = '1'
+        model_name = '1'
+        isoenzyme_acronyms = 'PFK1'
+        mechanism = ''
+        mechanism_references = 'https://doi.org/10.1093/bioinformatics/bty942, https://doi.org/10.1093/bioinformatics/bty943'
+        mechanism_evidence_level = '1'
+        subs_binding_order = 'adp_c, pep_c'
+        prod_release_order = 'atp_m, pyr_c'
+        std_gibbs_energy = 2.1
+        std_gibbs_energy_std = 0.2
+        std_gibbs_energy_ph = 7
+        std_gibbs_energy_ionic_strength = 0.2
+        std_gibbs_energy_references = 'equilibrator'
+
+
+        response = self.client.post('/add_reaction', data=dict(
+                                    name=reaction_name,
+                                    acronym=reaction_acronym,
+                                    grasp_id=reaction_grasp_id,
+                                    reaction_string=reaction_string,
+                                    bigg_id=bigg_id,
+                                    kegg_id=kegg_id,
+                                    metanetx_id=metanetx_id,
+                                    compartment_name=compartment_name,
+                                    model_name=model_name,
+                                    isoenzyme_acronyms=isoenzyme_acronyms,
+                                    mechanism=mechanism,
+                                    mechanism_references=mechanism_references,
+                                    mechanism_evidence_level=mechanism_evidence_level,
+                                    subs_binding_order=subs_binding_order,
+                                    prod_release_order=prod_release_order,
+                                    std_gibbs_energy=std_gibbs_energy,
+                                    std_gibbs_energy_std=std_gibbs_energy_std,
+                                    std_gibbs_energy_ph=std_gibbs_energy_ph,
+                                    std_gibbs_energy_ionic_strength=std_gibbs_energy_ionic_strength,
+                                    std_gibbs_energy_references=std_gibbs_energy_references), follow_redirects=True)
+
+
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(b'<title>\n    Add reaction - Kinetics DB \n</title>' in response.data)
+        self.assertTrue(b'You cannot specify evidence level for the mechanism without specifying a mechanism.' in response.data)
+
+        self.assertEqual(Reaction.query.count(), 0)
+        self.assertEqual(Enzyme.query.count(), 2)
+        self.assertEqual(GibbsEnergy.query.count(), 0)
+        self.assertEqual(EnzymeReactionModel.query.count(), 0)
+        self.assertEqual(Mechanism.query.count(), 2)
+        self.assertEqual(Reference.query.count(), 1)
+        self.assertEqual(Model.query.count(), 2)
+        self.assertEqual(Organism.query.count(), 2)
+
+    def test_add_reaction_subs_binding_order(self):
+
+        reaction_name = 'phosphofructokinase'
+        reaction_acronym = 'PFK'
+        reaction_grasp_id = 'PFK1'
+        reaction_string = '1 pep_c + 1.5 adp_c <-> pyr_c + 2.0 atp_m'
+        metanetx_id = ''
+        bigg_id = ''
+        kegg_id = ''
+
+        compartment_name = '1'
+        model_name = ''
+        isoenzyme_acronyms = ''
+        mechanism = '1'
+        mechanism_references = 'mechanism_doi'
+        mechanism_evidence_level = '1'
+        subs_binding_order = 'pep_c, 1.5 adp_c'
+        prod_release_order = 'pyr_c, atp_m'
+        std_gibbs_energy = ''
+        std_gibbs_energy_std = ''
+        std_gibbs_energy_ph = ''
+        std_gibbs_energy_ionic_strength = ''
+        std_gibbs_energy_references = ''
+
+
+        response = self.client.post('/add_reaction', data=dict(
+                                    name=reaction_name,
+                                    acronym=reaction_acronym,
+                                    grasp_id=reaction_grasp_id,
+                                    reaction_string=reaction_string,
+                                    bigg_id=bigg_id,
+                                    kegg_id=kegg_id,
+                                    metanetx_id=metanetx_id,
+                                    compartment_name=compartment_name,
+                                    model_name=model_name,
+                                    isoenzyme_acronyms=isoenzyme_acronyms,
+                                    mechanism=mechanism,
+                                    mechanism_references=mechanism_references,
+                                    mechanism_evidence_level=mechanism_evidence_level,
+                                    subs_binding_order=subs_binding_order,
+                                    prod_release_order=prod_release_order,
+                                    std_gibbs_energy=std_gibbs_energy,
+                                    std_gibbs_energy_std=std_gibbs_energy_std,
+                                    std_gibbs_energy_ph=std_gibbs_energy_ph,
+                                    std_gibbs_energy_ionic_strength=std_gibbs_energy_ionic_strength,
+                                    std_gibbs_energy_references=std_gibbs_energy_references), follow_redirects=True)
+
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(b'<title>\n    Add reaction - Kinetics DB \n</title>' in response.data)
+        self.assertTrue(b'If you add substrate binding order without specifying the catalyzing isoenzyme(s)' in response.data)
+
+        self.assertEqual(Reaction.query.count(), 0)
+        self.assertEqual(Enzyme.query.count(), 2)
+        self.assertEqual(GibbsEnergy.query.count(), 0)
+        self.assertEqual(EnzymeReactionModel.query.count(), 0)
+        self.assertEqual(Mechanism.query.count(), 2)
+        self.assertEqual(Reference.query.count(), 1)
+        self.assertEqual(Model.query.count(), 2)
+        self.assertEqual(Organism.query.count(), 2)
+
+    def test_add_reaction_prod_release_order(self):
+
+        reaction_name = 'phosphofructokinase'
+        reaction_acronym = 'PFK'
+        reaction_grasp_id = 'PFK1'
+        reaction_string = '1 pep_c + 1.5 adp_c <-> pyr_c + 2.0 atp_m'
+        metanetx_id = ''
+        bigg_id = ''
+        kegg_id = ''
+
+        compartment_name = '1'
+        model_name = ''
+        isoenzyme_acronyms = ''
+        mechanism = '1'
+        mechanism_references = 'mechanism_doi'
+        mechanism_evidence_level = '1'
+        subs_binding_order = ''
+        prod_release_order = 'pyr_c, atp_m'
+        std_gibbs_energy = ''
+        std_gibbs_energy_std = ''
+        std_gibbs_energy_ph = ''
+        std_gibbs_energy_ionic_strength = ''
+        std_gibbs_energy_references = ''
+
+
+        response = self.client.post('/add_reaction', data=dict(
+                                    name=reaction_name,
+                                    acronym=reaction_acronym,
+                                    grasp_id=reaction_grasp_id,
+                                    reaction_string=reaction_string,
+                                    bigg_id=bigg_id,
+                                    kegg_id=kegg_id,
+                                    metanetx_id=metanetx_id,
+                                    compartment_name=compartment_name,
+                                    model_name=model_name,
+                                    isoenzyme_acronyms=isoenzyme_acronyms,
+                                    mechanism=mechanism,
+                                    mechanism_references=mechanism_references,
+                                    mechanism_evidence_level=mechanism_evidence_level,
+                                    subs_binding_order=subs_binding_order,
+                                    prod_release_order=prod_release_order,
+                                    std_gibbs_energy=std_gibbs_energy,
+                                    std_gibbs_energy_std=std_gibbs_energy_std,
+                                    std_gibbs_energy_ph=std_gibbs_energy_ph,
+                                    std_gibbs_energy_ionic_strength=std_gibbs_energy_ionic_strength,
+                                    std_gibbs_energy_references=std_gibbs_energy_references), follow_redirects=True)
+
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(b'<title>\n    Add reaction - Kinetics DB \n</title>' in response.data)
+        self.assertTrue(b'If you add product release order without specifying the catalyzing isoenzyme(s)' in response.data)
+
+        self.assertEqual(Reaction.query.count(), 0)
+        self.assertEqual(Enzyme.query.count(), 2)
+        self.assertEqual(GibbsEnergy.query.count(), 0)
+        self.assertEqual(EnzymeReactionModel.query.count(), 0)
+        self.assertEqual(Mechanism.query.count(), 2)
+        self.assertEqual(Reference.query.count(), 1)
+        self.assertEqual(Model.query.count(), 2)
+        self.assertEqual(Organism.query.count(), 2)
+
+    def test_add_reaction_std_gibbs_energy_std(self):
+
+        reaction_name = 'phosphofructokinase'
+        reaction_acronym = 'PFK'
+        reaction_grasp_id = 'PFK1'
+        reaction_string = '1 pep_c + 1.5 adp_c <-> pyr_c + 2.0 atp_m'
+        metanetx_id = ''
+        bigg_id = ''
+        kegg_id = ''
+
+        compartment_name = '1'
+        model_name = '1'
+        isoenzyme_acronyms = 'PFK1'
+        mechanism = '1'
+        mechanism_references = 'https://doi.org/10.1093/bioinformatics/bty942, https://doi.org/10.1093/bioinformatics/bty943'
+        mechanism_evidence_level = '1'
+        subs_binding_order = 'adp_c, pep_c'
+        prod_release_order = 'atp_m, pyr_c'
+        std_gibbs_energy = ''
+        std_gibbs_energy_std = 0.2
+        std_gibbs_energy_ph = ''
+        std_gibbs_energy_ionic_strength = ''
+        std_gibbs_energy_references = ''
+
+
+        response = self.client.post('/add_reaction', data=dict(
+                                    name=reaction_name,
+                                    acronym=reaction_acronym,
+                                    grasp_id=reaction_grasp_id,
+                                    reaction_string=reaction_string,
+                                    bigg_id=bigg_id,
+                                    kegg_id=kegg_id,
+                                    metanetx_id=metanetx_id,
+                                    compartment_name=compartment_name,
+                                    model_name=model_name,
+                                    isoenzyme_acronyms=isoenzyme_acronyms,
+                                    mechanism=mechanism,
+                                    mechanism_references=mechanism_references,
+                                    mechanism_evidence_level=mechanism_evidence_level,
+                                    subs_binding_order=subs_binding_order,
+                                    prod_release_order=prod_release_order,
+                                    std_gibbs_energy=std_gibbs_energy,
+                                    std_gibbs_energy_std=std_gibbs_energy_std,
+                                    std_gibbs_energy_ph=std_gibbs_energy_ph,
+                                    std_gibbs_energy_ionic_strength=std_gibbs_energy_ionic_strength,
+                                    std_gibbs_energy_references=std_gibbs_energy_references), follow_redirects=True)
+
+
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(b'<title>\n    Add reaction - Kinetics DB \n</title>' in response.data)
+        self.assertTrue(b'Please specify the standard Gibbs energy as well.' in response.data)
+
+        self.assertEqual(Reaction.query.count(), 0)
+        self.assertEqual(Enzyme.query.count(), 2)
+        self.assertEqual(GibbsEnergy.query.count(), 0)
+        self.assertEqual(EnzymeReactionModel.query.count(), 0)
+        self.assertEqual(Mechanism.query.count(), 2)
+        self.assertEqual(Reference.query.count(), 1)
+        self.assertEqual(Model.query.count(), 2)
+        self.assertEqual(Organism.query.count(), 2)
+
+    def test_add_reaction_std_gibbs_energy_std_no_model(self):
+
+        reaction_name = 'phosphofructokinase'
+        reaction_acronym = 'PFK'
+        reaction_grasp_id = 'PFK1'
+        reaction_string = '1 pep_c + 1.5 adp_c <-> pyr_c + 2.0 atp_m'
+        metanetx_id = ''
+        bigg_id = ''
+        kegg_id = ''
+
+        compartment_name = '1'
+        model_name = ''
+        isoenzyme_acronyms = 'PFK1'
+        mechanism = '1'
+        mechanism_references = 'https://doi.org/10.1093/bioinformatics/bty942, https://doi.org/10.1093/bioinformatics/bty943'
+        mechanism_evidence_level = '1'
+        subs_binding_order = 'adp_c, pep_c'
+        prod_release_order = 'atp_m, pyr_c'
+        std_gibbs_energy = ''
+        std_gibbs_energy_std = 0.2
+        std_gibbs_energy_ph = ''
+        std_gibbs_energy_ionic_strength = ''
+        std_gibbs_energy_references = ''
+
+
+        response = self.client.post('/add_reaction', data=dict(
+                                    name=reaction_name,
+                                    acronym=reaction_acronym,
+                                    grasp_id=reaction_grasp_id,
+                                    reaction_string=reaction_string,
+                                    bigg_id=bigg_id,
+                                    kegg_id=kegg_id,
+                                    metanetx_id=metanetx_id,
+                                    compartment_name=compartment_name,
+                                    model_name=model_name,
+                                    isoenzyme_acronyms=isoenzyme_acronyms,
+                                    mechanism=mechanism,
+                                    mechanism_references=mechanism_references,
+                                    mechanism_evidence_level=mechanism_evidence_level,
+                                    subs_binding_order=subs_binding_order,
+                                    prod_release_order=prod_release_order,
+                                    std_gibbs_energy=std_gibbs_energy,
+                                    std_gibbs_energy_std=std_gibbs_energy_std,
+                                    std_gibbs_energy_ph=std_gibbs_energy_ph,
+                                    std_gibbs_energy_ionic_strength=std_gibbs_energy_ionic_strength,
+                                    std_gibbs_energy_references=std_gibbs_energy_references), follow_redirects=True)
+
+
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(b'<title>\n    Add reaction - Kinetics DB \n</title>' in response.data)
+        self.assertTrue(b'Gibbs energies cannot be added to reactions alone, a model must be associated as well. Please add model name.' in response.data)
+
+        self.assertEqual(Reaction.query.count(), 0)
+        self.assertEqual(Enzyme.query.count(), 2)
+        self.assertEqual(GibbsEnergy.query.count(), 0)
+        self.assertEqual(EnzymeReactionModel.query.count(), 0)
+        self.assertEqual(Mechanism.query.count(), 2)
+        self.assertEqual(Reference.query.count(), 1)
+        self.assertEqual(Model.query.count(), 2)
+        self.assertEqual(Organism.query.count(), 2)
+
+    def test_add_reaction_std_gibbs_energy_ph(self):
+
+        reaction_name = 'phosphofructokinase'
+        reaction_acronym = 'PFK'
+        reaction_grasp_id = 'PFK1'
+        reaction_string = '1 pep_c + 1.5 adp_c <-> pyr_c + 2.0 atp_m'
+        metanetx_id = ''
+        bigg_id = ''
+        kegg_id = ''
+
+        compartment_name = '1'
+        model_name = '1'
+        isoenzyme_acronyms = 'PFK1'
+        mechanism = '1'
+        mechanism_references = 'https://doi.org/10.1093/bioinformatics/bty942, https://doi.org/10.1093/bioinformatics/bty943'
+        mechanism_evidence_level = '1'
+        subs_binding_order = 'adp_c, pep_c'
+        prod_release_order = 'atp_m, pyr_c'
+        std_gibbs_energy = ''
+        std_gibbs_energy_std = ''
+        std_gibbs_energy_ph = 7
+        std_gibbs_energy_ionic_strength = ''
+        std_gibbs_energy_references = ''
+
+
+        response = self.client.post('/add_reaction', data=dict(
+                                    name=reaction_name,
+                                    acronym=reaction_acronym,
+                                    grasp_id=reaction_grasp_id,
+                                    reaction_string=reaction_string,
+                                    bigg_id=bigg_id,
+                                    kegg_id=kegg_id,
+                                    metanetx_id=metanetx_id,
+                                    compartment_name=compartment_name,
+                                    model_name=model_name,
+                                    isoenzyme_acronyms=isoenzyme_acronyms,
+                                    mechanism=mechanism,
+                                    mechanism_references=mechanism_references,
+                                    mechanism_evidence_level=mechanism_evidence_level,
+                                    subs_binding_order=subs_binding_order,
+                                    prod_release_order=prod_release_order,
+                                    std_gibbs_energy=std_gibbs_energy,
+                                    std_gibbs_energy_std=std_gibbs_energy_std,
+                                    std_gibbs_energy_ph=std_gibbs_energy_ph,
+                                    std_gibbs_energy_ionic_strength=std_gibbs_energy_ionic_strength,
+                                    std_gibbs_energy_references=std_gibbs_energy_references), follow_redirects=True)
+
+
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(b'<title>\n    Add reaction - Kinetics DB \n</title>' in response.data)
+        self.assertTrue(b'Please specify the standard Gibbs energy as well.' in response.data)
+
+        self.assertEqual(Reaction.query.count(), 0)
+        self.assertEqual(Enzyme.query.count(), 2)
+        self.assertEqual(GibbsEnergy.query.count(), 0)
+        self.assertEqual(EnzymeReactionModel.query.count(), 0)
+        self.assertEqual(Mechanism.query.count(), 2)
+        self.assertEqual(Reference.query.count(), 1)
+        self.assertEqual(Model.query.count(), 2)
+        self.assertEqual(Organism.query.count(), 2)
+
+    def test_add_reaction_std_gibbs_energy_is(self):
+
+        reaction_name = 'phosphofructokinase'
+        reaction_acronym = 'PFK'
+        reaction_grasp_id = 'PFK1'
+        reaction_string = '1 pep_c + 1.5 adp_c <-> pyr_c + 2.0 atp_m'
+        metanetx_id = ''
+        bigg_id = ''
+        kegg_id = ''
+
+        compartment_name = '1'
+        model_name = '1'
+        isoenzyme_acronyms = 'PFK1'
+        mechanism = '1'
+        mechanism_references = 'https://doi.org/10.1093/bioinformatics/bty942, https://doi.org/10.1093/bioinformatics/bty943'
+        mechanism_evidence_level = '1'
+        subs_binding_order = 'adp_c, pep_c'
+        prod_release_order = 'atp_m, pyr_c'
+        std_gibbs_energy = ''
+        std_gibbs_energy_std = ''
+        std_gibbs_energy_ph = ''
+        std_gibbs_energy_ionic_strength = 0.2
+        std_gibbs_energy_references = ''
+
+
+        response = self.client.post('/add_reaction', data=dict(
+                                    name=reaction_name,
+                                    acronym=reaction_acronym,
+                                    grasp_id=reaction_grasp_id,
+                                    reaction_string=reaction_string,
+                                    bigg_id=bigg_id,
+                                    kegg_id=kegg_id,
+                                    metanetx_id=metanetx_id,
+                                    compartment_name=compartment_name,
+                                    model_name=model_name,
+                                    isoenzyme_acronyms=isoenzyme_acronyms,
+                                    mechanism=mechanism,
+                                    mechanism_references=mechanism_references,
+                                    mechanism_evidence_level=mechanism_evidence_level,
+                                    subs_binding_order=subs_binding_order,
+                                    prod_release_order=prod_release_order,
+                                    std_gibbs_energy=std_gibbs_energy,
+                                    std_gibbs_energy_std=std_gibbs_energy_std,
+                                    std_gibbs_energy_ph=std_gibbs_energy_ph,
+                                    std_gibbs_energy_ionic_strength=std_gibbs_energy_ionic_strength,
+                                    std_gibbs_energy_references=std_gibbs_energy_references), follow_redirects=True)
+
+
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(b'<title>\n    Add reaction - Kinetics DB \n</title>' in response.data)
+        self.assertTrue(b'Please specify the standard Gibbs energy as well.' in response.data)
+
+        self.assertEqual(Reaction.query.count(), 0)
+        self.assertEqual(Enzyme.query.count(), 2)
+        self.assertEqual(GibbsEnergy.query.count(), 0)
+        self.assertEqual(EnzymeReactionModel.query.count(), 0)
+        self.assertEqual(Mechanism.query.count(), 2)
+        self.assertEqual(Reference.query.count(), 1)
+        self.assertEqual(Model.query.count(), 2)
+        self.assertEqual(Organism.query.count(), 2)
+
+    def test_add_reaction_std_gibbs_energy_refs(self):
+
+        reaction_name = 'phosphofructokinase'
+        reaction_acronym = 'PFK'
+        reaction_grasp_id = 'PFK1'
+        reaction_string = '1 pep_c + 1.5 adp_c <-> pyr_c + 2.0 atp_m'
+        metanetx_id = ''
+        bigg_id = ''
+        kegg_id = ''
+
+        compartment_name = '1'
+        model_name = '1'
+        isoenzyme_acronyms = 'PFK1'
+        mechanism = '1'
+        mechanism_references = 'https://doi.org/10.1093/bioinformatics/bty942, https://doi.org/10.1093/bioinformatics/bty943'
+        mechanism_evidence_level = '1'
+        subs_binding_order = 'adp_c, pep_c'
+        prod_release_order = 'atp_m, pyr_c'
+        std_gibbs_energy = ''
+        std_gibbs_energy_std = ''
+        std_gibbs_energy_ph = ''
+        std_gibbs_energy_ionic_strength = ''
+        std_gibbs_energy_references = 'equilibrator'
+
+
+        response = self.client.post('/add_reaction', data=dict(
+                                    name=reaction_name,
+                                    acronym=reaction_acronym,
+                                    grasp_id=reaction_grasp_id,
+                                    reaction_string=reaction_string,
+                                    bigg_id=bigg_id,
+                                    kegg_id=kegg_id,
+                                    metanetx_id=metanetx_id,
+                                    compartment_name=compartment_name,
+                                    model_name=model_name,
+                                    isoenzyme_acronyms=isoenzyme_acronyms,
+                                    mechanism=mechanism,
+                                    mechanism_references=mechanism_references,
+                                    mechanism_evidence_level=mechanism_evidence_level,
+                                    subs_binding_order=subs_binding_order,
+                                    prod_release_order=prod_release_order,
+                                    std_gibbs_energy=std_gibbs_energy,
+                                    std_gibbs_energy_std=std_gibbs_energy_std,
+                                    std_gibbs_energy_ph=std_gibbs_energy_ph,
+                                    std_gibbs_energy_ionic_strength=std_gibbs_energy_ionic_strength,
+                                    std_gibbs_energy_references=std_gibbs_energy_references), follow_redirects=True)
+
+
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(b'<title>\n    Add reaction - Kinetics DB \n</title>' in response.data)
+        self.assertTrue(b'Please specify the standard Gibbs energy as well.' in response.data)
+
+        self.assertEqual(Reaction.query.count(), 0)
+        self.assertEqual(Enzyme.query.count(), 2)
+        self.assertEqual(GibbsEnergy.query.count(), 0)
+        self.assertEqual(EnzymeReactionModel.query.count(), 0)
+        self.assertEqual(Mechanism.query.count(), 2)
+        self.assertEqual(Reference.query.count(), 1)
+        self.assertEqual(Model.query.count(), 2)
+        self.assertEqual(Organism.query.count(), 2)
+
+    def test_add_reaction_std_gibbs_energy_refs_2(self):
+
+        reaction_name = 'phosphofructokinase'
+        reaction_acronym = 'PFK'
+        reaction_grasp_id = 'PFK1'
+        reaction_string = '1 pep_c + 1.5 adp_c <-> pyr_c + 2.0 atp_m'
+        metanetx_id = ''
+        bigg_id = ''
+        kegg_id = ''
+
+        compartment_name = '1'
+        model_name = '1'
+        isoenzyme_acronyms = 'PFK1'
+        mechanism = '1'
+        mechanism_references = 'https://doi.org/10.1093/bioinformatics/bty942, https://doi.org/10.1093/bioinformatics/bty943'
+        mechanism_evidence_level = '1'
+        subs_binding_order = 'adp_c, pep_c'
+        prod_release_order = 'atp_m, pyr_c'
+        std_gibbs_energy = 7.1
+        std_gibbs_energy_std = ''
+        std_gibbs_energy_ph = ''
+        std_gibbs_energy_ionic_strength = ''
+        std_gibbs_energy_references = ''
+
+
+        response = self.client.post('/add_reaction', data=dict(
+                                    name=reaction_name,
+                                    acronym=reaction_acronym,
+                                    grasp_id=reaction_grasp_id,
+                                    reaction_string=reaction_string,
+                                    bigg_id=bigg_id,
+                                    kegg_id=kegg_id,
+                                    metanetx_id=metanetx_id,
+                                    compartment_name=compartment_name,
+                                    model_name=model_name,
+                                    isoenzyme_acronyms=isoenzyme_acronyms,
+                                    mechanism=mechanism,
+                                    mechanism_references=mechanism_references,
+                                    mechanism_evidence_level=mechanism_evidence_level,
+                                    subs_binding_order=subs_binding_order,
+                                    prod_release_order=prod_release_order,
+                                    std_gibbs_energy=std_gibbs_energy,
+                                    std_gibbs_energy_std=std_gibbs_energy_std,
+                                    std_gibbs_energy_ph=std_gibbs_energy_ph,
+                                    std_gibbs_energy_ionic_strength=std_gibbs_energy_ionic_strength,
+                                    std_gibbs_energy_references=std_gibbs_energy_references), follow_redirects=True)
+
+
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(b'<title>\n    Add reaction - Kinetics DB \n</title>' in response.data)
+        self.assertTrue(b'Please specify the reference for the above standard Gibbs energy' in response.data)
+
+        self.assertEqual(Reaction.query.count(), 0)
+        self.assertEqual(Enzyme.query.count(), 2)
+        self.assertEqual(GibbsEnergy.query.count(), 0)
+        self.assertEqual(EnzymeReactionModel.query.count(), 0)
+        self.assertEqual(Mechanism.query.count(), 2)
+        self.assertEqual(Reference.query.count(), 1)
+        self.assertEqual(Model.query.count(), 2)
+        self.assertEqual(Organism.query.count(), 2)
+
+    def test_add_reaction_only(self):
+
+        reaction_name = 'phosphofructokinase'
+        reaction_acronym = 'PFK'
+        reaction_grasp_id = 'PFK1'
+        reaction_string = '1 pep_c + 1.5 adp_c <-> pyr_c + 2.0 atp_m'
+        metanetx_id = ''
+        bigg_id = ''
+        kegg_id = ''
+
+        compartment_name = ''
+        model_name = ''
+        isoenzyme_acronyms = ''
+        mechanism = ''
+        mechanism_references = ''
+        mechanism_evidence_level = ''
+        subs_binding_order = ''
+        prod_release_order = ''
+        std_gibbs_energy = ''
+        std_gibbs_energy_std = ''
+        std_gibbs_energy_ph = ''
+        std_gibbs_energy_ionic_strength = ''
+        std_gibbs_energy_references = ''
+
+
+        response = self.client.post('/add_reaction', data=dict(
+                                    name=reaction_name,
+                                    acronym=reaction_acronym,
+                                    grasp_id=reaction_grasp_id,
+                                    reaction_string=reaction_string,
+                                    bigg_id=bigg_id,
+                                    kegg_id=kegg_id,
+                                    metanetx_id=metanetx_id,
+                                    compartment_name=compartment_name,
+                                    model_name=model_name,
+                                    isoenzyme_acronyms=isoenzyme_acronyms,
+                                    mechanism=mechanism,
+                                    mechanism_references=mechanism_references,
+                                    mechanism_evidence_level=mechanism_evidence_level,
+                                    subs_binding_order=subs_binding_order,
+                                    prod_release_order=prod_release_order,
+                                    std_gibbs_energy=std_gibbs_energy,
+                                    std_gibbs_energy_std=std_gibbs_energy_std,
+                                    std_gibbs_energy_ph=std_gibbs_energy_ph,
+                                    std_gibbs_energy_ionic_strength=std_gibbs_energy_ionic_strength,
+                                    std_gibbs_energy_references=std_gibbs_energy_references), follow_redirects=True)
+
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(b'<title>\n    See reactions - Kinetics DB \n</title>' in response.data)
+        self.assertTrue(b'Your reaction is now live!' in response.data)
+
+        self.assertEqual(Reaction.query.count(), 1)
+        self.assertEqual(Enzyme.query.count(), 2)
+        self.assertEqual(GibbsEnergy.query.count(), 0)
+        self.assertEqual(EnzymeReactionModel.query.count(), 0)
+        self.assertEqual(Mechanism.query.count(), 2)
+        self.assertEqual(Reference.query.count(), 1)
+        self.assertEqual(Model.query.count(), 2)
+        self.assertEqual(Organism.query.count(), 2)
+
+        self.assertEqual(Reaction.query.count(), 1)
+        self.assertEqual(Reaction.query.first().name, reaction_name)
+        self.assertEqual(Reaction.query.first().compartment_name, '')
+
+        self.assertEqual(Reference.query.count(), 1)
+        self.assertEqual(Reference.query.all()[0].title, 'eQuilibrator')
+        self.assertEqual(Reference.query.all()[0].type_type, 'Online database')
+
+
+        self.assertEqual(Metabolite.query.count(), 4)
+        self.assertEqual(Metabolite.query.all()[0].bigg_id, 'pep')
+        self.assertEqual(Metabolite.query.all()[0].grasp_id, 'pep')
+        self.assertEqual(Metabolite.query.all()[0].compartment_acronym, 'c')
+        self.assertEqual(Metabolite.query.all()[1].bigg_id, 'adp')
+        self.assertEqual(Metabolite.query.all()[1].grasp_id, 'adp')
+        self.assertEqual(Metabolite.query.all()[1].compartment_acronym, 'c')
+        self.assertEqual(Metabolite.query.all()[2].bigg_id, 'pyr')
+        self.assertEqual(Metabolite.query.all()[2].grasp_id, 'pyr')
+        self.assertEqual(Metabolite.query.all()[2].compartment_acronym, 'c')
+        self.assertEqual(Metabolite.query.all()[3].bigg_id, 'atp')
+        self.assertEqual(Metabolite.query.all()[3].grasp_id, 'atp')
+        self.assertEqual(Metabolite.query.all()[3].compartment_acronym, 'm')
+
+        self.assertEqual(ReactionMetabolite.query.count(), 4)
+        self.assertEqual(ReactionMetabolite.query.all()[0].metabolite.bigg_id, 'pep')
+        self.assertEqual(ReactionMetabolite.query.all()[0].stoich_coef, -1)
+        self.assertEqual(ReactionMetabolite.query.all()[0].reaction.acronym, reaction_acronym)
+        self.assertEqual(ReactionMetabolite.query.all()[1].metabolite.bigg_id, 'adp')
+        self.assertEqual(ReactionMetabolite.query.all()[1].stoich_coef, -1.5)
+        self.assertEqual(ReactionMetabolite.query.all()[1].reaction.acronym, reaction_acronym)
+        self.assertEqual(ReactionMetabolite.query.all()[2].metabolite.bigg_id, 'pyr')
+        self.assertEqual(ReactionMetabolite.query.all()[2].stoich_coef, 1)
+        self.assertEqual(ReactionMetabolite.query.all()[2].reaction.acronym, reaction_acronym)
+        self.assertEqual(ReactionMetabolite.query.all()[3].metabolite.bigg_id, 'atp')
+        self.assertEqual(ReactionMetabolite.query.all()[3].stoich_coef, 2)
+        self.assertEqual(ReactionMetabolite.query.all()[3].reaction.acronym, reaction_acronym)
+
+    def test_add_reaction_compartment(self):
+
+        reaction_name = 'phosphofructokinase'
+        reaction_acronym = 'PFK'
+        reaction_grasp_id = 'PFK1'
+        reaction_string = '1 pep_c + 1.5 adp_c <-> pyr_c + 2.0 atp_m'
+        metanetx_id = ''
+        bigg_id = ''
+        kegg_id = ''
+
+        compartment_name = '1'
+        model_name = ''
+        isoenzyme_acronyms = ''
+        mechanism = ''
+        mechanism_references = ''
+        mechanism_evidence_level = ''
+        subs_binding_order = ''
+        prod_release_order = ''
+        std_gibbs_energy = ''
+        std_gibbs_energy_std = ''
+        std_gibbs_energy_ph = ''
+        std_gibbs_energy_ionic_strength = ''
+        std_gibbs_energy_references = ''
+
+
+        response = self.client.post('/add_reaction', data=dict(
+                                    name=reaction_name,
+                                    acronym=reaction_acronym,
+                                    grasp_id=reaction_grasp_id,
+                                    reaction_string=reaction_string,
+                                    bigg_id=bigg_id,
+                                    kegg_id=kegg_id,
+                                    metanetx_id=metanetx_id,
+                                    compartment_name=compartment_name,
+                                    model_name=model_name,
+                                    isoenzyme_acronyms=isoenzyme_acronyms,
+                                    mechanism=mechanism,
+                                    mechanism_references=mechanism_references,
+                                    mechanism_evidence_level=mechanism_evidence_level,
+                                    subs_binding_order=subs_binding_order,
+                                    prod_release_order=prod_release_order,
+                                    std_gibbs_energy=std_gibbs_energy,
+                                    std_gibbs_energy_std=std_gibbs_energy_std,
+                                    std_gibbs_energy_ph=std_gibbs_energy_ph,
+                                    std_gibbs_energy_ionic_strength=std_gibbs_energy_ionic_strength,
+                                    std_gibbs_energy_references=std_gibbs_energy_references), follow_redirects=True)
+
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(b'<title>\n    See reactions - Kinetics DB \n</title>' in response.data)
+        self.assertTrue(b'Your reaction is now live!' in response.data)
+
+        self.assertEqual(Reaction.query.count(), 1)
+        self.assertEqual(Enzyme.query.count(), 2)
+        self.assertEqual(GibbsEnergy.query.count(), 0)
+        self.assertEqual(EnzymeReactionModel.query.count(), 0)
+        self.assertEqual(Mechanism.query.count(), 2)
+        self.assertEqual(Reference.query.count(), 1)
+        self.assertEqual(Model.query.count(), 2)
+        self.assertEqual(Organism.query.count(), 2)
+
+        self.assertEqual(Reaction.query.count(), 1)
+        self.assertEqual(Reaction.query.first().name, reaction_name)
+        self.assertEqual(Reaction.query.first().compartment_name, Compartment.query.first().name)
+
+        self.assertEqual(Reference.query.count(), 1)
+        self.assertEqual(Reference.query.all()[0].title, 'eQuilibrator')
+        self.assertEqual(Reference.query.all()[0].type_type, 'Online database')
+
+
+        self.assertEqual(Metabolite.query.count(), 4)
+        self.assertEqual(Metabolite.query.all()[0].bigg_id, 'pep')
+        self.assertEqual(Metabolite.query.all()[0].grasp_id, 'pep')
+        self.assertEqual(Metabolite.query.all()[0].compartment_acronym, 'c')
+        self.assertEqual(Metabolite.query.all()[1].bigg_id, 'adp')
+        self.assertEqual(Metabolite.query.all()[1].grasp_id, 'adp')
+        self.assertEqual(Metabolite.query.all()[1].compartment_acronym, 'c')
+        self.assertEqual(Metabolite.query.all()[2].bigg_id, 'pyr')
+        self.assertEqual(Metabolite.query.all()[2].grasp_id, 'pyr')
+        self.assertEqual(Metabolite.query.all()[2].compartment_acronym, 'c')
+        self.assertEqual(Metabolite.query.all()[3].bigg_id, 'atp')
+        self.assertEqual(Metabolite.query.all()[3].grasp_id, 'atp')
+        self.assertEqual(Metabolite.query.all()[3].compartment_acronym, 'm')
+
+        self.assertEqual(ReactionMetabolite.query.count(), 4)
+        self.assertEqual(ReactionMetabolite.query.all()[0].metabolite.bigg_id, 'pep')
+        self.assertEqual(ReactionMetabolite.query.all()[0].stoich_coef, -1)
+        self.assertEqual(ReactionMetabolite.query.all()[0].reaction.acronym, reaction_acronym)
+        self.assertEqual(ReactionMetabolite.query.all()[1].metabolite.bigg_id, 'adp')
+        self.assertEqual(ReactionMetabolite.query.all()[1].stoich_coef, -1.5)
+        self.assertEqual(ReactionMetabolite.query.all()[1].reaction.acronym, reaction_acronym)
+        self.assertEqual(ReactionMetabolite.query.all()[2].metabolite.bigg_id, 'pyr')
+        self.assertEqual(ReactionMetabolite.query.all()[2].stoich_coef, 1)
+        self.assertEqual(ReactionMetabolite.query.all()[2].reaction.acronym, reaction_acronym)
+        self.assertEqual(ReactionMetabolite.query.all()[3].metabolite.bigg_id, 'atp')
+        self.assertEqual(ReactionMetabolite.query.all()[3].stoich_coef, 2)
+        self.assertEqual(ReactionMetabolite.query.all()[3].reaction.acronym, reaction_acronym)
+
+    def test_add_reaction_mechanism(self):
+
+        reaction_name = 'phosphofructokinase'
+        reaction_acronym = 'PFK'
+        reaction_grasp_id = 'PFK1'
+        reaction_string = '1 pep_c + 1.5 adp_c <-> pyr_c + 2.0 atp_m'
+        metanetx_id = ''
+        bigg_id = ''
+        kegg_id = ''
+
+        compartment_name = '1'
+        model_name = ''
+        isoenzyme_acronyms = 'PFK1'
+        mechanism = '1'
+        mechanism_references = 'mechanism_fake_ref'
+        mechanism_evidence_level = '1'
+        subs_binding_order = 'pep_c, adp_c'
+        prod_release_order = 'pyr_c, atp_m'
+        std_gibbs_energy = ''
+        std_gibbs_energy_std = ''
+        std_gibbs_energy_ph = ''
+        std_gibbs_energy_ionic_strength = ''
+        std_gibbs_energy_references = ''
+
+
+        response = self.client.post('/add_reaction', data=dict(
+                                    name=reaction_name,
+                                    acronym=reaction_acronym,
+                                    grasp_id=reaction_grasp_id,
+                                    reaction_string=reaction_string,
+                                    bigg_id=bigg_id,
+                                    kegg_id=kegg_id,
+                                    metanetx_id=metanetx_id,
+                                    compartment_name=compartment_name,
+                                    model_name=model_name,
+                                    isoenzyme_acronyms=isoenzyme_acronyms,
+                                    mechanism=mechanism,
+                                    mechanism_references=mechanism_references,
+                                    mechanism_evidence_level=mechanism_evidence_level,
+                                    subs_binding_order=subs_binding_order,
+                                    prod_release_order=prod_release_order,
+                                    std_gibbs_energy=std_gibbs_energy,
+                                    std_gibbs_energy_std=std_gibbs_energy_std,
+                                    std_gibbs_energy_ph=std_gibbs_energy_ph,
+                                    std_gibbs_energy_ionic_strength=std_gibbs_energy_ionic_strength,
+                                    std_gibbs_energy_references=std_gibbs_energy_references), follow_redirects=True)
+
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(b'<title>\n    See reactions - Kinetics DB \n</title>' in response.data)
+        self.assertTrue(b'Your reaction is now live!' in response.data)
+
+        self.assertEqual(Reaction.query.count(), 1)
+        self.assertEqual(Enzyme.query.count(), 2)
+        self.assertEqual(GibbsEnergy.query.count(), 0)
+        self.assertEqual(Mechanism.query.count(), 2)
+        self.assertEqual(Model.query.count(), 2)
+        self.assertEqual(Organism.query.count(), 2)
+
+        self.assertEqual(Reaction.query.count(), 1)
+        self.assertEqual(Reaction.query.first().name, reaction_name)
+        self.assertEqual(Reaction.query.first().compartment_name, Compartment.query.first().name)
+
+        self.assertEqual(Reference.query.count(), 2)
+        self.assertEqual(Reference.query.all()[0].title, 'eQuilibrator')
+        self.assertEqual(Reference.query.all()[0].type_type, 'Online database')
+        self.assertEqual(Reference.query.all()[1].doi, mechanism_references)
+
+
+        self.assertEqual(Metabolite.query.count(), 4)
+        self.assertEqual(Metabolite.query.all()[0].bigg_id, 'pep')
+        self.assertEqual(Metabolite.query.all()[0].grasp_id, 'pep')
+        self.assertEqual(Metabolite.query.all()[0].compartment_acronym, 'c')
+        self.assertEqual(Metabolite.query.all()[1].bigg_id, 'adp')
+        self.assertEqual(Metabolite.query.all()[1].grasp_id, 'adp')
+        self.assertEqual(Metabolite.query.all()[1].compartment_acronym, 'c')
+        self.assertEqual(Metabolite.query.all()[2].bigg_id, 'pyr')
+        self.assertEqual(Metabolite.query.all()[2].grasp_id, 'pyr')
+        self.assertEqual(Metabolite.query.all()[2].compartment_acronym, 'c')
+        self.assertEqual(Metabolite.query.all()[3].bigg_id, 'atp')
+        self.assertEqual(Metabolite.query.all()[3].grasp_id, 'atp')
+        self.assertEqual(Metabolite.query.all()[3].compartment_acronym, 'm')
+
+        self.assertEqual(ReactionMetabolite.query.count(), 4)
+        self.assertEqual(ReactionMetabolite.query.all()[0].metabolite.bigg_id, 'pep')
+        self.assertEqual(ReactionMetabolite.query.all()[0].stoich_coef, -1)
+        self.assertEqual(ReactionMetabolite.query.all()[0].reaction.acronym, reaction_acronym)
+        self.assertEqual(ReactionMetabolite.query.all()[1].metabolite.bigg_id, 'adp')
+        self.assertEqual(ReactionMetabolite.query.all()[1].stoich_coef, -1.5)
+        self.assertEqual(ReactionMetabolite.query.all()[1].reaction.acronym, reaction_acronym)
+        self.assertEqual(ReactionMetabolite.query.all()[2].metabolite.bigg_id, 'pyr')
+        self.assertEqual(ReactionMetabolite.query.all()[2].stoich_coef, 1)
+        self.assertEqual(ReactionMetabolite.query.all()[2].reaction.acronym, reaction_acronym)
+        self.assertEqual(ReactionMetabolite.query.all()[3].metabolite.bigg_id, 'atp')
+        self.assertEqual(ReactionMetabolite.query.all()[3].stoich_coef, 2)
+        self.assertEqual(ReactionMetabolite.query.all()[3].reaction.acronym, reaction_acronym)
+
+        self.assertEqual(EnzymeReactionModel.query.count(), 1)
+        self.assertEqual(EnzymeReactionModel.query.all()[0].grasp_id, reaction_grasp_id)
+        self.assertEqual(EnzymeReactionModel.query.all()[0].subs_binding_order, subs_binding_order)
+        self.assertEqual(EnzymeReactionModel.query.all()[0].prod_release_order, prod_release_order)
+        self.assertEqual(EnzymeReactionModel.query.all()[0].included_in_model, False)
+        self.assertEqual(EnzymeReactionModel.query.all()[0].reaction.name, reaction_name)
+        self.assertEqual(EnzymeReactionModel.query.all()[0].enzyme.isoenzyme, isoenzyme_acronyms)
+        self.assertEqual(EnzymeReactionModel.query.all()[0].model, None)
+        self.assertEqual(EnzymeReactionModel.query.all()[0].mech_evidence, EvidenceLevel.query.first())
+        self.assertEqual(EnzymeReactionModel.query.all()[0].mechanism, Mechanism.query.first())
+        self.assertEqual(EnzymeReactionModel.query.all()[0].mechanism_references.count(), 1)
+        self.assertEqual(EnzymeReactionModel.query.all()[0].mechanism_references[0].doi, mechanism_references)
+
+    def test_add_reaction_gibbs_energy(self):
+
+        reaction_name = 'phosphofructokinase'
+        reaction_acronym = 'PFK'
+        reaction_grasp_id = 'PFK1'
+        reaction_string = '1 pep_c + 1.5 adp_c <-> pyr_c + 2.0 atp_m'
+        metanetx_id = ''
+        bigg_id = ''
+        kegg_id = ''
+
+        compartment_name = '1'
+        model_name = '1'
+        isoenzyme_acronyms = 'PFK1'
+        mechanism = ''
+        mechanism_references = ''
+        mechanism_evidence_level = ''
+        subs_binding_order = ''
+        prod_release_order = ''
+        std_gibbs_energy = 7.1
+        std_gibbs_energy_std = 0.5
+        std_gibbs_energy_ph = 7
+        std_gibbs_energy_ionic_strength = 0.2
+        std_gibbs_energy_references = 'equilibrator'
+
+
+        response = self.client.post('/add_reaction', data=dict(
+                                    name=reaction_name,
+                                    acronym=reaction_acronym,
+                                    grasp_id=reaction_grasp_id,
+                                    reaction_string=reaction_string,
+                                    bigg_id=bigg_id,
+                                    kegg_id=kegg_id,
+                                    metanetx_id=metanetx_id,
+                                    compartment_name=compartment_name,
+                                    model_name=model_name,
+                                    isoenzyme_acronyms=isoenzyme_acronyms,
+                                    mechanism=mechanism,
+                                    mechanism_references=mechanism_references,
+                                    mechanism_evidence_level=mechanism_evidence_level,
+                                    subs_binding_order=subs_binding_order,
+                                    prod_release_order=prod_release_order,
+                                    std_gibbs_energy=std_gibbs_energy,
+                                    std_gibbs_energy_std=std_gibbs_energy_std,
+                                    std_gibbs_energy_ph=std_gibbs_energy_ph,
+                                    std_gibbs_energy_ionic_strength=std_gibbs_energy_ionic_strength,
+                                    std_gibbs_energy_references=std_gibbs_energy_references), follow_redirects=True)
+
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(b'<title>\n    See reactions - Kinetics DB \n</title>' in response.data)
+        self.assertTrue(b'Your reaction is now live!' in response.data)
+
+        self.assertEqual(Enzyme.query.count(), 2)
+        self.assertEqual(Mechanism.query.count(), 2)
+        self.assertEqual(Model.query.count(), 2)
+        self.assertEqual(Organism.query.count(), 2)
+
+        self.assertEqual(Reaction.query.count(), 1)
+        self.assertEqual(Reaction.query.first().name, reaction_name)
+        self.assertEqual(Reaction.query.first().compartment_name, Compartment.query.first().name)
+
+        self.assertEqual(EnzymeReactionModel.query.count(), 1)
+        self.assertEqual(EnzymeReactionModel.query.all()[0].grasp_id, reaction_grasp_id)
+        self.assertEqual(EnzymeReactionModel.query.all()[0].subs_binding_order, subs_binding_order)
+        self.assertEqual(EnzymeReactionModel.query.all()[0].prod_release_order, prod_release_order)
+        self.assertEqual(EnzymeReactionModel.query.all()[0].included_in_model, True)
+        self.assertEqual(EnzymeReactionModel.query.all()[0].reaction.name, reaction_name)
+        self.assertEqual(EnzymeReactionModel.query.all()[0].enzyme.isoenzyme, isoenzyme_acronyms)
+        self.assertEqual(EnzymeReactionModel.query.all()[0].model, Model.query.first())
+        self.assertEqual(EnzymeReactionModel.query.all()[0].mechanism, None)
+        self.assertEqual(EnzymeReactionModel.query.all()[0].gibbs_energy, GibbsEnergy.query.first())
+        self.assertEqual(EnzymeReactionModel.query.all()[0].gibbs_energy.standard_dg, std_gibbs_energy)
+
+        self.assertEqual(GibbsEnergy.query.count(), 1)
+        self.assertEqual(GibbsEnergy.query.first().standard_dg, std_gibbs_energy)
+        self.assertEqual(GibbsEnergy.query.first().standard_dg_std, std_gibbs_energy_std)
+        self.assertEqual(GibbsEnergy.query.first().ph, std_gibbs_energy_ph)
+        self.assertEqual(GibbsEnergy.query.first().ionic_strength, std_gibbs_energy_ionic_strength)
+        self.assertEqual(GibbsEnergy.query.first().references[0].title, 'eQuilibrator')
+
+        self.assertEqual(Reference.query.count(), 1)
+        self.assertEqual(Reference.query.all()[0].title, 'eQuilibrator')
+        self.assertEqual(Reference.query.all()[0].type_type, 'Online database')
+
+        self.assertEqual(Metabolite.query.count(), 4)
+        self.assertEqual(Metabolite.query.all()[0].bigg_id, 'pep')
+        self.assertEqual(Metabolite.query.all()[0].grasp_id, 'pep')
+        self.assertEqual(Metabolite.query.all()[0].compartment_acronym, 'c')
+        self.assertEqual(Metabolite.query.all()[1].bigg_id, 'adp')
+        self.assertEqual(Metabolite.query.all()[1].grasp_id, 'adp')
+        self.assertEqual(Metabolite.query.all()[1].compartment_acronym, 'c')
+        self.assertEqual(Metabolite.query.all()[2].bigg_id, 'pyr')
+        self.assertEqual(Metabolite.query.all()[2].grasp_id, 'pyr')
+        self.assertEqual(Metabolite.query.all()[2].compartment_acronym, 'c')
+        self.assertEqual(Metabolite.query.all()[3].bigg_id, 'atp')
+        self.assertEqual(Metabolite.query.all()[3].grasp_id, 'atp')
+        self.assertEqual(Metabolite.query.all()[3].compartment_acronym, 'm')
+
+        self.assertEqual(ReactionMetabolite.query.count(), 4)
+        self.assertEqual(ReactionMetabolite.query.all()[0].metabolite.bigg_id, 'pep')
+        self.assertEqual(ReactionMetabolite.query.all()[0].stoich_coef, -1)
+        self.assertEqual(ReactionMetabolite.query.all()[0].reaction.acronym, reaction_acronym)
+        self.assertEqual(ReactionMetabolite.query.all()[1].metabolite.bigg_id, 'adp')
+        self.assertEqual(ReactionMetabolite.query.all()[1].stoich_coef, -1.5)
+        self.assertEqual(ReactionMetabolite.query.all()[1].reaction.acronym, reaction_acronym)
+        self.assertEqual(ReactionMetabolite.query.all()[2].metabolite.bigg_id, 'pyr')
+        self.assertEqual(ReactionMetabolite.query.all()[2].stoich_coef, 1)
+        self.assertEqual(ReactionMetabolite.query.all()[2].reaction.acronym, reaction_acronym)
+        self.assertEqual(ReactionMetabolite.query.all()[3].metabolite.bigg_id, 'atp')
+        self.assertEqual(ReactionMetabolite.query.all()[3].stoich_coef, 2)
+        self.assertEqual(ReactionMetabolite.query.all()[3].reaction.acronym, reaction_acronym)
+
+    def test_add_reaction_gibbs_energy_no_isoenzyme(self):
+
+        reaction_name = 'phosphofructokinase'
+        reaction_acronym = 'PFK'
+        reaction_grasp_id = 'PFK1'
+        reaction_string = '1 pep_c + 1.5 adp_c <-> pyr_c + 2.0 atp_m'
+        metanetx_id = ''
+        bigg_id = ''
+        kegg_id = ''
+
+        compartment_name = '1'
+        model_name = '1'
+        isoenzyme_acronyms = ''
+        mechanism = ''
+        mechanism_references = ''
+        mechanism_evidence_level = ''
+        subs_binding_order = ''
+        prod_release_order = ''
+        std_gibbs_energy = 7.1
+        std_gibbs_energy_std = 0.5
+        std_gibbs_energy_ph = 7
+        std_gibbs_energy_ionic_strength = 0.2
+        std_gibbs_energy_references = 'equilibrator'
+
+
+        response = self.client.post('/add_reaction', data=dict(
+                                    name=reaction_name,
+                                    acronym=reaction_acronym,
+                                    grasp_id=reaction_grasp_id,
+                                    reaction_string=reaction_string,
+                                    bigg_id=bigg_id,
+                                    kegg_id=kegg_id,
+                                    metanetx_id=metanetx_id,
+                                    compartment_name=compartment_name,
+                                    model_name=model_name,
+                                    isoenzyme_acronyms=isoenzyme_acronyms,
+                                    mechanism=mechanism,
+                                    mechanism_references=mechanism_references,
+                                    mechanism_evidence_level=mechanism_evidence_level,
+                                    subs_binding_order=subs_binding_order,
+                                    prod_release_order=prod_release_order,
+                                    std_gibbs_energy=std_gibbs_energy,
+                                    std_gibbs_energy_std=std_gibbs_energy_std,
+                                    std_gibbs_energy_ph=std_gibbs_energy_ph,
+                                    std_gibbs_energy_ionic_strength=std_gibbs_energy_ionic_strength,
+                                    std_gibbs_energy_references=std_gibbs_energy_references), follow_redirects=True)
+
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(b'<title>\n    See reactions - Kinetics DB \n</title>' in response.data)
+        self.assertTrue(b'Your reaction is now live!' in response.data)
+
+        self.assertEqual(Enzyme.query.count(), 2)
+        self.assertEqual(Mechanism.query.count(), 2)
+        self.assertEqual(Model.query.count(), 2)
+        self.assertEqual(Organism.query.count(), 2)
+
+        self.assertEqual(Reaction.query.count(), 1)
+        self.assertEqual(Reaction.query.first().name, reaction_name)
+        self.assertEqual(Reaction.query.first().compartment_name, Compartment.query.first().name)
+
+        self.assertEqual(EnzymeReactionModel.query.count(), 1)
+        self.assertEqual(EnzymeReactionModel.query.all()[0].grasp_id, reaction_grasp_id)
+        self.assertEqual(EnzymeReactionModel.query.all()[0].subs_binding_order, subs_binding_order)
+        self.assertEqual(EnzymeReactionModel.query.all()[0].prod_release_order, prod_release_order)
+        self.assertEqual(EnzymeReactionModel.query.all()[0].included_in_model, True)
+        self.assertEqual(EnzymeReactionModel.query.all()[0].reaction.name, reaction_name)
+        self.assertEqual(EnzymeReactionModel.query.all()[0].enzyme, None)
+        self.assertEqual(EnzymeReactionModel.query.all()[0].model, Model.query.first())
+        self.assertEqual(EnzymeReactionModel.query.all()[0].mechanism, None)
+        self.assertEqual(EnzymeReactionModel.query.all()[0].gibbs_energy, GibbsEnergy.query.first())
+        self.assertEqual(EnzymeReactionModel.query.all()[0].gibbs_energy.standard_dg, std_gibbs_energy)
+
+        self.assertEqual(GibbsEnergy.query.count(), 1)
+        self.assertEqual(GibbsEnergy.query.first().standard_dg, std_gibbs_energy)
+        self.assertEqual(GibbsEnergy.query.first().standard_dg_std, std_gibbs_energy_std)
+        self.assertEqual(GibbsEnergy.query.first().ph, std_gibbs_energy_ph)
+        self.assertEqual(GibbsEnergy.query.first().ionic_strength, std_gibbs_energy_ionic_strength)
+        self.assertEqual(GibbsEnergy.query.first().references[0].title, 'eQuilibrator')
+
+        self.assertEqual(Reference.query.count(), 1)
+        self.assertEqual(Reference.query.all()[0].title, 'eQuilibrator')
+        self.assertEqual(Reference.query.all()[0].type_type, 'Online database')
+
+        self.assertEqual(Metabolite.query.count(), 4)
+        self.assertEqual(Metabolite.query.all()[0].bigg_id, 'pep')
+        self.assertEqual(Metabolite.query.all()[0].grasp_id, 'pep')
+        self.assertEqual(Metabolite.query.all()[0].compartment_acronym, 'c')
+        self.assertEqual(Metabolite.query.all()[1].bigg_id, 'adp')
+        self.assertEqual(Metabolite.query.all()[1].grasp_id, 'adp')
+        self.assertEqual(Metabolite.query.all()[1].compartment_acronym, 'c')
+        self.assertEqual(Metabolite.query.all()[2].bigg_id, 'pyr')
+        self.assertEqual(Metabolite.query.all()[2].grasp_id, 'pyr')
+        self.assertEqual(Metabolite.query.all()[2].compartment_acronym, 'c')
+        self.assertEqual(Metabolite.query.all()[3].bigg_id, 'atp')
+        self.assertEqual(Metabolite.query.all()[3].grasp_id, 'atp')
+        self.assertEqual(Metabolite.query.all()[3].compartment_acronym, 'm')
+
+        self.assertEqual(ReactionMetabolite.query.count(), 4)
+        self.assertEqual(ReactionMetabolite.query.all()[0].metabolite.bigg_id, 'pep')
+        self.assertEqual(ReactionMetabolite.query.all()[0].stoich_coef, -1)
+        self.assertEqual(ReactionMetabolite.query.all()[0].reaction.acronym, reaction_acronym)
+        self.assertEqual(ReactionMetabolite.query.all()[1].metabolite.bigg_id, 'adp')
+        self.assertEqual(ReactionMetabolite.query.all()[1].stoich_coef, -1.5)
+        self.assertEqual(ReactionMetabolite.query.all()[1].reaction.acronym, reaction_acronym)
+        self.assertEqual(ReactionMetabolite.query.all()[2].metabolite.bigg_id, 'pyr')
+        self.assertEqual(ReactionMetabolite.query.all()[2].stoich_coef, 1)
+        self.assertEqual(ReactionMetabolite.query.all()[2].reaction.acronym, reaction_acronym)
+        self.assertEqual(ReactionMetabolite.query.all()[3].metabolite.bigg_id, 'atp')
+        self.assertEqual(ReactionMetabolite.query.all()[3].stoich_coef, 2)
+        self.assertEqual(ReactionMetabolite.query.all()[3].reaction.acronym, reaction_acronym)
+
+
 
 
 

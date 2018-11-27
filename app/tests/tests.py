@@ -1,6 +1,8 @@
 from datetime import datetime, timedelta
 import unittest
 from app import create_app, db
+from app.main.forms import ModelForm
+from app.main.routes import add_model
 from app.models import User, Post, Compartment, Enzyme, EnzymeOrganism, EnzymeStructure, Gene, Metabolite, Model, \
     Organism, Reaction, ReactionMetabolite
 from config import Config
@@ -12,6 +14,8 @@ import re
 class TestConfig(Config):
     TESTING = True
     SQLALCHEMY_DATABASE_URI = 'sqlite://'
+    LOGIN_DISABLED = True
+    WTF_CSRF_ENABLED = False
 
 
 class UserModelCase(unittest.TestCase):
@@ -308,6 +312,67 @@ class OrganismModelCase(unittest.TestCase):
         db.session.commit()
 
         self.assertEqual(organism.query.first().name, organism_name)
+
+class TestFormsCase(unittest.TestCase):
+    def setUp(self):
+        self.app = create_app(TestConfig)
+        self.client = self.app.test_client()
+        self.app_context = self.app.app_context()
+        self.app_context.push()
+        db.create_all()
+
+    def tearDown(self):
+        db.session.remove()
+        db.drop_all()
+        self.app_context.pop()
+
+    def test_main_page(self):
+        #response = self.client.get('/', follow_redirects=True)
+        #self.assertEqual(response.status_code, 200)
+
+        response = self.client.post('/add_organism', data=dict(
+                            name='E. coli'), follow_redirects=True)
+
+        print(response.data)
+        print(response.status_code)
+        self.assertEqual(response.status_code, 200)
+
+        response = self.client.post('/add_model', data=dict(
+                                    name='E. coli - iteration 1',
+        #organism_name='E. coli',
+        strain='MG16555'), follow_redirects=True)
+
+        print(response.data)
+        print(response.status_code)
+        form=ModelForm()
+        print(Organism().query.all())
+        print(Model().query.all())
+        print(b'<h1>Add model</h1>' in response.data)
+        self.assertEqual(response.status_code, 200)
+
+
+
+"""
+        form.name.data = 'E. coli - iteration 1'
+        form.organism_name.data = 'E. coli'
+
+        organism_name = 'E coli'
+
+        organism = Organism(name=organism_name)
+        db.session.add(organism)
+        db.session.commit()
+
+        self.assertEqual(organism.query.first().name, organism_name)"""
+"""
+
+  class ModelForm(FlaskForm):
+    name = StringField('Model name (e.g. E coli - iteration 1) *', validators=[DataRequired()])
+    organism_name = StringField('Organism name (eg. E coli) *', validators=[DataRequired()], id='organism_name')
+    strain = StringField('Organism strain (e.g. MG1655)')
+    comments = TextAreaField('Comments')
+
+    submit = SubmitField('Submit')
+"""
 
 """
 class ReactionModelCase(unittest.TestCase):

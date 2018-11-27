@@ -1,9 +1,9 @@
 from datetime import datetime
-from app.main.forms import EditProfileForm, PostForm, EnzymeForm, GeneForm, ModelForm, OrganismForm
+from app.main.forms import EditProfileForm, PostForm, EnzymeForm, GeneForm, ModelForm, OrganismForm, ReactionForm
 from flask import render_template, flash, redirect, url_for, request
 from flask_login import current_user, login_required
 from app import current_app, db
-from app.models import User, Post, Enzyme, EnzymeReactionModel, EnzymeOrganism, EnzymeStructure, EvidenceLevel, Gene, \
+from app.models import User, Post, Compartment, Enzyme, EnzymeReactionModel, EnzymeOrganism, EnzymeStructure, EvidenceLevel, Gene, \
     GibbsEnergy, Mechanism, Metabolite, Model, Organism, Reaction, ReactionMetabolite, Reference
 from app.main import bp
 from app.utils.parsers import ReactionParser, parse_input_list
@@ -158,7 +158,7 @@ def _add_enzyme_structures(enzyme, organism_id, pdb_id_list, strain_list):
                                                   strain=pdb_id_strain)
             db.session.add(enzyme_structure_db)
 
-        enzyme.add_structure(enzyme_structure_db)
+        #enzyme.add_structure(enzyme_structure_db)
 
 
 @bp.route('/add_enzyme', methods=['GET', 'POST'])
@@ -174,10 +174,7 @@ def add_enzyme():
     strain = {'id_value': '#strain', 'input_data': [{'field1': strain} for strain in
               enzyme_structure_strains] if enzyme_structures else []}
 
-    organisms = Organism.query.all()
-    organism_name = {'id_value': '#organism_name', 'input_data': [{'field1': organism.name} for organism in organisms] if organisms else []}
-
-    data_list = [organism_name, gene_bigg_ids, strain]
+    data_list = [gene_bigg_ids, strain]
 
     if form.validate_on_submit():
 
@@ -194,19 +191,20 @@ def add_enzyme():
                         ec_number=form.ec_number.data)
         db.session.add(enzyme)
 
-        organism_db = Organism.query.filter_by(name=form.organism_name.data).first()
-        organism_id = organism_db.id
+        if form.organism_name.data:
+            organism_db = Organism.query.filter_by(name=form.organism_name.data.name).first()
+            organism_id = organism_db.id
 
-        # populate enzyme_structure
-        if form.pdb_structure_ids.data:
-            pdb_id_list = parse_input_list(form.pdb_structure_ids.data)
-            strain_list = parse_input_list(form.strain.data)
-            _add_enzyme_structures(enzyme, organism_id, pdb_id_list, strain_list)
+            # populate enzyme_structure
+            if form.pdb_structure_ids.data:
+                pdb_id_list = parse_input_list(form.pdb_structure_ids.data)
+                strain_list = parse_input_list(form.strain.data)
+                _add_enzyme_structures(enzyme, organism_id, pdb_id_list, strain_list)
 
-        # populate enzyme_organism
-        if form.uniprot_id_list.data:
-            uniprot_id_list = parse_input_list(form.uniprot_id_list.data)
-            _add_enzyme_organism(enzyme, organism_id, uniprot_id_list, form.gene_bigg_ids.data, int(form.number_of_active_sites.data))
+            # populate enzyme_organism
+            if form.uniprot_id_list.data:
+                uniprot_id_list = parse_input_list(form.uniprot_id_list.data)
+                _add_enzyme_organism(enzyme, organism_id, uniprot_id_list, form.gene_bigg_ids.data, form.number_of_active_sites.data)
 
 
         db.session.commit()
@@ -251,8 +249,8 @@ def add_model():
                       comments=form.comments.data)
 
         db.session.add(model)
-        organism.add_model(model)
         db.session.commit()
+
         flash('Your model is now live!')
         return redirect(url_for('main.see_models'))
     # return render_template('add_data.html', title='Add model', form=form, header='model', data_id_list=id_list, data_list=organism_data)
@@ -263,8 +261,7 @@ def add_model():
 @login_required
 def add_organism():
     form = OrganismForm()
-    organisms = Organism.query.all()
-    organism_data = [{'field1': organism.name} for organism in organisms]
+
     if form.validate_on_submit():
         organism = Organism(name=form.name.data)
         db.session.add(organism)
@@ -273,7 +270,7 @@ def add_organism():
         flash('Your organism is now live!', 'success')
 
         return redirect(url_for('main.see_organisms'))
-    return render_template('add_data.html', title='Add organism', form=form, header='organism', data=organism_data)
+    return render_template('add_data.html', title='Add organism', form=form, header='organism')
 
 
 def add_metabolites_to_reaction(reaction, reaction_string):
@@ -281,7 +278,14 @@ def add_metabolites_to_reaction(reaction, reaction_string):
     # (True, OrderedDict([('m_pep_c', -1.0), ('m_adp_c', -1.5), ('m_pyr_c', 1.0), ('m_atp_m', 2.0)]))
 
     for met, stoich_coef in stoichiometry.items():
-        met_db = Metabolite.query.filter_by(grasp_id=met).first()
+        try:
+            bigg_id = re.findall('(\w+)_(?:\S+)', met)[0]
+        except IndexError:
+                print('Did you specify all metabolites in the reaction as met_compartment?', 'danger')
+                return redirect(url_for('main.add_reactions'))
+
+        met_db = Metabolite.query.filter_by(bigg_id=bigg_id).first()
+
         if not met_db:
             try:
                 compartment_acronym = re.findall('(?:\S+)_(\w+)', met)[0]
@@ -289,108 +293,153 @@ def add_metabolites_to_reaction(reaction, reaction_string):
                 print('Did you specify all metabolites in the reaction as met_compartment?', 'danger')
                 return redirect(url_for('main.add_reactions'))
 
-            met_db = Metabolite(grasp_id=met,
+
+            met_db = Metabolite(bigg_id=bigg_id,
+                                grasp_id=bigg_id,
                                 compartment_acronym=compartment_acronym)
 
             db.session.add(met_db)
+
             reaction.add_metabolite(met_db, stoich_coef)
 
     return reaction
 
+def _add_gibbs_energy(standard_dg, standard_dg_std, standard_dg_ph, standard_dg_is, std_gibbs_energy_references, enzyme_reaction_model):
 
-"""
+    gibbs_energy_db = GibbsEnergy.query.filter_by(standard_dg=standard_dg,
+                                                  standard_dg_std=standard_dg_std,
+                                                  ph=standard_dg_ph,
+                                                  ionic_strength=standard_dg_is).first()
+
+    if not gibbs_energy_db:
+        gibbs_energy_db = GibbsEnergy(standard_dg=standard_dg,
+                                      standard_dg_std=standard_dg_std,
+                                      ph=standard_dg_ph,
+                                      ionic_strength=standard_dg_is)
+
+        db.session.add(gibbs_energy_db)
+        db.session.commit()
+
+    if enzyme_reaction_model:
+        enzyme_reaction_model.gibbs_energy_id = gibbs_energy_db.id
+
+    if std_gibbs_energy_references.lower().strip() != 'equilibrator':
+
+        gibbs_references = parse_input_list(std_gibbs_energy_references)
+        for ref_doi in gibbs_references:
+            ref_db = Reference.query.filter(doi=ref_doi).first()
+            if not ref_db:
+                ref_db = Reference(doi=ref_doi)
+                db.session.add(ref_db)
+            gibbs_energy_db.add_reference(ref_db.id)
+
+    if std_gibbs_energy_references.lower().strip() == 'equilibrator':
+        ref_db = Reference.query.filter_by(title='eQuilibrator').first()
+        gibbs_energy_db.add_reference(ref_db)
+
+
+
+def _add_mechanism(mechanism_references, enzyme_reaction_model):
+        mech_references = parse_input_list(mechanism_references)
+
+        for ref_doi in mech_references:
+            ref_db = Reference.query.filter_by(doi=ref_doi).first()
+            if not ref_db:
+                ref_db = Reference(doi=ref_doi)
+                db.session.add(ref_db)
+
+            enzyme_reaction_model.add_mechanism_reference(ref_db)
+
+
 @bp.route('/add_reaction', methods=['GET', 'POST'])
 @login_required
 def add_reaction():
+    """
+    Entity EnzymeReactionModel() is only created if either isoenzymes or model_id are provided besides the reaction.
+
+    :return:
+    """
 
     form = ReactionForm()
 
     enzymes = Enzyme.query.all()
-    isoenzyme_list = [{'field1': enzyme.isoenzyme} for enzyme in enzymes]
+    isoenzyme_list = {'id_value': '#isoenzyme_acronyms', 'input_data': [{'field1': enzyme.isoenzyme} for enzyme in enzymes] if enzymes else []}
+    data_list = [isoenzyme_list]
 
 
     if form.validate_on_submit():
 
+        compartment_name = form.compartment_name.data.name if form.compartment_name.data else ''
         reaction = Reaction(name=form.name.data,
-                            grasp_id=form.grasp_id.data,
+                            acronym=form.acronym.data,
                             metanetx_id=form.metanetx_id.data,
                             bigg_id=form.bigg_id.data,
                             kegg_id=form.kegg_id.data,
-                            compartment_name=form.compartment_name.data)
+                            compartment_name=compartment_name)
 
         db.session.add(reaction)
 
         add_metabolites_to_reaction(reaction, form.reaction_string.data)
 
-        for isoenzyme in form.enzymes.list:
-            enzyme_reaction_model = EnzymeReactionModel(enzyme_isoenzyme=isoenzyme,
-                                                        reaction_grasp_id = form.grasp_id.data,
-                                                        model_name=form.model_name.data,
-                                                        mechanism_name=form.mechanism.data,
-                                                        mech_evidence_level_name=form.mechanism_evidence_level.data,
+        if form.compartment_name.data:
+            compartment = Compartment.query.filter_by(name=compartment_name).first()
+            compartment.add_reaction(reaction)
+
+        model_id = form.model_name.data.id if form.model_name.data else ''
+        mechanism_id = form.mechanism.data.id if form.mechanism.data else ''
+        mech_evidence_level_id = form.mechanism_evidence_level.data.id if form.mechanism_evidence_level.data else ''
+        included_in_model = True if form.model_name.data else False
+
+        if form.isoenzyme_acronyms.data:
+            isoenzyme_list = parse_input_list(form.isoenzyme_acronyms.data)
+
+            for isoenzyme in isoenzyme_list:
+                enzyme_db = Enzyme.query.filter_by(isoenzyme=isoenzyme).first()
+
+
+                enzyme_reaction_model = EnzymeReactionModel(enzyme_id=enzyme_db.id,
+                                                            reaction_id = reaction.id,
+                                                            model_id=model_id,
+                                                            mechanism_id= mechanism_id,
+                                                            mech_evidence_level_id=mech_evidence_level_id,
+                                                            grasp_id=form.grasp_id.data,
+                                                            included_in_model=included_in_model,
+                                                            subs_binding_order=form.subs_binding_order.data,
+                                                            prod_release_order=form.prod_release_order.data)
+                db.session.add(enzyme_reaction_model)
+
+                if form.mechanism_references.data:
+                    _add_mechanism(form.mechanism_references.data, enzyme_reaction_model)
+
+                if form.std_gibbs_energy.data:
+                    _add_gibbs_energy(form.std_gibbs_energy.data, form.std_gibbs_energy_std.data, form.std_gibbs_energy_ph.data, form.std_gibbs_energy_ionic_strength.data, form.std_gibbs_energy_references.data, enzyme_reaction_model)
+
+        elif model_id:
+            enzyme_reaction_model = EnzymeReactionModel(enzyme_id='',
+                                                        reaction_id = reaction.id,
+                                                        model_id=model_id,
+                                                        mechanism_id=mechanism_id,
+                                                        mech_evidence_level_id=mech_evidence_level_id,
+                                                        grasp_id=form.grasp_id.data,
+                                                        included_in_model=included_in_model,
                                                         subs_binding_order=form.subs_binding_order.data,
                                                         prod_release_order=form.prod_release_order.data)
+            db.session.add(enzyme_reaction_model)
 
-            mech_references = form.mechanism_references.data.strip()
-            if mech_references.find(', ') != -1:
-                mech_references.split(', ')
-            elif mech_references.find(' ') != -1:
-                mech_references.split(' ')
-            elif mech_references.find(',') != -1:
-                mech_references.split(',')
-            else:
-                mech_references = [mech_references]
+            if form.mechanism_references.data:
+                    _add_mechanism(form.mechanism_references.data, enzyme_reaction_model)
 
-            for ref_doi in mech_references:
-                ref_db = Reference.query.filter(doi=ref_doi).first()
-                if not ref_db:
-                    ref_db = Reference(doi=ref_doi)
-                    db.session.add(ref_db)
-                enzyme_reaction_model.add_mechanism_reference(ref_db.id)
-
-            gibbs_energy = GibbsEnergy.query.filter(standard_dg=form.std_gibbs_energy.data,
-                                                    standard_dg_std=form.std_gibbs_energy_std.data,
-                                                    ph=form.std_gibbs_energy_ph.data,
-                                                    ionic_strength=form.std_gibbs_energy_ionic_strength.data).all()
-
-            if len(gibbs_energy) == 1:
-                enzyme_reaction_model.gibbs_energy_id = gibbs_energy.id
-            elif len(gibbs_energy) == 0:
-                db.session.add(gibbs_energy)
-
-                if form.std_gibbs_energy_references.data.lower().strip() == 'equilibrator':
-
-                    ref_db = Reference.query.filter(name='equilibrator').first()
-                    if not ref_db:
-                        ref_db = Reference(name='equilibrator')
-                        db.session.add(ref_db)
-                    gibbs_energy.reference_id = ref_db.id
-                else:
-                    gibbs_references = form.std_gibbs_energy_references.data.strip()
-                    if gibbs_references.find(', ') != -1:
-                        gibbs_references.split(', ')
-                    elif gibbs_references.find(' ') != -1:
-                        gibbs_references.split(' ')
-                    elif gibbs_references.find(',') != -1:
-                        gibbs_references.split(',')
-
-
-                    for ref_doi in gibbs_references:
-                        ref_db = Reference.query.filter(doi=ref_doi).first()
-                        if not ref_db:
-                            ref_db = Reference(doi=ref_doi)
-                            db.session.add(ref_db)
-                        gibbs_energy.add_reference(ref_db.id)
-
-            enzyme_reaction_model.gibbs_energy_id = gibbs_energy.id
+            if form.std_gibbs_energy.data:
+                _add_gibbs_energy(form.std_gibbs_energy.data, form.std_gibbs_energy_std.data, form.std_gibbs_energy_ph.data, form.std_gibbs_energy_ionic_strength.data, form.std_gibbs_energy_references.data, enzyme_reaction_model)
 
         db.session.commit()
+
 
         flash('Your reaction is now live!', 'success')
 
         return redirect(url_for('main.see_reactions'))
-    return render_template('add_data.html', title='Add reaction', form=form, header='reaction', data_in=isoenzyme_list)
-"""
+    return render_template('add_data.html', title='Add reaction', form=form, header='reaction', data_list=data_list)
+
 
 
 @bp.route('/see_enzymes')
@@ -449,7 +498,7 @@ def see_organisms():
                            data_type='organism', next_url=next_url, prev_url=prev_url)
 
 
-"""
+
 @bp.route('/see_reactions')
 @login_required
 def see_reactions():
@@ -463,4 +512,4 @@ def see_reactions():
     return render_template("see_data.html", title='See reactions', data=reactions.items,
                            data_type='reaction', next_url=next_url, prev_url=prev_url)
 
-"""
+
