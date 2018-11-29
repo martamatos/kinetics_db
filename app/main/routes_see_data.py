@@ -2,7 +2,7 @@ from app.main.forms import  EnzymeForm, GeneForm, ModelForm, OrganismForm, React
 from flask import render_template, flash, redirect, url_for, request
 from flask_login import  login_required
 from app import current_app, db
-from app.models import  Compartment, Enzyme, EnzymeReactionModel, EnzymeOrganism, EnzymeStructure, EvidenceLevel, Gene, \
+from app.models import  Compartment, Enzyme, EnzymeReactionOrganism, EnzymeOrganism, EnzymeStructure, EvidenceLevel, Gene, \
     GibbsEnergy, Mechanism, Metabolite, Model, Organism, Reaction, ReactionMetabolite, Reference
 from app.main import bp
 

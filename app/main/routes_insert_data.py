@@ -1,9 +1,9 @@
-from app.main.forms import  EnzymeForm, GeneForm, ModelForm, OrganismForm, ReactionForm
+from app.main.forms import  EnzymeForm, EnzymeActivationForm, EnzymeEffectorForm, EnzymeInhibitionForm, EnzymeMiscInfoForm, GeneForm, ModelAssumptionsForm, ModelForm, OrganismForm, ReactionForm
 from flask import render_template, flash, redirect, url_for
 from flask_login import login_required
 from app import current_app, db
-from app.models import Compartment, Enzyme, EnzymeReactionModel, EnzymeOrganism, EnzymeStructure, EvidenceLevel, Gene, \
-    GibbsEnergy, Mechanism, Metabolite, Model, Organism, Reaction, ReactionMetabolite, Reference
+from app.models import Compartment, Enzyme, EnzymeReactionOrganism, EnzymeReactionActivation, EnzymeReactionEffector, EnzymeReactionInhibition, EnzymeReactionMiscInfo, EnzymeOrganism, EnzymeStructure, EvidenceLevel, Gene, \
+    GibbsEnergy, GibbsEnergyReactionModel, Mechanism, Metabolite, Model, ModelAssumptions, Organism, Reaction, ReactionMetabolite, Reference
 from app.main import bp
 from app.utils.parsers import ReactionParser, parse_input_list
 import re
@@ -105,6 +105,201 @@ def add_enzyme():
     return render_template('add_data.html', title='Add enzyme', form=form, header='enzyme', data_list=data_list)
 
 
+
+def _check_metabolite(bigg_id):
+    inhib_met_db = Metabolite.query.filter_by(bigg_id=bigg_id).first()
+    if not inhib_met_db:
+        inhib_met_db = Metabolite(bigg_id=bigg_id,
+                                  grasp_id=bigg_id)
+        db.session.add(inhib_met_db)
+
+
+def _add_references(references):
+    reference_list = parse_input_list(references)
+    ref_db_list = []
+    for reference in reference_list:
+        ref_db = Reference.query.filter_by(doi=reference).first()
+        if not ref_db:
+            ref_db = Reference(doi=reference)
+        ref_db_list.append(ref_db)
+
+    return ref_db_list
+
+
+@bp.route('/add_enzyme_inhibition', methods=['GET', 'POST'])
+@login_required
+def add_enzyme_inhibition():
+
+    form = EnzymeInhibitionForm()
+
+    metabolites = Metabolite.query.all()
+    metabolite_list = {'id_value': '#metabolite_list', 'input_data': [{'field1': metabolite.bigg_id} for metabolite in metabolites] if metabolites else []}
+    data_list = [metabolite_list]
+
+    if form.validate_on_submit():
+        inhib_met = _check_metabolite(form.inhibitor_met.data)
+        affected_met = _check_metabolite(form.affected_met.data)
+
+
+
+        inhibition_evidence_level_id = form.inhibition_evidence_level.data.id if form.inhibition_evidence_level.data else None
+
+
+        enz_rxn_org = EnzymeReactionOrganism.query.filter_by(enzyme_id = form.isoenzyme.data.id, reaction_id=form.reaction.data.id,
+                                                                 organism_id=form.organism.data.id).first()
+
+        enz_rxn_inhib = EnzymeReactionInhibition(enz_rxn_model_id=enz_rxn_org.id,
+                                                 inhibitor_met_id=inhib_met.id,
+                                                 affected_met_met_id=affected_met.id,
+                                                 inhibition_constant=form.inhibition_evidence_level.data,
+                                                 inhibition_type=form.inhibition_type.data,
+                                                 evidence_level_id = inhibition_evidence_level_id,
+                                                 comments=form.comments.data)
+        db.session.add(enz_rxn_inhib)
+
+        if form.references.data:
+            ref_db_list = _add_references(form.references.data)
+            for ref_db in ref_db_list:
+                enz_rxn_inhib.add_references(ref_db)
+
+        if form.models.data:
+            for model in form.models.data:
+                enz_rxn_inhib.add_model(model)
+
+        db.session.commit()
+
+
+        flash('Your enzyme inhibition is now live!', 'success')
+
+        return redirect(url_for('main.see_enzymes'))
+    return render_template('add_data.html', title='Add enzyme inhibition', form=form, header='enzyme inhibition', data_list=data_list)
+
+
+
+@bp.route('/add_enzyme_activation', methods=['GET', 'POST'])
+@login_required
+def add_enzyme_activation():
+
+    form = EnzymeActivationForm()
+
+    metabolites = Metabolite.query.all()
+    metabolite_list = {'id_value': '#metabolite_list', 'input_data': [{'field1': metabolite.bigg_id} for metabolite in metabolites] if metabolites else []}
+    data_list = [metabolite_list]
+
+
+    if form.validate_on_submit():
+        activator_met = _check_metabolite(form.activator_met.data)
+
+        if form.reference.data:
+            ref_db_list = _add_references(form.reference.data)
+
+        activation_evidence_level_id = form.activation_evidence_level.data.id if form.activation_evidence_level.data else None
+
+        if model.data:
+            enz_rxn_model = EnzymeReactionOrganism.query.filter_by(enzyme_id = isoenzyme.data.id, reaction_id=reaction.data.id,
+                                                                model_id=model.data.id)
+        else:
+            enz_rxn_model = EnzymeReactionOrganism.query.filter_by(enzyme_id = isoenzyme.data.id, reaction_id=reaction.data.id)
+
+        enz_rxn_activation = EnzymeReactionActivation(enz_rxn_model_id=enz_rxn_model.id,
+                                                     activator_met_id=activator_met.id,
+                                                     activation_constant=form.activation_constant.data,
+                                                     evidence_level_id = activation_evidence_level_id,
+                                                     comments=forms.comments.data)
+
+        db.session.add(enz_rxn_activation)
+        for ref_db in ref_db_list:
+            enz_rxn_activation.add_references(ref_db)
+
+        db.session.commit()
+
+        flash('Your enzyme activation is now live!', 'success')
+
+        return redirect(url_for('main.see_enzymes'))
+    return render_template('add_data.html', title='Add enzyme activation', form=form, header='enzyme activation', data_list=data_list)
+
+
+@bp.route('/add_enzyme_effector', methods=['GET', 'POST'])
+@login_required
+def add_enzyme_effector():
+
+    form = EnzymeEffectorForm()
+
+    metabolites = Metabolite.query.all()
+    metabolite_list = {'id_value': '#metabolite_list', 'input_data': [{'field1': metabolite.bigg_id} for metabolite in metabolites] if metabolites else []}
+    data_list = [metabolite_list]
+
+    if form.validate_on_submit():
+        effector_met = _check_metabolite(form.effector_met.data)
+
+        if form.reference.data:
+            ref_db_list = _add_references(form.reference.data)
+
+        effector_evidence_level_id = form.effector_evidence_level.data.id if form.effector_evidence_level.data else None
+
+        if model.data:
+            enz_rxn_model = EnzymeReactionOrganism.query.filter_by(enzyme_id = isoenzyme.data.id, reaction_id=reaction.data.id,
+                                                                model_id=model.data.id)
+        else:
+            enz_rxn_model = EnzymeReactionOrganism.query.filter_by(enzyme_id = isoenzyme.data.id, reaction_id=reaction.data.id)
+
+        enz_rxn_effector = EnzymeReactionEffector(enz_rxn_model_id=enz_rxn_model.id,
+                                                  effector_met_id=effector_met.id,
+                                                  effector_type=form.effector_type.data,
+                                                  evidence_level_id = effector_evidence_level_id,
+                                                  comments=forms.comments.data)
+
+        db.session.add(enz_rxn_effector)
+        for ref_db in ref_db_list:
+            enz_rxn_effector.add_references(ref_db)
+
+        db.session.commit()
+
+        flash('Your enzyme effector is now live!', 'success')
+
+        return redirect(url_for('main.see_enzymes'))
+    return render_template('add_data.html', title='Add enzyme effector', form=form, header='enzyme effector', data_list=data_list)
+
+
+
+@bp.route('/add_enzyme_misc_info', methods=['GET', 'POST'])
+@login_required
+def add_enzyme_misc_info():
+
+    form = EnzymeMiscInfoForm()
+
+    if form.validate_on_submit():
+
+        if form.reference.data:
+            ref_db_list = _add_references(form.reference.data)
+
+        evidence_level_id = form.evidence_level.data.id if form.evidence_level.data else None
+
+        if model.data:
+            enz_rxn_model = EnzymeReactionOrganism.query.filter_by(enzyme_id = isoenzyme.data.id, reaction_id=reaction.data.id,
+                                                                model_id=model.data.id)
+        else:
+            enz_rxn_model = EnzymeReactionOrganism.query.filter_by(enzyme_id = isoenzyme.data.id, reaction_id=reaction.data.id)
+
+        enz_misc_info = EnzymeReactionMiscInfo(enz_rxn_model_id=enz_rxn_model.id,
+                                               topic=form.topic.data,
+                                               description=form.description.data,
+                                               evidence_level_id=effector_evidence_level_id,
+                                               comments=forms.comments.data)
+
+        db.session.add(enz_misc_info)
+        for ref_db in ref_db_list:
+            enz_misc_info.add_references(ref_db)
+
+        db.session.commit()
+
+        flash('Your enzyme misc info is now live!', 'success')
+
+        return redirect(url_for('main.see_enzymes'))
+    return render_template('add_data.html', title='Add enzyme misc info', form=form, header='enzyme misc info')
+
+
+
 @bp.route('/add_gene', methods=['GET', 'POST'])
 @login_required
 def add_gene():
@@ -149,6 +344,38 @@ def add_model():
     return render_template('add_data.html', title='Add model', form=form, header='model', data_list=data_list)
 
 
+@bp.route('/add_model_assumption', methods=['GET', 'POST'])
+@login_required
+def add_model_assumption():
+
+    form = ModelAssumptionsForm()
+
+    if form.validate_on_submit():
+
+        if form.reference.data:
+            ref_db_list = _add_references(form.reference.data)
+
+        evidence_level_id = form.evidence_level.data.id if form.evidence_level.data else None
+
+        model_assumption = ModelAssumptions(model_id=form.model.data.id,
+                                             assumption=form.topic.data,
+                                             description=form.description.data,
+                                             evidence_level_id=effector_evidence_level_id,
+                                             included_in_model=form.included_in_model.data,
+                                             comments=forms.comments.data)
+
+        db.session.add(model_assumption)
+        for ref_db in ref_db_list:
+            model_assumption.add_references(ref_db)
+
+        db.session.commit()
+
+        flash('Your model assumption is now live!', 'success')
+
+        return redirect(url_for('main.see_models'))
+    return render_template('add_data.html', title='Add model assumption', form=form, header='model assumption')
+
+
 @bp.route('/add_organism', methods=['GET', 'POST'])
 @login_required
 def add_organism():
@@ -165,7 +392,9 @@ def add_organism():
     return render_template('add_data.html', title='Add organism', form=form, header='organism')
 
 
-def add_metabolites_to_reaction(reaction, reaction_string):
+
+def _add_metabolites_to_reaction(reaction, reaction_string):
+
     reversible, stoichiometry = ReactionParser().parse_reaction(reaction_string)
     # (True, OrderedDict([('m_pep_c', -1.0), ('m_adp_c', -1.5), ('m_pyr_c', 1.0), ('m_atp_m', 2.0)]))
 
@@ -196,14 +425,29 @@ def add_metabolites_to_reaction(reaction, reaction_string):
 
     return reaction
 
-def _add_gibbs_energy(standard_dg, standard_dg_std, standard_dg_ph, standard_dg_is, std_gibbs_energy_references, enzyme_reaction_model):
+
+def _add_gibbs_energy(reaction_id, model_id, standard_dg, standard_dg_std, standard_dg_ph, standard_dg_is, std_gibbs_energy_references):
 
     gibbs_energy_db = GibbsEnergy.query.filter_by(standard_dg=standard_dg,
                                                   standard_dg_std=standard_dg_std,
                                                   ph=standard_dg_ph,
                                                   ionic_strength=standard_dg_is).first()
 
+
+    if gibbs_energy_db:
+        gibbs_energy_reaction_model_db = GibbsEnergyReactionModel.query.filter_by(reaction_id=reaction_id,
+                                                                                  model_id=model_id,
+                                                                                  gibbs_energy_id=gibbs_energy_db.id).first()
+
+        if not gibbs_energy_reaction_model_db:
+            gibbs_energy_reaction_model_db = GibbsEnergyReactionModel(reaction_id=reaction_id,
+                                                                      model_id=model_id,
+                                                                      gibbs_energy_id=gibbs_energy_db.id)
+
+            db.session.add(gibbs_energy_reaction_model_db)
+
     if not gibbs_energy_db:
+
         gibbs_energy_db = GibbsEnergy(standard_dg=standard_dg,
                                       standard_dg_std=standard_dg_std,
                                       ph=standard_dg_ph,
@@ -212,8 +456,13 @@ def _add_gibbs_energy(standard_dg, standard_dg_std, standard_dg_ph, standard_dg_
         db.session.add(gibbs_energy_db)
         db.session.commit()
 
-    if enzyme_reaction_model:
-        enzyme_reaction_model.gibbs_energy_id = gibbs_energy_db.id
+        gibbs_energy_reaction_model_db = GibbsEnergyReactionModel(reaction_id=reaction_id,
+                                                                  model_id=model_id,
+                                                                  gibbs_energy_id=gibbs_energy_db.id)
+
+        db.session.add(gibbs_energy_reaction_model_db)
+
+        db.session.commit()
 
     if std_gibbs_energy_references.lower().strip() != 'equilibrator':
 
@@ -228,7 +477,6 @@ def _add_gibbs_energy(standard_dg, standard_dg_std, standard_dg_ph, standard_dg_
     if std_gibbs_energy_references.lower().strip() == 'equilibrator':
         ref_db = Reference.query.filter_by(title='eQuilibrator').first()
         gibbs_energy_db.add_reference(ref_db)
-
 
 
 def _add_mechanism(mechanism_references, enzyme_reaction_model):
@@ -247,7 +495,7 @@ def _add_mechanism(mechanism_references, enzyme_reaction_model):
 @login_required
 def add_reaction():
     """
-    Entity EnzymeReactionModel() is only created if either isoenzymes or model_id are provided besides the reaction.
+    Entity EnzymeReactionOrganism() is only created if either isoenzymes or model_id are provided besides the reaction.
 
     :return:
     """
@@ -261,7 +509,7 @@ def add_reaction():
 
     if form.validate_on_submit():
 
-        compartment_name = form.compartment_name.data.name if form.compartment_name.data else ''
+        compartment_name = form.compartment.data.name if form.compartment.data else ''
         reaction = Reaction(name=form.name.data,
                             acronym=form.acronym.data,
                             metanetx_id=form.metanetx_id.data,
@@ -271,58 +519,42 @@ def add_reaction():
 
         db.session.add(reaction)
 
-        add_metabolites_to_reaction(reaction, form.reaction_string.data)
+        _add_metabolites_to_reaction(reaction, form.reaction_string.data)
 
-        if form.compartment_name.data:
+        if compartment_name:
             compartment = Compartment.query.filter_by(name=compartment_name).first()
             compartment.add_reaction(reaction)
 
-        model_id = form.model_name.data.id if form.model_name.data else ''
         mechanism_id = form.mechanism.data.id if form.mechanism.data else ''
         mech_evidence_level_id = form.mechanism_evidence_level.data.id if form.mechanism_evidence_level.data else ''
-        included_in_model = True if form.model_name.data else False
-
-        if form.isoenzyme_acronyms.data:
-            isoenzyme_list = parse_input_list(form.isoenzyme_acronyms.data)
-
-            for isoenzyme in isoenzyme_list:
-                enzyme_db = Enzyme.query.filter_by(isoenzyme=isoenzyme).first()
 
 
-                enzyme_reaction_model = EnzymeReactionModel(enzyme_id=enzyme_db.id,
-                                                            reaction_id = reaction.id,
-                                                            model_id=model_id,
-                                                            mechanism_id= mechanism_id,
-                                                            mech_evidence_level_id=mech_evidence_level_id,
-                                                            grasp_id=form.grasp_id.data,
-                                                            included_in_model=included_in_model,
-                                                            subs_binding_order=form.subs_binding_order.data,
-                                                            prod_release_order=form.prod_release_order.data)
-                db.session.add(enzyme_reaction_model)
+        for enzyme in form.enzymes.data:
 
-                if form.mechanism_references.data:
-                    _add_mechanism(form.mechanism_references.data, enzyme_reaction_model)
-
-                if form.std_gibbs_energy.data:
-                    _add_gibbs_energy(form.std_gibbs_energy.data, form.std_gibbs_energy_std.data, form.std_gibbs_energy_ph.data, form.std_gibbs_energy_ionic_strength.data, form.std_gibbs_energy_references.data, enzyme_reaction_model)
-
-        elif model_id:
-            enzyme_reaction_model = EnzymeReactionModel(enzyme_id='',
-                                                        reaction_id = reaction.id,
-                                                        model_id=model_id,
-                                                        mechanism_id=mechanism_id,
-                                                        mech_evidence_level_id=mech_evidence_level_id,
-                                                        grasp_id=form.grasp_id.data,
-                                                        included_in_model=included_in_model,
-                                                        subs_binding_order=form.subs_binding_order.data,
-                                                        prod_release_order=form.prod_release_order.data)
-            db.session.add(enzyme_reaction_model)
+            enzyme_reaction_organism = EnzymeReactionOrganism(enzyme_id=enzyme.id,
+                                                                reaction_id = reaction.id,
+                                                                organism_id=form.organism.data.id,
+                                                                mechanism_id= mechanism_id,
+                                                                mech_evidence_level_id=mech_evidence_level_id,
+                                                                grasp_id=form.grasp_id.data,
+                                                                subs_binding_order=form.subs_binding_order.data,
+                                                                prod_release_order=form.prod_release_order.data,
+                                                                comments=form.comments.data)
+            db.session.add(enzyme_reaction_organism)
 
             if form.mechanism_references.data:
-                    _add_mechanism(form.mechanism_references.data, enzyme_reaction_model)
+                _add_mechanism(form.mechanism_references.data, enzyme_reaction_organism)
 
-            if form.std_gibbs_energy.data:
-                _add_gibbs_energy(form.std_gibbs_energy.data, form.std_gibbs_energy_std.data, form.std_gibbs_energy_ph.data, form.std_gibbs_energy_ionic_strength.data, form.std_gibbs_energy_references.data, enzyme_reaction_model)
+            if form.models.data:
+                for model in form.models.data:
+
+                    enzyme_reaction_organism.add_model(model)
+
+
+                    if form.std_gibbs_energy.data:
+                        _add_gibbs_energy(reaction.id, model.id, form.std_gibbs_energy.data, form.std_gibbs_energy_std.data,
+                                          form.std_gibbs_energy_ph.data, form.std_gibbs_energy_ionic_strength.data,
+                                          form.std_gibbs_energy_references.data)
 
         db.session.commit()
 
@@ -331,6 +563,4 @@ def add_reaction():
 
         return redirect(url_for('main.see_reactions'))
     return render_template('add_data.html', title='Add reaction', form=form, header='reaction', data_list=data_list)
-
-
 

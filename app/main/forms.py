@@ -1,25 +1,32 @@
 from flask_wtf import FlaskForm
 from wtforms import FloatField, IntegerField, SelectField, StringField, SubmitField, TextAreaField
 from wtforms.validators import ValidationError, DataRequired, Length, Optional
-from app.models import Compartment, Enzyme, EnzymeStructure, EvidenceLevel, Mechanism, Model, Organism, User
-from wtforms.ext.sqlalchemy.fields import QuerySelectField
+from app.models import Compartment, Enzyme, EnzymeStructure, EvidenceLevel, Mechanism, Model, Organism, Reaction, User
+from wtforms.ext.sqlalchemy.fields import QuerySelectField, QuerySelectMultipleField
 from app.utils.parsers import parse_input_list
 
-
-def get_models():
-    return Model.query
 
 def get_compartments():
     return Compartment.query
 
-def get_mechanisms():
-    return Mechanism.query
+def get_enzymes():
+    return Enzyme.query
 
 def get_evidence_names():
     return EvidenceLevel.query
 
-def get_organism_names():
+def get_reactions():
+    return Reaction.query
+
+def get_mechanisms():
+    return Mechanism.query
+
+def get_models():
+    return Model.query
+
+def get_organisms():
     return Organism.query
+
 
 class EditProfileForm(FlaskForm):
     username = StringField('Username', validators=[DataRequired()])
@@ -48,7 +55,7 @@ class EnzymeForm(FlaskForm):
     isoenzyme = StringField('Isoenzyme (e.g. PFK1) *', validators=[DataRequired()])
     ec_number = StringField('EC number *', validators=[DataRequired()])
 
-    organism_name = QuerySelectField('Organism name (eg. E coli)', query_factory=get_organism_names, allow_blank=True)
+    organism_name = QuerySelectField('Organism name (eg. E coli)', query_factory=get_organisms, allow_blank=True)
     number_of_active_sites = IntegerField('Number of enzyme subunits (you need to specify the organism first)', validators=[Optional()])
     gene_bigg_ids = StringField('Encoding gene bigg IDs (you need to specify the organism first)', id='gene_bigg_ids')
     uniprot_id_list = StringField('Uniprod IDs (you need to specify the organism first) ')
@@ -56,13 +63,6 @@ class EnzymeForm(FlaskForm):
     strain = StringField('Strain for the PDB structure', id='strain')
 
     submit = SubmitField('Submit')
-    """
-    def validate_ec_number(self, ec_number):
-        enzyme_db_list = Enzyme.query.filter(ec_number=ec_number.data).all()
-        if enzyme_db_list:
-            enzyme_db_list = [str((enzyme.ec_number, enzyme.acronym)) for enzyme in enzyme_db_list]
-            raise ValidationError('An enzyme with the given EC number already exists in the database. Are you sure you want to continue\n' + '\n'.join(enzyme_db_list))
-    """
 
     def validate_isoenzyme(self, isoenzyme):
         enzyme_list = Enzyme.query.all()
@@ -93,12 +93,91 @@ class EnzymeForm(FlaskForm):
             raise ValidationError('When providing PDB IDs either provide:\n-the corresponding strains for each PDB ID;\n-a single strain name\n-or no strain names.')
 
 
+class EnzymeInhibitionForm(FlaskForm):
+
+    isoenzyme = QuerySelectField('Isoenzyme *', query_factory=get_enzymes)
+    reaction = QuerySelectField('Reaction *', query_factory=get_reactions)
+    organism = QuerySelectField('Organism *', query_factory=get_organisms)
+    models = QuerySelectMultipleField('Model', query_factory=get_models, allow_blank=True)
+    inhibitor_met = StringField('Inhibiting metabolite (e.g. adp), please use bigg IDs *', validators=[DataRequired()], id='metabolite_list')
+    affected_met = StringField('Affected metabolite (e.g. atp), please use bigg IDs', id='metabolite_list')
+    inhibition_type = SelectField('Inhibition type', choices=[('Unknown', 'Unknown'), ('Competitive', 'Competitive'),
+                                                              ('Uncompetitive', 'Uncompetitive'),
+                                                              ('Noncompetitive', 'Noncompetitive'),
+                                                              ('Mixed', 'Mixed')])
+    inhibition_constant = FloatField('Inhibition constant (in M)', validators=[Optional()])
+    inhibition_evidence_level = QuerySelectField('Enzyme inhibition evidence level', query_factory=get_evidence_names, allow_blank=True)
+    references = StringField('References, please use DOI (e.g. https://doi.org/10.1093/bioinformatics/bty942, http://doi.org/10.5334/jors.236)')
+    comments = TextAreaField('Comments')
+
+    submit = SubmitField('Submit')
+
+
+class EnzymeActivationForm(FlaskForm):
+
+    isoenzyme = QuerySelectField('Isoenzyme *', query_factory=get_enzymes, validators=[DataRequired()])
+    reaction = QuerySelectField('Reaction *', query_factory=get_reactions, validators=[DataRequired()])
+    organism = QuerySelectField('Organism *', query_factory=get_organisms)
+    models = QuerySelectMultipleField('Model', query_factory=get_models, allow_blank=True)
+    activator_met = StringField('Activating metabolite (e.g. adp), please use bigg IDs *', validators=[DataRequired()], id='metabolite_list')
+    activation_constant = FloatField('Activation constant (in M)', validators=[Optional()])
+    activation_evidence_level = QuerySelectField('Activation inhibition evidence level', query_factory=get_evidence_names, allow_blank=True)
+    references = StringField('References, please use DOI (e.g. https://doi.org/10.1093/bioinformatics/bty942, http://doi.org/10.5334/jors.236)')
+    comments = TextAreaField('Comments')
+
+    submit = SubmitField('Submit')
+
+
+class EnzymeEffectorForm(FlaskForm):
+
+    isoenzyme = QuerySelectField('Isoenzyme *', query_factory=get_enzymes, validators=[DataRequired()])
+    reaction = QuerySelectField('Reaction *', query_factory=get_reactions, validators=[DataRequired()])
+    organism = QuerySelectField('Organism *', query_factory=get_organisms)
+    models = QuerySelectMultipleField('Model', query_factory=get_models, allow_blank=True)
+    effector_met = StringField('Effector metabolite (e.g. adp), please use bigg IDs *', validators=[DataRequired()], id='metabolite_list')
+    effector_type = SelectField('Effector type',  choices=[('Activating', 'Activating'), ('Inhibiting', 'Inhibiting')])
+    effector_evidence_level = QuerySelectField('Effector evidence level', query_factory=get_evidence_names, allow_blank=True)
+    references = StringField('References, please use DOI (e.g. https://doi.org/10.1093/bioinformatics/bty942, http://doi.org/10.5334/jors.236)')
+    comments = TextAreaField('Comments')
+
+    submit = SubmitField('Submit')
+
+
+class EnzymeMiscInfoForm(FlaskForm):
+
+    isoenzyme = QuerySelectField('Isoenzyme *', query_factory=get_enzymes, validators=[DataRequired()])
+    reaction = QuerySelectField('Reaction *', query_factory=get_reactions, validators=[DataRequired()])
+    organism = QuerySelectField('Organism *', query_factory=get_organisms)
+    models = QuerySelectMultipleField('Model', query_factory=get_models, allow_blank=True)
+    topic = StringField('Topic (e.g. allostery) *', validators=[DataRequired()])
+    description = TextAreaField('Description *',  validators=[DataRequired()])
+    evidence_level = QuerySelectField('Evidence level', query_factory=get_evidence_names, allow_blank=True)
+    references = StringField('References, please use DOI (e.g. https://doi.org/10.1093/bioinformatics/bty942, http://doi.org/10.5334/jors.236)')
+    comments = TextAreaField('Comments')
+
+    submit = SubmitField('Submit')
+
+
 class GeneForm(FlaskForm):
     name = StringField('Gene name (e.g. pfkA) *', validators=[DataRequired()])
     bigg_id = StringField('Bigg ID (eg. pfkA)')
-    organism = QuerySelectField('Organism name (eg. E coli)', query_factory=get_organism_names)
+    organism = QuerySelectField('Organism name (eg. E coli)', query_factory=get_organisms)
 
     submit = SubmitField('Submit')
+
+
+class ModelAssumptionsForm(FlaskForm):
+
+    model = QuerySelectField('Model *', query_factory=get_models)
+    assumption = StringField('Assumption *', validators=[DataRequired()])
+    description = TextAreaField('Description *',  validators=[DataRequired()])
+    evidence_level = QuerySelectField('Evidence level', query_factory=get_evidence_names, allow_blank=True)
+    included_in_model = SelectField('Is this assumption included in the model?', choices=[(True, 'True'), (False, 'False')])
+    references = StringField('References, please use DOI (e.g. https://doi.org/10.1093/bioinformatics/bty942, http://doi.org/10.5334/jors.236)')
+    comments = TextAreaField('Comments')
+
+    submit = SubmitField('Submit')
+
 
 
 class ModelForm(FlaskForm):
@@ -127,7 +206,6 @@ class OrganismForm(FlaskForm):
             raise ValidationError('An organism with that name already exists, please use another name')
 
 
-
 class ReactionForm(FlaskForm):
 
     name = StringField('Reaction name (e.g. phosphofructokinase) *', validators=[DataRequired()])
@@ -138,33 +216,29 @@ class ReactionForm(FlaskForm):
     bigg_id = StringField('Bigg ID')
     kegg_id = StringField('Kegg ID')
 
-    compartment_name = QuerySelectField('Compartment name', query_factory=get_compartments, allow_blank=True)
-    model_name = QuerySelectField('Model name' , query_factory=get_models, allow_blank=True)
-    isoenzyme_acronyms = StringField('Isoenzyme(s) that catalyze the reaction (e.g. PFK1, PFK2)', id='isoenzyme_acronyms')
+    compartment = QuerySelectField('Compartment name', query_factory=get_compartments, allow_blank=True)
+    organism = QuerySelectField('Organism name *' , query_factory=get_organisms)
+    models = QuerySelectMultipleField('Model name' , query_factory=get_models)
+    enzymes = QuerySelectMultipleField('Isoenzyme(s) that catalyze the reaction (e.g. PFK1, PFK2) *', query_factory=get_enzymes, validators=[DataRequired()])
+
     mechanism = QuerySelectField('Enzyme mechanism name (if you add the mechanism, you also need to add the isoenzyme(s) that catalyze the reaction)', query_factory=get_mechanisms, allow_blank=True)
     mechanism_references = StringField('DOI for mechanism references (e.g. https://doi.org/10.1093/bioinformatics/bty942, http://doi.org/10.5334/jors.236) ')
     mechanism_evidence_level = QuerySelectField('Enzyme mechanism evidence level', query_factory=get_evidence_names, allow_blank=True)
-    subs_binding_order = StringField('Substrate binding order (e.g. adp_c, pep_c) (if you add the mechanism, you also need to add the isoenzyme(s) that catalyze the reaction)')
-    prod_release_order = StringField('Substrate binding order (e.g. atp_c, pyr_c) (if you add the mechanism, you also need to add the isoenzyme(s) that catalyze the reaction)')
+    subs_binding_order = StringField('Substrate binding order (e.g. adp_c, pep_c)')
+    prod_release_order = StringField('Product release order (e.g. atp_c, pyr_c)')
+
     std_gibbs_energy = FloatField('Standard Gibbs energy (in kJ/mol)', validators=[Optional()])
     std_gibbs_energy_std = FloatField('Standard Gibbs energy standard deviation(in kJ/mol)', validators=[Optional()])
     std_gibbs_energy_ph = FloatField('pH for Gibbs energy', validators=[Optional()])
     std_gibbs_energy_ionic_strength = FloatField('Ionic strength for Gibbs energy', validators=[Optional()])
     std_gibbs_energy_references = StringField('Reference for Gibbs energy (if it is equilibrator just type equilibrator, otherwise use DOI, https://doi.org/10.1093/bioinformatics/bty942, http://doi.org/10.5334/jors.236')
 
+    comments = TextAreaField('Comments')
+
     submit = SubmitField('Submit')
 
-    def validate_isoenzyme_acronyms(self, isoenzyme_acronyms):
-        if isoenzyme_acronyms.data:
-            isoenzyme_list = set([enzyme.isoenzyme for enzyme in Enzyme.query.all()])
-            isoenzyme_input_list = parse_input_list(isoenzyme_acronyms.data)
-
-            for isoenzyme in isoenzyme_input_list:
-                if isoenzyme not in isoenzyme_list:
-                    raise ValidationError('The isoenzyme' + isoenzyme + 'is not part of the database.')
-
     def validate_mechanism(self, mechanism):
-        if mechanism.data and not self.isoenzyme_acronyms.data:
+        if mechanism.data and not self.enzymes.data:
             raise ValidationError('If you add a reaction mechanism, you need to specify the catalyzing isoenzyme(s).')
 
     def validate_mechanism_evidence_level(self, mechanism_evidence_level):
@@ -172,15 +246,15 @@ class ReactionForm(FlaskForm):
             raise ValidationError('You cannot specify evidence level for the mechanism without specifying a mechanism.')
 
     def validate_subs_binding_order(self, subs_binding_order):
-        if subs_binding_order.data and not self.isoenzyme_acronyms.data:
+        if subs_binding_order.data and not self.enzymes.data:
             raise ValidationError('If you add substrate binding order without specifying the catalyzing isoenzyme(s).')
 
     def validate_prod_release_order(self, prod_release_order):
-        if prod_release_order.data and not self.isoenzyme_acronyms.data:
+        if prod_release_order.data and not self.enzymes.data:
             raise ValidationError('If you add product release order without specifying the catalyzing isoenzyme(s).')
 
     def validate_std_gibbs_energy_std(self, std_gibbs_energy_std):
-        if not self.model_name.data:
+        if not self.models.data:
             raise ValidationError('Gibbs energies cannot be added to reactions alone, a model must be associated as well. Please add model name. ')
 
         if std_gibbs_energy_std.data  and not self.std_gibbs_energy.data :

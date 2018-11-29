@@ -6,7 +6,7 @@ from app.main.routes_insert_data import add_model
 from app.models import User, Post, Compartment, Enzyme, EnzymeOrganism, EnzymeStructure, Gene, Metabolite, Model, \
     Organism, Reaction, ReactionMetabolite
 from config import Config
-from app.main.routes_insert_data import add_metabolites_to_reaction, _add_enzyme_organism, _add_enzyme_structures
+from app.main.routes_insert_data import _add_metabolites_to_reaction, _add_enzyme_organism, _add_enzyme_structures
 from app.utils.parsers import parse_input_list
 import re
 
@@ -436,7 +436,7 @@ class ReactionModelCase(unittest.TestCase):
         self.assertEqual(Reaction.query.first().grasp_id, reaction_grasp_id)
         self.assertEqual(Reaction.query.first().compartment_name, compartment_name)
 
-        add_metabolites_to_reaction(reaction, reaction_string)
+        _add_metabolites_to_reaction(reaction, reaction_string)
         db.session.commit()
 
         for i, met in enumerate(Metabolite.query.all()):
