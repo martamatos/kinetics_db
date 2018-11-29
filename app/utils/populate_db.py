@@ -114,13 +114,15 @@ def add_reactions():
             reaction.add_metabolite(met_db, stoich_coef)
 
 def add_enzyme_reaction_organism():
+
+    model = Model.query.filter_by(name='E. coli - iteration 1', organism_name='E. coli', strain='MG16555').first()
+
     grasp_id = 'PFK'
     subs_binding_order = 'adp_c, pep_c'
     prod_release_order = 'pyr_c, atp_c'
     enzyme_reaction_model = EnzymeReactionOrganism(enzyme_id=1,
                                                     reaction_id = 1,
                                                     organism_id=1,
-                                                    model_id=2,
                                                     mechanism_id= 1,
                                                     mech_evidence_level_id=1,
                                                     grasp_id=grasp_id,
@@ -128,6 +130,7 @@ def add_enzyme_reaction_organism():
                                                     prod_release_order=prod_release_order)
 
     db.session.add(enzyme_reaction_model)
+    enzyme_reaction_model.add_model(model)
     db.session.commit()
 
 def main():

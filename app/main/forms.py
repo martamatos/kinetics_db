@@ -95,10 +95,10 @@ class EnzymeForm(FlaskForm):
 
 class EnzymeInhibitionForm(FlaskForm):
 
-    isoenzyme = QuerySelectField('Isoenzyme *', query_factory=get_enzymes)
+    enzyme = QuerySelectField('Isoenzyme *', query_factory=get_enzymes)
     reaction = QuerySelectField('Reaction *', query_factory=get_reactions)
     organism = QuerySelectField('Organism *', query_factory=get_organisms)
-    models = QuerySelectMultipleField('Model', query_factory=get_models, allow_blank=True)
+    models = QuerySelectMultipleField('Model', query_factory=get_models)
     inhibitor_met = StringField('Inhibiting metabolite (e.g. adp), please use bigg IDs *', validators=[DataRequired()], id='metabolite_list')
     affected_met = StringField('Affected metabolite (e.g. atp), please use bigg IDs', id='metabolite_list')
     inhibition_type = SelectField('Inhibition type', choices=[('Unknown', 'Unknown'), ('Competitive', 'Competitive'),
@@ -115,10 +115,10 @@ class EnzymeInhibitionForm(FlaskForm):
 
 class EnzymeActivationForm(FlaskForm):
 
-    isoenzyme = QuerySelectField('Isoenzyme *', query_factory=get_enzymes, validators=[DataRequired()])
+    enzyme = QuerySelectField('Isoenzyme *', query_factory=get_enzymes, validators=[DataRequired()])
     reaction = QuerySelectField('Reaction *', query_factory=get_reactions, validators=[DataRequired()])
     organism = QuerySelectField('Organism *', query_factory=get_organisms)
-    models = QuerySelectMultipleField('Model', query_factory=get_models, allow_blank=True)
+    models = QuerySelectMultipleField('Model', query_factory=get_models)
     activator_met = StringField('Activating metabolite (e.g. adp), please use bigg IDs *', validators=[DataRequired()], id='metabolite_list')
     activation_constant = FloatField('Activation constant (in M)', validators=[Optional()])
     activation_evidence_level = QuerySelectField('Activation inhibition evidence level', query_factory=get_evidence_names, allow_blank=True)
@@ -130,10 +130,10 @@ class EnzymeActivationForm(FlaskForm):
 
 class EnzymeEffectorForm(FlaskForm):
 
-    isoenzyme = QuerySelectField('Isoenzyme *', query_factory=get_enzymes, validators=[DataRequired()])
+    enzyme = QuerySelectField('Isoenzyme *', query_factory=get_enzymes, validators=[DataRequired()])
     reaction = QuerySelectField('Reaction *', query_factory=get_reactions, validators=[DataRequired()])
     organism = QuerySelectField('Organism *', query_factory=get_organisms)
-    models = QuerySelectMultipleField('Model', query_factory=get_models, allow_blank=True)
+    models = QuerySelectMultipleField('Model', query_factory=get_models)
     effector_met = StringField('Effector metabolite (e.g. adp), please use bigg IDs *', validators=[DataRequired()], id='metabolite_list')
     effector_type = SelectField('Effector type',  choices=[('Activating', 'Activating'), ('Inhibiting', 'Inhibiting')])
     effector_evidence_level = QuerySelectField('Effector evidence level', query_factory=get_evidence_names, allow_blank=True)
@@ -145,10 +145,10 @@ class EnzymeEffectorForm(FlaskForm):
 
 class EnzymeMiscInfoForm(FlaskForm):
 
-    isoenzyme = QuerySelectField('Isoenzyme *', query_factory=get_enzymes, validators=[DataRequired()])
+    enzyme = QuerySelectField('Isoenzyme *', query_factory=get_enzymes, validators=[DataRequired()])
     reaction = QuerySelectField('Reaction *', query_factory=get_reactions, validators=[DataRequired()])
     organism = QuerySelectField('Organism *', query_factory=get_organisms)
-    models = QuerySelectMultipleField('Model', query_factory=get_models, allow_blank=True)
+    models = QuerySelectMultipleField('Model', query_factory=get_models)
     topic = StringField('Topic (e.g. allostery) *', validators=[DataRequired()])
     description = TextAreaField('Description *',  validators=[DataRequired()])
     evidence_level = QuerySelectField('Evidence level', query_factory=get_evidence_names, allow_blank=True)
@@ -172,12 +172,11 @@ class ModelAssumptionsForm(FlaskForm):
     assumption = StringField('Assumption *', validators=[DataRequired()])
     description = TextAreaField('Description *',  validators=[DataRequired()])
     evidence_level = QuerySelectField('Evidence level', query_factory=get_evidence_names, allow_blank=True)
-    included_in_model = SelectField('Is this assumption included in the model?', choices=[(True, 'True'), (False, 'False')])
+    included_in_model = SelectField('Is this assumption included in the model?', choices=[('True', 'True'), ('False', 'False')])
     references = StringField('References, please use DOI (e.g. https://doi.org/10.1093/bioinformatics/bty942, http://doi.org/10.5334/jors.236)')
     comments = TextAreaField('Comments')
 
     submit = SubmitField('Submit')
-
 
 
 class ModelForm(FlaskForm):
@@ -192,7 +191,6 @@ class ModelForm(FlaskForm):
         model_db = Model.query.filter_by(name=name.data).first()
         if model_db:
             raise ValidationError('A model with that name already exists, please use another name')
-
 
 
 class OrganismForm(FlaskForm):

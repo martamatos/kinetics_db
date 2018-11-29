@@ -1141,7 +1141,7 @@ class EnzymeReactionEffector(db.Model):
     evidence_level_id = db.Column(db.Integer, db.ForeignKey(EvidenceLevel.id))
     comments = db.Column(db.Text)
 
-    activator_met = db.relationship('Metabolite', foreign_keys=[effector_met_id])
+    effector_met = db.relationship('Metabolite', foreign_keys=[effector_met_id])
     enzyme_reaction_organism = db.relationship('EnzymeReactionOrganism', back_populates='enzyme_reaction_effectors')
     evidence = db.relationship('EvidenceLevel', back_populates='enzyme_reaction_effectors')
     models = db.relationship(
