@@ -1,16 +1,13 @@
-<table class="table table-hover">
-    <tr>
-        <td>
-            {{ data_point.name }}
-        </td>
-        <td>
-            {{ data_point.acronym }}
-        </td>
-        <td>
-            {{ data_point.isoenzyme }}
-        </td>
-        <td>
-            {{ data_point.ec_number }}
-        </td>
-    </tr>
-</table>
+
+<td>
+    {{ data_point.name }}
+</td>
+<td>
+    {{ data_point.acronym }}
+</td>
+<td>
+    <a href="{{ url_for('main.see_enzyme', isoenzyme=data_point.isoenzyme )}}"> {{ data_point.isoenzyme }} </a>
+</td>
+<td>
+    {{ data_point.ec_number }}
+</td>

@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% import 'bootstrap/wtf.html' as wtf %}
+
+{% block app_content %}
+    <h1>Hi, {{ current_user.username }}!</h1>
+
+    <br>
+
+<div class="panel panel-default">
+  <!-- Default panel contents -->
+  <div class="panel-heading"> {{ data_point.name }}</div>
+
+  <!-- List group -->
+  <ul class="list-group">
+    <li class="list-group-item">Name : {{ data_point.name }}</li>
+    <li class="list-group-item">Acronym: {{ data_point.acronym }}</li>
+    <li class="list-group-item">Isoenzyme: {{ data_point.isoenzyme }}</li>
+    <li class="list-group-item">EC number: {{ data_point.ec_number }}</li>
+  </ul>
+</div>
+{% endblock %}

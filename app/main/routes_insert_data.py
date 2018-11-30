@@ -101,7 +101,7 @@ def add_enzyme():
 
         db.session.commit()
         flash('Your enzyme is now live!')
-        return redirect(url_for('main.see_enzymes'))
+        return redirect(url_for('main.see_enzyme_list'))
     return render_template('add_data.html', title='Add enzyme', form=form, header='enzyme', data_list=data_list)
 
 
@@ -172,7 +172,7 @@ def add_enzyme_inhibition():
 
         flash('Your enzyme inhibition is now live!', 'success')
 
-        return redirect(url_for('main.see_enzymes'))
+        return redirect(url_for('main.see_enzyme_list'))
     return render_template('add_data.html', title='Add enzyme inhibition', form=form, header='enzyme inhibition', data_list=data_list)
 
 
@@ -226,7 +226,7 @@ def add_enzyme_activation():
 
         flash('Your enzyme activation is now live!', 'success')
 
-        return redirect(url_for('main.see_enzymes'))
+        return redirect(url_for('main.see_enzyme_list'))
     return render_template('add_data.html', title='Add enzyme activation', form=form, header='enzyme activation', data_list=data_list)
 
 
@@ -267,7 +267,7 @@ def add_enzyme_effector():
         db.session.commit()
         flash('Your enzyme effector is now live!', 'success')
 
-        return redirect(url_for('main.see_enzymes'))
+        return redirect(url_for('main.see_enzyme_list'))
     return render_template('add_data.html', title='Add enzyme effector', form=form, header='enzyme effector', data_list=data_list)
 
 
@@ -305,7 +305,7 @@ def add_enzyme_misc_info():
 
         flash('Your enzyme misc info is now live!', 'success')
 
-        return redirect(url_for('main.see_enzymes'))
+        return redirect(url_for('main.see_enzyme_list'))
     return render_template('add_data.html', title='Add enzyme misc info', form=form, header='enzyme misc info')
 
 
@@ -323,7 +323,7 @@ def add_gene():
         db.session.commit()
 
         flash('Your enzyme is now live!')
-        return redirect(url_for('main.see_enzymes'))
+        return redirect(url_for('main.see_enzyme_list'))
     return render_template('add_data.html', title='Add gene', form=form, header='gene')
 
 
@@ -352,7 +352,7 @@ def add_model():
         db.session.commit()
 
         flash('Your model is now live!')
-        return redirect(url_for('main.see_models'))
+        return redirect(url_for('main.see_model_list'))
     # return render_template('add_data.html', title='Add model', form=form, header='model', data_id_list=id_list, data_list=organism_data)
     return render_template('add_data.html', title='Add model', form=form, header='model', data_list=data_list)
 
@@ -386,7 +386,7 @@ def add_model_assumption():
 
         flash('Your model assumption is now live!', 'success')
 
-        return redirect(url_for('main.see_models'))
+        return redirect(url_for('main.see_model_list'))
     return render_template('add_data.html', title='Add model assumption', form=form, header='model assumption')
 
 
@@ -402,7 +402,7 @@ def add_organism():
 
         flash('Your organism is now live!', 'success')
 
-        return redirect(url_for('main.see_organisms'))
+        return redirect(url_for('main.see_organism_list'))
     return render_template('add_data.html', title='Add organism', form=form, header='organism')
 
 
@@ -574,6 +574,6 @@ def add_reaction():
 
         flash('Your reaction is now live!', 'success')
 
-        return redirect(url_for('main.see_reactions'))
+        return redirect(url_for('main.see_reaction_list'))
     return render_template('add_data.html', title='Add reaction', form=form, header='reaction', data_list=data_list)
 

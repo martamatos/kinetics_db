@@ -4,10 +4,30 @@
 {% block app_content %}
     <h1>Hi, {{ current_user.username }}!</h1>
 
+    <br>
 
-    {% for data_point in data %}
-        {% include '_' + data_type + '.html' %}
-    {% endfor %}
+    <ul class="nav nav-tabs">
+      <li role="presentation" class="{{ tab_status["enzymes"] }}"><a href="{{ url_for('main.see_enzyme_list') }}">Enzymes</a></li>
+      <li role="presentation" class="{{ tab_status["models"] }}"><a href="{{ url_for('main.see_model_list') }}">Models</a></li>
+      <li role="presentation" class="{{ tab_status["metabolites"] }}"><a href="{{ url_for('main.see_metabolite_list') }}">Metabolites</a></li>
+      <li role="presentation" class="{{ tab_status["organisms"] }}"><a href="{{ url_for('main.see_organism_list') }}">Organisms</a></li>
+      <li role="presentation" class="{{ tab_status["reactions"] }}"><a href="{{ url_for('main.see_reaction_list') }}">Reactions</a></li>
+    </ul>
+
+    <table class="table table-striped">
+        <tr>
+            {{ header }}
+        </tr>
+
+        {% for data_point in data %}
+            <tr>
+            {% include '_' + data_type + '.html' %}
+            </tr>
+        {% endfor %}
+
+    </table>
+
+    <br>
 
     <nav aria-label="...">
         <ul class="pager">

@@ -452,6 +452,7 @@ class Metabolite(db.Model):
     metanetx_id = db.Column(db.String)
     kegg_id = db.Column(db.String)
     compartment_acronym = db.Column(db.String, db.ForeignKey(Compartment.acronym))
+    timestamp = db.Column(db.DateTime, index=True, default=datetime.utcnow)
 
     #enzyme_inhibition_inhib_met = db.relationship('EnzymeReactionInhibition', foreign_keys=[inhibitor_met_id], back_populates='inhibitor_met')
     #enzyme_inhibition_affected_met = db.relationship('EnzymeReactionInhibition', back_populates='affected_met')

@@ -152,6 +152,6 @@ def main():
     #add_enzyme_reaction_model
 
 
-#main()
+main()
 
 
