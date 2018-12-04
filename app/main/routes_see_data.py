@@ -231,7 +231,6 @@ def see_organism(organism_name):
     data_nested = []
 
     data.append({'field_name': 'Name', 'data': organism.name})
-    print(organism.models)
     models = [model.name for model in organism.models]
     data_nested.append({'field_name': 'Models', 'data': models if models else 'NA'})
 

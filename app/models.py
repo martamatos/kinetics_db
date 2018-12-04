@@ -570,7 +570,6 @@ class Reaction(db.Model):
     gibbs_energy_reaction_models = db.relationship('GibbsEnergyReactionModel', back_populates='reaction', lazy='dynamic')
 
     def __repr__(self):
-        for met in self.metabolites:
         reaction_string = ''
         reaction_string += ' + '.join([str(-met.stoich_coef) + ' ' + str(met.metabolite) + '_' + str(met.met_comp_acronym)
                                         for met in self.metabolites if met.stoich_coef < 0])
@@ -580,7 +579,6 @@ class Reaction(db.Model):
         return reaction_string
 
     def __str__(self):
-        for met in self.metabolites:
         reaction_string = ''
         reaction_string += ' + '.join([str(-met.stoich_coef) + ' ' + str(met.metabolite) + '_' + str(met.met_comp_acronym)
                                         for met in self.metabolites if met.stoich_coef < 0])

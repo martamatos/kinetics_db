@@ -145,7 +145,7 @@ def add_enzyme_inhibition():
         inhibition_evidence_level_id = form.inhibition_evidence_level.data.id if form.inhibition_evidence_level.data else None
 
 
-        enz_rxn_org = EnzymeReactionOrganism.query.filter_by(enzyme_id = form.enzyme.data.id,
+        enz_rxn_org = EnzymeReactionOrganism.query.filter_by(enzyme_id=form.enzyme.data.id,
                                                              reaction_id=form.reaction.data.id,
                                                              organism_id=form.organism.data.id).first()
 

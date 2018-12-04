@@ -113,7 +113,7 @@ def add_reaction(client):
     reaction_name = 'phosphofructokinase'
     reaction_acronym = 'PFK'
     reaction_grasp_id = 'PFK1'
-    reaction_string = '1 pep_c + 1.5 adp_c <-> pyr_c + 2.0 atp_m'
+    reaction_string = '1 pep_c + 1.5 adp_c <-> pyr_c + 2.0 atp_c'
     metanetx_id = ''
     bigg_id = ''
     kegg_id = ''
@@ -126,14 +126,13 @@ def add_reaction(client):
     mechanism_references = 'https://doi.org/10.1093/bioinformatics/bty942, https://doi.org/10.1093/bioinformatics/bty943'
     mechanism_evidence_level = '1'
     subs_binding_order = 'adp_c, pep_c'
-    prod_release_order = 'atp_m, pyr_c'
+    prod_release_order = 'pyr_c, atp_c'
     std_gibbs_energy = 2.1
     std_gibbs_energy_std = 0.2
     std_gibbs_energy_ph = 7
     std_gibbs_energy_ionic_strength = 0.2
     std_gibbs_energy_references = 'equilibrator'
     comments = ''
-
 
     response = client.post('/add_reaction', data=dict(
                                 name=reaction_name,
@@ -160,33 +159,12 @@ def add_reaction(client):
                                 comments=comments), follow_redirects=True)
 
     assert response.status_code == 200
-
     met_db = Metabolite.query.filter_by(bigg_id='atp').first()
-    compartment_db = Compartment.query.filter_by(acronym='c').first()
+    compartment_db = Compartment.query.filter_by(acronym='m').first()
     met_db.add_compartment(compartment_db)
 
     db.session.commit()
 
-
-def add_enzyme_reaction_organism():
-
-    model = Model.query.filter_by(name='E. coli - iteration 1', organism_name='E. coli', strain='MG16555').first()
-
-    grasp_id = 'PFK'
-    subs_binding_order = 'adp_c, pep_c'
-    prod_release_order = 'pyr_c, atp_c'
-    enzyme_reaction_model = EnzymeReactionOrganism(enzyme_id=1,
-                                                    reaction_id = 1,
-                                                    organism_id=1,
-                                                    mechanism_id= 1,
-                                                    mech_evidence_level_id=1,
-                                                    grasp_id=grasp_id,
-                                                    subs_binding_order=subs_binding_order,
-                                                    prod_release_order=prod_release_order)
-
-    db.session.add(enzyme_reaction_model)
-    enzyme_reaction_model.add_model(model)
-    db.session.commit()
     
 def add_inhibition(client):
 
@@ -335,6 +313,6 @@ def main():
     add_misc_info(client)
     #add_enzyme_reaction_organism()
 
-main()
+#main()
 
 

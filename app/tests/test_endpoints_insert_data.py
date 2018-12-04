@@ -6,8 +6,8 @@ from app.models import Compartment, Enzyme, EnzymeOrganism, EnzymeReactionOrgani
     ModelAssumptions
 from config import Config
 from app.utils.parsers import parse_input_list, ReactionParser
-from app.utils.populate_db import add_models, add_mechanisms, add_reactions, add_reference_types, add_enzymes, \
-    add_compartments, add_evidence_levels, add_organisms, add_references, add_enzyme_reaction_organism
+from app.utils.populate_db import add_models, add_mechanisms, add_reaction, add_reference_types, add_enzymes, \
+    add_compartments, add_evidence_levels, add_organisms, add_references
 import re
 
 
@@ -39,8 +39,7 @@ def populate_db(test_case, client=None):
         add_models()
         add_reference_types()
         add_references()
-        add_reactions()
-        add_enzyme_reaction_organism()
+        add_reaction(client)
 
 
 class TestAddEnzyme(unittest.TestCase):
@@ -673,16 +672,14 @@ class TestAddEnzymeInhibition(unittest.TestCase):
         self.comments = ''
         self.reference_list = parse_input_list(self.references)
 
-        self.grasp_id = 'PFK'
+        self.grasp_id = 'PFK1'
         self.subs_binding_order = 'adp_c, pep_c'
         self.prod_release_order = 'pyr_c, atp_c'
-
 
     def tearDown(self):
         db.session.remove()
         db.drop_all()
         self.app_context.pop()
-
 
     def test_add_first_inhibition(self):
 
@@ -705,8 +702,8 @@ class TestAddEnzymeInhibition(unittest.TestCase):
 
 
         self.assertEqual(Enzyme.query.count(), 2)
-        self.assertEqual(GibbsEnergy.query.count(), 0)
-        self.assertEqual(EnzymeReactionOrganism.query.count(), 1)
+        self.assertEqual(GibbsEnergy.query.count(), 1)
+        self.assertEqual(EnzymeReactionOrganism.query.count(), 2)
         self.assertEqual(EnzymeReactionInhibition.query.count(), 1)
         self.assertEqual(Mechanism.query.count(), 2)
         self.assertEqual(Reference.query.count(), 3)
@@ -720,7 +717,7 @@ class TestAddEnzymeInhibition(unittest.TestCase):
 
         self.assertEqual(EnzymeReactionOrganism.query.first().reaction, Reaction.query.first())
         self.assertEqual(EnzymeReactionOrganism.query.first().enzyme, Enzyme.query.first())
-        self.assertEqual(EnzymeReactionOrganism.query.first().models.count(), 1)
+        self.assertEqual(EnzymeReactionOrganism.query.first().models.count(), 2)
 
         self.assertEqual(EnzymeReactionOrganism.query.first().mech_evidence, EvidenceLevel.query.first())
         self.assertEqual(EnzymeReactionOrganism.query.first().mechanism, Mechanism.query.first())
@@ -748,7 +745,7 @@ class TestAddEnzymeInhibition(unittest.TestCase):
 
         self.assertEqual(Model.query.first().enzyme_reaction_inhibitions.count(), 1)
         self.assertEqual(Model.query.first().enzyme_reaction_inhibitions[0].id, EnzymeReactionInhibition.query.first().id)
-        self.assertEqual(Model.query.first().enzyme_reaction_organisms.count(), 1)
+        self.assertEqual(Model.query.first().enzyme_reaction_organisms.count(), 2)
 
     def test_add_inhibition_two_models(self):
 
@@ -773,8 +770,8 @@ class TestAddEnzymeInhibition(unittest.TestCase):
 
 
         self.assertEqual(Enzyme.query.count(), 2)
-        self.assertEqual(GibbsEnergy.query.count(), 0)
-        self.assertEqual(EnzymeReactionOrganism.query.count(), 1)
+        self.assertEqual(GibbsEnergy.query.count(), 1)
+        self.assertEqual(EnzymeReactionOrganism.query.count(), 2)
         self.assertEqual(EnzymeReactionInhibition.query.count(), 1)
         self.assertEqual(Mechanism.query.count(), 2)
         self.assertEqual(Reference.query.count(), 3)
@@ -788,7 +785,7 @@ class TestAddEnzymeInhibition(unittest.TestCase):
 
         self.assertEqual(EnzymeReactionOrganism.query.first().reaction, Reaction.query.first())
         self.assertEqual(EnzymeReactionOrganism.query.first().enzyme, Enzyme.query.first())
-        self.assertEqual(EnzymeReactionOrganism.query.first().models.count(), 1)
+        self.assertEqual(EnzymeReactionOrganism.query.first().models.count(), 2)
 
         self.assertEqual(EnzymeReactionOrganism.query.first().mech_evidence, EvidenceLevel.query.first())
         self.assertEqual(EnzymeReactionOrganism.query.first().mechanism, Mechanism.query.first())
@@ -818,7 +815,7 @@ class TestAddEnzymeInhibition(unittest.TestCase):
         self.assertEqual(Model.query.first().enzyme_reaction_inhibitions.count(), 1)
         self.assertEqual(Model.query.all()[0].enzyme_reaction_inhibitions[0].id, EnzymeReactionInhibition.query.first().id)
         self.assertEqual(Model.query.all()[1].enzyme_reaction_inhibitions[0].id, EnzymeReactionInhibition.query.first().id)
-        self.assertEqual(Model.query.first().enzyme_reaction_organisms.count(), 1)
+        self.assertEqual(Model.query.first().enzyme_reaction_organisms.count(), 2)
 
 
 class TestAddEnzymeActivation(unittest.TestCase):
@@ -843,7 +840,7 @@ class TestAddEnzymeActivation(unittest.TestCase):
         self.comments = ''
         self.reference_list = parse_input_list(self.references)
 
-        self.grasp_id = 'PFK'
+        self.grasp_id = 'PFK1'
         self.subs_binding_order = 'adp_c, pep_c'
         self.prod_release_order = 'pyr_c, atp_c'
 
@@ -871,8 +868,8 @@ class TestAddEnzymeActivation(unittest.TestCase):
 
 
         self.assertEqual(Enzyme.query.count(), 2)
-        self.assertEqual(GibbsEnergy.query.count(), 0)
-        self.assertEqual(EnzymeReactionOrganism.query.count(), 1)
+        self.assertEqual(GibbsEnergy.query.count(), 1)
+        self.assertEqual(EnzymeReactionOrganism.query.count(), 2)
         self.assertEqual(EnzymeReactionActivation.query.count(), 1)
         self.assertEqual(Mechanism.query.count(), 2)
         self.assertEqual(Reference.query.count(), 3)
@@ -886,7 +883,7 @@ class TestAddEnzymeActivation(unittest.TestCase):
 
         self.assertEqual(EnzymeReactionOrganism.query.first().reaction, Reaction.query.first())
         self.assertEqual(EnzymeReactionOrganism.query.first().enzyme, Enzyme.query.first())
-        self.assertEqual(EnzymeReactionOrganism.query.first().models.count(), 1)
+        self.assertEqual(EnzymeReactionOrganism.query.first().models.count(), 2)
 
         self.assertEqual(EnzymeReactionOrganism.query.first().mech_evidence, EvidenceLevel.query.first())
         self.assertEqual(EnzymeReactionOrganism.query.first().mechanism, Mechanism.query.first())
@@ -913,7 +910,7 @@ class TestAddEnzymeActivation(unittest.TestCase):
 
         self.assertEqual(Model.query.first().enzyme_reaction_activations.count(), 1)
         self.assertEqual(Model.query.first().enzyme_reaction_activations[0].id, EnzymeReactionActivation.query.first().id)
-        self.assertEqual(Model.query.first().enzyme_reaction_organisms.count(), 1)
+        self.assertEqual(Model.query.first().enzyme_reaction_organisms.count(), 2)
 
     def test_add_activation_two_models(self):
 
@@ -936,8 +933,8 @@ class TestAddEnzymeActivation(unittest.TestCase):
 
 
         self.assertEqual(Enzyme.query.count(), 2)
-        self.assertEqual(GibbsEnergy.query.count(), 0)
-        self.assertEqual(EnzymeReactionOrganism.query.count(), 1)
+        self.assertEqual(GibbsEnergy.query.count(), 1)
+        self.assertEqual(EnzymeReactionOrganism.query.count(), 2)
         self.assertEqual(EnzymeReactionActivation.query.count(), 1)
         self.assertEqual(Mechanism.query.count(), 2)
         self.assertEqual(Reference.query.count(), 3)
@@ -951,7 +948,7 @@ class TestAddEnzymeActivation(unittest.TestCase):
 
         self.assertEqual(EnzymeReactionOrganism.query.first().reaction, Reaction.query.first())
         self.assertEqual(EnzymeReactionOrganism.query.first().enzyme, Enzyme.query.first())
-        self.assertEqual(EnzymeReactionOrganism.query.first().models.count(), 1)
+        self.assertEqual(EnzymeReactionOrganism.query.first().models.count(), 2)
 
         self.assertEqual(EnzymeReactionOrganism.query.first().mech_evidence, EvidenceLevel.query.first())
         self.assertEqual(EnzymeReactionOrganism.query.first().mechanism, Mechanism.query.first())
@@ -980,7 +977,7 @@ class TestAddEnzymeActivation(unittest.TestCase):
         self.assertEqual(Model.query.first().enzyme_reaction_activations.count(), 1)
         self.assertEqual(Model.query.all()[0].enzyme_reaction_activations[0].id, EnzymeReactionActivation.query.first().id)
         self.assertEqual(Model.query.all()[1].enzyme_reaction_activations[0].id, EnzymeReactionActivation.query.first().id)
-        self.assertEqual(Model.query.first().enzyme_reaction_organisms.count(), 1)
+        self.assertEqual(Model.query.first().enzyme_reaction_organisms.count(), 2)
 
 
 class TestAddEnzymeEffector(unittest.TestCase):
@@ -1005,7 +1002,7 @@ class TestAddEnzymeEffector(unittest.TestCase):
         self.comments = ''
         self.reference_list = parse_input_list(self.references)
 
-        self.grasp_id = 'PFK'
+        self.grasp_id = 'PFK1'
         self.subs_binding_order = 'adp_c, pep_c'
         self.prod_release_order = 'pyr_c, atp_c'
 
@@ -1033,8 +1030,8 @@ class TestAddEnzymeEffector(unittest.TestCase):
 
 
         self.assertEqual(Enzyme.query.count(), 2)
-        self.assertEqual(GibbsEnergy.query.count(), 0)
-        self.assertEqual(EnzymeReactionOrganism.query.count(), 1)
+        self.assertEqual(GibbsEnergy.query.count(), 1)
+        self.assertEqual(EnzymeReactionOrganism.query.count(), 2)
         self.assertEqual(EnzymeReactionEffector.query.count(), 1)
         self.assertEqual(Mechanism.query.count(), 2)
         self.assertEqual(Reference.query.count(), 3)
@@ -1048,7 +1045,7 @@ class TestAddEnzymeEffector(unittest.TestCase):
 
         self.assertEqual(EnzymeReactionOrganism.query.first().reaction, Reaction.query.first())
         self.assertEqual(EnzymeReactionOrganism.query.first().enzyme, Enzyme.query.first())
-        self.assertEqual(EnzymeReactionOrganism.query.first().models.count(), 1)
+        self.assertEqual(EnzymeReactionOrganism.query.first().models.count(), 2)
 
         self.assertEqual(EnzymeReactionOrganism.query.first().mech_evidence, EvidenceLevel.query.first())
         self.assertEqual(EnzymeReactionOrganism.query.first().mechanism, Mechanism.query.first())
@@ -1075,7 +1072,7 @@ class TestAddEnzymeEffector(unittest.TestCase):
 
         self.assertEqual(Model.query.first().enzyme_reaction_effectors.count(), 1)
         self.assertEqual(Model.query.first().enzyme_reaction_effectors[0].id, EnzymeReactionEffector.query.first().id)
-        self.assertEqual(Model.query.first().enzyme_reaction_organisms.count(), 1)
+        self.assertEqual(Model.query.first().enzyme_reaction_organisms.count(), 2)
 
     def test_add_effector_two_models(self):
 
@@ -1099,8 +1096,8 @@ class TestAddEnzymeEffector(unittest.TestCase):
 
 
         self.assertEqual(Enzyme.query.count(), 2)
-        self.assertEqual(GibbsEnergy.query.count(), 0)
-        self.assertEqual(EnzymeReactionOrganism.query.count(), 1)
+        self.assertEqual(GibbsEnergy.query.count(), 1)
+        self.assertEqual(EnzymeReactionOrganism.query.count(), 2)
         self.assertEqual(EnzymeReactionEffector.query.count(), 1)
         self.assertEqual(Mechanism.query.count(), 2)
         self.assertEqual(Reference.query.count(), 3)
@@ -1114,7 +1111,7 @@ class TestAddEnzymeEffector(unittest.TestCase):
 
         self.assertEqual(EnzymeReactionOrganism.query.first().reaction, Reaction.query.first())
         self.assertEqual(EnzymeReactionOrganism.query.first().enzyme, Enzyme.query.first())
-        self.assertEqual(EnzymeReactionOrganism.query.first().models.count(), 1)
+        self.assertEqual(EnzymeReactionOrganism.query.first().models.count(), 2)
 
         self.assertEqual(EnzymeReactionOrganism.query.first().mech_evidence, EvidenceLevel.query.first())
         self.assertEqual(EnzymeReactionOrganism.query.first().mechanism, Mechanism.query.first())
@@ -1143,7 +1140,7 @@ class TestAddEnzymeEffector(unittest.TestCase):
         self.assertEqual(Model.query.first().enzyme_reaction_effectors.count(), 1)
         self.assertEqual(Model.query.all()[0].enzyme_reaction_effectors[0].id, EnzymeReactionEffector.query.first().id)
         self.assertEqual(Model.query.all()[1].enzyme_reaction_effectors[0].id, EnzymeReactionEffector.query.first().id)
-        self.assertEqual(Model.query.first().enzyme_reaction_organisms.count(), 1)
+        self.assertEqual(Model.query.first().enzyme_reaction_organisms.count(), 2)
 
 
 class TestAddEnzymeMiscInfo(unittest.TestCase):
@@ -1168,7 +1165,7 @@ class TestAddEnzymeMiscInfo(unittest.TestCase):
         self.comments = ''
         self.reference_list = parse_input_list(self.references)
 
-        self.grasp_id = 'PFK'
+        self.grasp_id = 'PFK1'
         self.subs_binding_order = 'adp_c, pep_c'
         self.prod_release_order = 'pyr_c, atp_c'
 
@@ -1196,8 +1193,8 @@ class TestAddEnzymeMiscInfo(unittest.TestCase):
 
 
         self.assertEqual(Enzyme.query.count(), 2)
-        self.assertEqual(GibbsEnergy.query.count(), 0)
-        self.assertEqual(EnzymeReactionOrganism.query.count(), 1)
+        self.assertEqual(GibbsEnergy.query.count(), 1)
+        self.assertEqual(EnzymeReactionOrganism.query.count(), 2)
         self.assertEqual(EnzymeReactionMiscInfo.query.count(), 1)
         self.assertEqual(Mechanism.query.count(), 2)
         self.assertEqual(Reference.query.count(), 3)
@@ -1211,7 +1208,7 @@ class TestAddEnzymeMiscInfo(unittest.TestCase):
 
         self.assertEqual(EnzymeReactionOrganism.query.first().reaction, Reaction.query.first())
         self.assertEqual(EnzymeReactionOrganism.query.first().enzyme, Enzyme.query.first())
-        self.assertEqual(EnzymeReactionOrganism.query.first().models.count(), 1)
+        self.assertEqual(EnzymeReactionOrganism.query.first().models.count(), 2)
 
         self.assertEqual(EnzymeReactionOrganism.query.first().mech_evidence, EvidenceLevel.query.first())
         self.assertEqual(EnzymeReactionOrganism.query.first().mechanism, Mechanism.query.first())
@@ -1238,11 +1235,12 @@ class TestAddEnzymeMiscInfo(unittest.TestCase):
 
         self.assertEqual(Model.query.first().enzyme_reaction_misc_infos.count(), 1)
         self.assertEqual(Model.query.first().enzyme_reaction_misc_infos[0].id, EnzymeReactionMiscInfo.query.first().id)
-        self.assertEqual(Model.query.first().enzyme_reaction_organisms.count(), 1)
+        self.assertEqual(Model.query.first().enzyme_reaction_organisms.count(), 2)
 
     def test_add_misc_info_two_models(self):
 
         self.models = ['1', '2']
+        print(EnzymeReactionOrganism.query.count())
 
         response = self.client.post('/add_enzyme_misc_info', data=dict(
                                      enzyme=self.enzyme,
@@ -1260,10 +1258,10 @@ class TestAddEnzymeMiscInfo(unittest.TestCase):
         self.assertTrue(b'Your enzyme misc info is now live!' in response.data)
 
 
-
+        print(EnzymeReactionOrganism.query.count())
         self.assertEqual(Enzyme.query.count(), 2)
-        self.assertEqual(GibbsEnergy.query.count(), 0)
-        self.assertEqual(EnzymeReactionOrganism.query.count(), 1)
+        self.assertEqual(GibbsEnergy.query.count(), 1)
+        self.assertEqual(EnzymeReactionOrganism.query.count(), 2)
         self.assertEqual(EnzymeReactionMiscInfo.query.count(), 1)
         self.assertEqual(Mechanism.query.count(), 2)
         self.assertEqual(Reference.query.count(), 3)
@@ -1277,7 +1275,7 @@ class TestAddEnzymeMiscInfo(unittest.TestCase):
 
         self.assertEqual(EnzymeReactionOrganism.query.first().reaction, Reaction.query.first())
         self.assertEqual(EnzymeReactionOrganism.query.first().enzyme, Enzyme.query.first())
-        self.assertEqual(EnzymeReactionOrganism.query.first().models.count(), 1)
+        self.assertEqual(EnzymeReactionOrganism.query.first().models.count(), 2)
 
         self.assertEqual(EnzymeReactionOrganism.query.first().mech_evidence, EvidenceLevel.query.first())
         self.assertEqual(EnzymeReactionOrganism.query.first().mechanism, Mechanism.query.first())
@@ -1306,7 +1304,7 @@ class TestAddEnzymeMiscInfo(unittest.TestCase):
         self.assertEqual(Model.query.first().enzyme_reaction_misc_infos.count(), 1)
         self.assertEqual(Model.query.all()[0].enzyme_reaction_misc_infos[0].id, EnzymeReactionMiscInfo.query.first().id)
         self.assertEqual(Model.query.all()[1].enzyme_reaction_misc_infos[0].id, EnzymeReactionMiscInfo.query.first().id)
-        self.assertEqual(Model.query.first().enzyme_reaction_organisms.count(), 1)
+        self.assertEqual(Model.query.first().enzyme_reaction_organisms.count(), 2)
 
 """
 class TestAddGene(unittest.TestCase):
@@ -1554,7 +1552,7 @@ class TestAddEnzymeModelAssumption(unittest.TestCase):
         self.comments = ''
         self.reference_list = parse_input_list(self.references)
 
-        self.grasp_id = 'PFK'
+        self.grasp_id = 'PFK1'
         self.subs_binding_order = 'adp_c, pep_c'
         self.prod_release_order = 'pyr_c, atp_c'
 
@@ -1580,8 +1578,8 @@ class TestAddEnzymeModelAssumption(unittest.TestCase):
 
 
         self.assertEqual(Enzyme.query.count(), 2)
-        self.assertEqual(GibbsEnergy.query.count(), 0)
-        self.assertEqual(EnzymeReactionOrganism.query.count(), 1)
+        self.assertEqual(GibbsEnergy.query.count(), 1)
+        self.assertEqual(EnzymeReactionOrganism.query.count(), 2)
         self.assertEqual(ModelAssumptions.query.count(), 1)
         self.assertEqual(Mechanism.query.count(), 2)
         self.assertEqual(Reference.query.count(), 3)
@@ -1594,7 +1592,7 @@ class TestAddEnzymeModelAssumption(unittest.TestCase):
 
         self.assertEqual(EnzymeReactionOrganism.query.first().reaction, Reaction.query.first())
         self.assertEqual(EnzymeReactionOrganism.query.first().enzyme, Enzyme.query.first())
-        self.assertEqual(EnzymeReactionOrganism.query.first().models.count(), 1)
+        self.assertEqual(EnzymeReactionOrganism.query.first().models.count(), 2)
 
         self.assertEqual(EnzymeReactionOrganism.query.first().mech_evidence, EvidenceLevel.query.first())
         self.assertEqual(EnzymeReactionOrganism.query.first().mechanism, Mechanism.query.first())
@@ -1619,7 +1617,7 @@ class TestAddEnzymeModelAssumption(unittest.TestCase):
 
         self.assertEqual(Model.query.first().model_assumptions.count(), 1)
         self.assertEqual(Model.query.first().model_assumptions[0].id, ModelAssumptions.query.first().id)
-        self.assertEqual(Model.query.first().enzyme_reaction_organisms.count(), 1)
+        self.assertEqual(Model.query.first().enzyme_reaction_organisms.count(), 2)
 
 
 class TestAddOrganism(unittest.TestCase):
