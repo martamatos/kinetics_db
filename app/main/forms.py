@@ -3,8 +3,8 @@ from wtforms import FloatField, IntegerField, SelectField, StringField, SubmitFi
 from wtforms.validators import ValidationError, DataRequired, Length, Optional
 from app.models import Compartment, Enzyme, EnzymeStructure, EvidenceLevel, Mechanism, Model, Organism, Reaction, User
 from wtforms.ext.sqlalchemy.fields import QuerySelectField, QuerySelectMultipleField
-from app.utils.parsers import parse_input_list
-
+from app.utils.parsers import parse_input_list, ReactionParser
+import re
 
 def get_compartments():
     return Compartment.query
@@ -235,21 +235,49 @@ class ReactionForm(FlaskForm):
 
     submit = SubmitField('Submit')
 
+    def validate_reaction_string(self, reaction_string):
+        reversible, stoichiometry = ReactionParser().parse_reaction(reaction_string.data)
+        # (True, OrderedDict([('m_pep_c', -1.0), ('m_adp_c', -1.5), ('m_pyr_c', 1.0), ('m_atp_m', 2.0)]))
+
+        for met, stoich_coef in stoichiometry.items():
+            met_compartment = re.findall('(\w+)_(\w+)', met)
+
+            if not met_compartment:
+                raise ValidationError('Please specify the metabolite' + met + 'as metabolite_compartmentAcronym, e.g. adp_c.')
+
+            compartment_db = Compartment.query.filter_by(acronym=met_compartment[0][1]).first()
+            if not compartment_db:
+                raise ValidationError('The specified compartment acronym' + met_compartment[0][1] + ' is not part of the database, please insert it first.')
+
     def validate_mechanism(self, mechanism):
         if mechanism.data and not self.enzymes.data:
             raise ValidationError('If you add a reaction mechanism, you need to specify the catalyzing isoenzyme(s).')
+
 
     def validate_mechanism_evidence_level(self, mechanism_evidence_level):
         if mechanism_evidence_level.data  and not self.mechanism.data :
             raise ValidationError('You cannot specify evidence level for the mechanism without specifying a mechanism.')
 
+
     def validate_subs_binding_order(self, subs_binding_order):
         if subs_binding_order.data and not self.enzymes.data:
             raise ValidationError('If you add substrate binding order without specifying the catalyzing isoenzyme(s).')
 
+        substrate_list = parse_input_list(subs_binding_order.data)
+        for substrate in substrate_list:
+            if self.reaction_string.data.find(substrate) == -1:
+                raise ValidationError('The metabolite'+ substrate + 'does not match any metabolite in' + self.reaction_string.data + '.')
+
+
     def validate_prod_release_order(self, prod_release_order):
         if prod_release_order.data and not self.enzymes.data:
             raise ValidationError('If you add product release order without specifying the catalyzing isoenzyme(s).')
+
+        product_list = parse_input_list(prod_release_order.data)
+        for product in product_list:
+            if self.reaction_string.data.find(product) == -1:
+                raise ValidationError('The metabolite' + product + 'does not match any metabolite in' + self.reaction_string.data + '.')
+
 
     def validate_std_gibbs_energy_std(self, std_gibbs_energy_std):
         if not self.models.data:
@@ -258,13 +286,16 @@ class ReactionForm(FlaskForm):
         if std_gibbs_energy_std.data  and not self.std_gibbs_energy.data :
             raise ValidationError('Please specify the standard Gibbs energy as well.')
 
+
     def validate_std_gibbs_energy_ph(self, std_gibbs_energy_ph):
         if std_gibbs_energy_ph.data  and not self.std_gibbs_energy.data :
             raise ValidationError('Please specify the standard Gibbs energy as well.')
 
+
     def validate_std_gibbs_energy_ionic_strength(self, std_gibbs_energy_ionic_strength):
         if std_gibbs_energy_ionic_strength.data  and not self.std_gibbs_energy.data :
             raise ValidationError('Please specify the standard Gibbs energy as well.')
+
 
     def validate_std_gibbs_energy_references(self, std_gibbs_energy_references):
         if self.std_gibbs_energy.data and not std_gibbs_energy_references.data:

@@ -389,13 +389,25 @@ class Gene(db.Model):
             enzyme_organism_gene.c.enzyme_organism_id == enzyme_organism.id).count() > 0
 
 
+metabolite_compartment = db.Table('metabolite_compartment',
+    db.Column('metabolite_id', db.Integer, db.ForeignKey('metabolite.id')),
+    db.Column('compartment_id', db.Integer, db.ForeignKey('compartment.id'))
+)
+
+
 class Compartment(db.Model):
     __tablename__ = 'compartment'
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     name = db.Column(db.String, unique=True)
     acronym = db.Column(db.String, unique=True)
-    metabolites = db.relationship('Metabolite', back_populates='compartment', lazy='dynamic')
+    #metabolites = db.relationship('Metabolite', back_populates='compartment', lazy='dynamic')
     reactions = db.relationship('Reaction', back_populates='compartment', lazy='dynamic')
+
+    metabolites = db.relationship(
+        'Metabolite', secondary=metabolite_compartment,
+        primaryjoin=(metabolite_compartment.c.compartment_id == id),
+        back_populates='compartments', lazy='dynamic')
+
 
     def __repr__(self):
         return str(self.name)
@@ -435,6 +447,7 @@ class ReactionMetabolite(db.Model):
     __tablename__ = 'reaction_metabolite'
     reaction_id = db.Column(db.Integer, db.ForeignKey('reaction.id'), primary_key=True)
     metabolite_id = db.Column(db.Integer, db.ForeignKey('metabolite.id'), primary_key=True)
+    met_comp_acronym = db.Column(db.String)
     stoich_coef = db.Column(db.Integer)
     metabolite = db.relationship('Metabolite', back_populates='reactions')
     reaction = db.relationship('Reaction', back_populates='metabolites')
@@ -451,20 +464,26 @@ class Metabolite(db.Model):
     bigg_id = db.Column(db.String, unique=True)
     metanetx_id = db.Column(db.String)
     kegg_id = db.Column(db.String)
-    compartment_acronym = db.Column(db.String, db.ForeignKey(Compartment.acronym))
     timestamp = db.Column(db.DateTime, index=True, default=datetime.utcnow)
 
     #enzyme_inhibition_inhib_met = db.relationship('EnzymeReactionInhibition', foreign_keys=[inhibitor_met_id], back_populates='inhibitor_met')
     #enzyme_inhibition_affected_met = db.relationship('EnzymeReactionInhibition', back_populates='affected_met')
-    compartment = db.relationship('Compartment', back_populates='metabolites')
+    reactions = db.relationship('ReactionMetabolite', back_populates='metabolite', lazy='dynamic')
     chebis = db.relationship(
         'ChebiIds', secondary=metabolite_chebi,
         primaryjoin=(metabolite_chebi.c.metabolite_id == id),
         back_populates='metabolites', lazy='dynamic')
-    reactions = db.relationship('ReactionMetabolite', back_populates='metabolite', lazy='dynamic')
+    compartments = db.relationship(
+        'Compartment', secondary=metabolite_compartment,
+        primaryjoin=(metabolite_compartment.c.metabolite_id == id),
+        back_populates='metabolites', lazy='dynamic')
+
 
     def __repr__(self):
-        return str((self.grasp_id, self.name, self.compartment_acronym))
+        return str(self.bigg_id)
+
+    def __str__(self):
+        return str(self.bigg_id)
 
     def add_chebi_id(self, chebi_id):
         if not self.met_involved_in_reaction(chebi_id):
@@ -476,7 +495,7 @@ class Metabolite(db.Model):
 
     def has_chebi_id(self, chebi_id):
         return self.metabolite_chebi.filter(
-            metabolite_chebi.c.metabolite_id == self.id).count() > 0
+            metabolite_chebi.c.chebi_id == chebi_id.id).count() > 0
 
     def add_reaction(self, reaction):
         if not self.met_involved_in_reaction(reaction):
@@ -490,6 +509,19 @@ class Metabolite(db.Model):
         return self.reactions.filter(
             ReactionMetabolite.reaction_id == reaction.id).count() > 0
 
+    def add_compartment(self, compartment):
+        if not self.met_in_compartment(compartment):
+            self.compartments.append(compartment)
+
+    def remove_metabolite(self, compartment):
+        if self.met_in_compartment(compartment):
+            self.compartments.remove(compartment)
+
+    def met_in_compartment(self, compartment):
+        return self.compartments.filter(
+            Compartment.id == compartment.id).count() > 0
+
+
 
 class ChebiIds(db.Model):
     __tablename__ = 'chebi_ids'
@@ -500,6 +532,12 @@ class ChebiIds(db.Model):
         'Metabolite', secondary=metabolite_chebi,
         primaryjoin=(metabolite_chebi.c.chebi_id == id),
         back_populates='chebis', lazy='dynamic')
+
+    def __repr__(self):
+        return str(self.chebi_id, self.inchi)
+
+    def __str__(self):
+        return str(self.chebi_id, self.inchi)
 
     def add_metabolite(self, metabolite):
         if not self.is_met_associated_to_chebi(metabolite):
@@ -518,7 +556,7 @@ class Reaction(db.Model):
     __tablename__ = 'reaction'
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     name = db.Column(db.String)
-    acronym = db.Column(db.String)
+    acronym = db.Column(db.String, unique=True)
     metanetx_id = db.Column(db.String)
     reactome_id = db.Column(db.String)
     bigg_id = db.Column(db.String)
@@ -529,18 +567,38 @@ class Reaction(db.Model):
     compartment = db.relationship('Compartment', back_populates='reactions')
     enzyme_reaction_organisms = db.relationship('EnzymeReactionOrganism', back_populates='reaction', lazy='dynamic')
     metabolites = db.relationship('ReactionMetabolite', back_populates='reaction', lazy='dynamic')
-    gibbs_energy_reaction_models = db.relationship('GibbsEnergyReactionModel', back_populates='reactions', lazy='dynamic')
+    gibbs_energy_reaction_models = db.relationship('GibbsEnergyReactionModel', back_populates='reaction', lazy='dynamic')
 
     def __repr__(self):
-        return str((self.name, self.acronym, self.compartment_name))
+        for met in self.metabolites:
+        reaction_string = ''
+        reaction_string += ' + '.join([str(-met.stoich_coef) + ' ' + str(met.metabolite) + '_' + str(met.met_comp_acronym)
+                                        for met in self.metabolites if met.stoich_coef < 0])
+        reaction_string += ' <-> '
+        reaction_string += ' + '.join([str(met.stoich_coef) + ' ' + str(met.metabolite) + '_' + str(met.met_comp_acronym)
+                                         for met in self.metabolites if met.stoich_coef > 0])
+        return reaction_string
 
-    def add_metabolite(self, metabolite, stoich_coef):
+    def __str__(self):
+        for met in self.metabolites:
+        reaction_string = ''
+        reaction_string += ' + '.join([str(-met.stoich_coef) + ' ' + str(met.metabolite) + '_' + str(met.met_comp_acronym)
+                                        for met in self.metabolites if met.stoich_coef < 0])
+        reaction_string += ' <-> '
+        reaction_string += ' + '.join([str(met.stoich_coef) + ' ' + str(met.metabolite) + '_' + str(met.met_comp_acronym)
+                                         for met in self.metabolites if met.stoich_coef > 0])
+        return ': '.join([self.acronym, reaction_string])
+
+
+    def add_metabolite(self, metabolite, stoich_coef, compartment_acronym):
         if not self.met_involved_in_reaction(metabolite):
-            self.metabolites.append(ReactionMetabolite(reaction_id=self.id, metabolite_id=metabolite.id, stoich_coef=stoich_coef))
+            self.metabolites.append(ReactionMetabolite(reaction_id=self.id, metabolite_id=metabolite.id,
+                                                       stoich_coef=stoich_coef, met_comp_acronym=compartment_acronym))
 
-    def remove_metabolite(self, metabolite, stoich_coef):
+    def remove_metabolite(self, metabolite, stoich_coef, compartment_acronym):
         if self.met_involved_in_reaction(metabolite):
-            row = ReactionMetabolite.query.filter_by(reaction_id=self.id, metabolite_id=metabolite.id).first()
+            row = ReactionMetabolite.query.filter_by(reaction_id=self.id, metabolite_id=metabolite.id,
+                                                     met_comp_acronym=compartment_acronym).first()
             # delete the row from db session if it exists
             if row is not None:
                 db.session.delete(row)
@@ -580,7 +638,6 @@ class Reaction(db.Model):
 
 class Organism(db.Model):
     __tablename__ = 'organism'
-    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     name = db.Column(db.String, unique=True)
     timestamp = db.Column(db.DateTime, index=True, default=datetime.utcnow)
@@ -662,12 +719,13 @@ class Model(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     name = db.Column(db.String, unique=True)
     organism_name = db.Column(db.String, db.ForeignKey(Organism.name))
-    organism = db.relationship('Organism', back_populates='models')
     strain = db.Column(db.String)
     comments = db.Column(db.Text)
     timestamp = db.Column(db.DateTime, index=True, default=datetime.utcnow)
+
+    organism = db.relationship('Organism', back_populates='models')
     model_assumptions = db.relationship('ModelAssumptions', back_populates='model', lazy='dynamic')
-    gibbs_energy_reaction_models = db.relationship('GibbsEnergyReactionModel', back_populates='models', lazy='dynamic')
+    gibbs_energy_reaction_models = db.relationship('GibbsEnergyReactionModel', back_populates='model', lazy='dynamic')
 
 
     enzyme_reaction_inhibitions = db.relationship(
@@ -739,6 +797,12 @@ class GibbsEnergy(db.Model):
         primaryjoin=(reference_gibbs_energy.c.gibbs_energy_id == id),
         back_populates='gibbs_energies', lazy='dynamic')
 
+    def __repr__(self):
+        return ''.join([str(self.standard_dg), ' +- ', str(self.standard_dg_std), ' kJ/mol, pH: ', str(self.ph), ', IS: ', str(self.ionic_strength)])
+
+    def __str__(self):
+        return ''.join([str(self.standard_dg), ' +- ', str(self.standard_dg_std), ' kJ/mol, pH: ', str(self.ph), ', IS: ', str(self.ionic_strength)])
+
     def add_reference(self, reference):
         if not self.has_reference(reference):
             self.references.append(reference)
@@ -757,8 +821,8 @@ class GibbsEnergyReactionModel(db.Model):
     gibbs_energy_id = db.Column(db.Integer, db.ForeignKey(GibbsEnergy.id))
     model_id = db.Column(db.Integer, db.ForeignKey(Model.id))
     reaction_id = db.Column(db.Integer, db.ForeignKey(Reaction.id))
-    models = db.relationship('Model', back_populates='gibbs_energy_reaction_models')
-    reactions = db.relationship('Reaction', back_populates='gibbs_energy_reaction_models')
+    model = db.relationship('Model', back_populates='gibbs_energy_reaction_models')
+    reaction = db.relationship('Reaction', back_populates='gibbs_energy_reaction_models')
     gibbs_energy = db.relationship('GibbsEnergy', back_populates='gibbs_energy_reaction_models')
 
 class EnzymeStructure(db.Model):
@@ -1035,7 +1099,7 @@ class EnzymeReactionOrganism(db.Model):
 class EnzymeReactionInhibition(db.Model):
     __tablename__ = 'enzyme_reaction_inhibition'
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    enz_rxn_model_id = db.Column(db.Integer, db.ForeignKey(EnzymeReactionOrganism.id))
+    enz_rxn_org_id = db.Column(db.Integer, db.ForeignKey(EnzymeReactionOrganism.id))
     inhibitor_met_id = db.Column(db.Integer, db.ForeignKey(Metabolite.id))
     affected_met_id = db.Column(db.Integer, db.ForeignKey(Metabolite.id))
 
@@ -1057,6 +1121,17 @@ class EnzymeReactionInhibition(db.Model):
         'Model', secondary=enzyme_reaction_inhibition_model,
         primaryjoin=(enzyme_reaction_inhibition_model.c.inhibition_id == id),
         back_populates='enzyme_reaction_inhibitions', lazy='dynamic')
+
+
+    def __repr__(self):
+        return ''.join(['Inhibitor: ', str(self.inhibitor_met), ', Affected metabolite: ', str(self.affected_met),
+                        ', Inhibition type: ', str(self.inhibition_type),  ', Inhibition constant: ', str(round(self.inhibition_constant, 6)),
+                        ', Evidence level: ', str(self.evidence)])
+
+    def __str__(self):
+        return ''.join(['Inhibitor: ', str(self.inhibitor_met), ', Affected metabolite: ', str(self.affected_met),
+                        ', Inhibition type: ', str(self.inhibition_type),  ', Inhibition constant: ', str(round(self.inhibition_constant, 6)),
+                        ', Evidence level: ', str(self.evidence)])
 
 
     def add_reference(self, reference):
@@ -1087,7 +1162,7 @@ class EnzymeReactionInhibition(db.Model):
 class EnzymeReactionActivation(db.Model):
     __tablename__ = 'enzyme_reaction_activation'
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    enz_rxn_model_id = db.Column(db.Integer, db.ForeignKey(EnzymeReactionOrganism.id))
+    enz_rxn_org_id = db.Column(db.Integer, db.ForeignKey(EnzymeReactionOrganism.id))
     activator_met_id = db.Column(db.Integer, db.ForeignKey(Metabolite.id))
     activation_constant = db.Column(db.Float)
     evidence_level_id = db.Column(db.Integer, db.ForeignKey(EvidenceLevel.id))
@@ -1105,6 +1180,14 @@ class EnzymeReactionActivation(db.Model):
         'Reference', secondary=reference_activation,
         primaryjoin=(reference_activation.c.activation_id == id),
         back_populates='enzyme_reaction_activations', lazy='dynamic')
+
+    def __repr__(self):
+        return ''.join(['Activator: ', str(self.activator_met),  ', Activation constant: ', str(round(self.activation_constant, 6)),
+                        ', Evidence level: ', str(self.evidence)])
+
+    def __str__(self):
+        return ''.join(['Activator: ', str(self.activator_met),  ', Activation constant: ', str(round(self.activation_constant, 6)),
+                        ', Evidence level: ', str(self.evidence)])
 
 
     def add_reference(self, reference):
@@ -1136,7 +1219,7 @@ class EnzymeReactionActivation(db.Model):
 class EnzymeReactionEffector(db.Model):
     __tablename__ = 'enzyme_reaction_effector'
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    enz_rxn_model_id = db.Column(db.Integer, db.ForeignKey(EnzymeReactionOrganism.id))
+    enz_rxn_org_id = db.Column(db.Integer, db.ForeignKey(EnzymeReactionOrganism.id))
     effector_met_id = db.Column(db.Integer, db.ForeignKey(Metabolite.id))
     effector_type = db.Column(db.String)
     evidence_level_id = db.Column(db.Integer, db.ForeignKey(EvidenceLevel.id))
@@ -1154,6 +1237,14 @@ class EnzymeReactionEffector(db.Model):
         primaryjoin=(reference_effector.c.effector_id == id),
         back_populates='enzyme_reaction_effectors', lazy='dynamic')
 
+
+    def __repr__(self):
+        return ''.join(['Effector: ', str(self.effector_met),  ', Effector type: ', str(self.effector_type),
+                        ', Evidence level: ', str(self.evidence)])
+
+    def __str__(self):
+        return ''.join(['Effector: ', str(self.effector_met),  ', Effector type: ', str(self.effector_type),
+                        ', Evidence level: ', str(self.evidence)])
 
     def add_reference(self, reference):
         if not self.has_reference(reference):
@@ -1183,7 +1274,7 @@ class EnzymeReactionEffector(db.Model):
 class EnzymeReactionMiscInfo(db.Model):
     __tablename__ = 'enzyme_reaction_misc_info'
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    enz_rxn_model_id = db.Column(db.Integer, db.ForeignKey(EnzymeReactionOrganism.id))
+    enz_rxn_org_id = db.Column(db.Integer, db.ForeignKey(EnzymeReactionOrganism.id))
     topic = db.Column(db.String)
     description = db.Column(db.Text)
     evidence_level_id = db.Column(db.Integer, db.ForeignKey(EvidenceLevel.id))
@@ -1201,6 +1292,14 @@ class EnzymeReactionMiscInfo(db.Model):
         'Reference', secondary=reference_misc_info,
         primaryjoin=(reference_misc_info.c.misc_info_id == id),
         back_populates='enzyme_reaction_misc_infos', lazy='dynamic')
+
+    def __repr__(self):
+        return ''.join(['Topic: ', str(self.topic),  '. Description: ', str(self.description),
+                        ' Evidence level:', str(self.evidence)])
+
+    def __str__(self):
+        return ''.join(['Topic: ', str(self.topic),  '. Description: ', str(self.description),
+                        ' Evidence level:', str(self.evidence)])
 
     def add_reference(self, reference):
         if not self.has_reference(reference):

@@ -2,6 +2,7 @@ from app import create_app, db
 from app.models import Compartment, Enzyme, EvidenceLevel, Mechanism, Metabolite, Model, Organism, Reaction, Reference, ReferenceType,EnzymeReactionOrganism
 from app.utils.parsers import ReactionParser
 import re
+from config import Config
 
 
 def add_compartments():
@@ -43,8 +44,6 @@ def add_organisms():
     db.session.commit()
 
 
-
-
 def add_references():
     reference = Reference(title='eQuilibrator', type_type='Online database')
     db.session.add(reference)
@@ -60,9 +59,37 @@ def add_reference_types():
     db.session.commit()
 
 # only for development
-def add_enzymes():
-    enzyme_list = [('Phosphofructokinase', 'PFK', 'PFK1', '1.2.3.33'),
-                     ('Phosphofructokinase', 'PFK', 'PFK2', '1.2.3.33')]
+def add_enzymes(client):
+
+    enzyme_name = 'Phosphofructokinase'
+    enzyme_acronym = 'PFK'
+    isoenzyme = 'PFK1'
+    ec_number = '1.2.1.31'
+
+    organism_name = 'E. coli'
+    number_of_active_sites = 4
+    gene_bigg_ids = 'b001 b003'
+    uniprot_ids = 'PC3W1, P34D'
+    pdb_structure_ids = '3H8A, 1E9I'
+    strain = 'WT'
+
+
+    response = client.post('/add_enzyme', data=dict(
+                                name=enzyme_name,
+                                acronym=enzyme_acronym,
+                                isoenzyme=isoenzyme,
+                                ec_number=ec_number,
+                                organism_name='1',  # querySelectField
+                                number_of_active_sites=number_of_active_sites,
+                                gene_bigg_ids=gene_bigg_ids,
+                                uniprot_id_list=uniprot_ids,
+                                pdb_structure_ids=pdb_structure_ids,
+                                strain=strain), follow_redirects=True)
+
+
+    assert response.status_code == 200
+
+    enzyme_list = [('Phosphofructokinase', 'PFK', 'PFK2', '1.2.3.33')]
 
     for name, acronym, isoenzyme, ec_number in enzyme_list:
         enzyme = Enzyme(name=name, acronym=acronym, isoenzyme=isoenzyme, ec_number=ec_number)
@@ -82,36 +109,64 @@ def add_models():
     db.session.commit()
 
 
-# only for development
-def add_reactions():
-        reaction_name = ' Phosphofructokinase'
-        reaction_acronym = 'PFK'
-        reaction_bigg_id = 'PFK'
-        reaction_kegg_id = ''
-        reaction_string = '1 pep_c + adp_c <-> 1.5 pyr_c + atp_c'
+def add_reaction(client):
+    reaction_name = 'phosphofructokinase'
+    reaction_acronym = 'PFK'
+    reaction_grasp_id = 'PFK1'
+    reaction_string = '1 pep_c + 1.5 adp_c <-> pyr_c + 2.0 atp_m'
+    metanetx_id = ''
+    bigg_id = ''
+    kegg_id = ''
 
-        compartment_name = 'Cytosol'
+    compartment = '1'
+    organism='1'
+    models = ['1', '2']
+    enzymes = ['1','2']
+    mechanism = '1'
+    mechanism_references = 'https://doi.org/10.1093/bioinformatics/bty942, https://doi.org/10.1093/bioinformatics/bty943'
+    mechanism_evidence_level = '1'
+    subs_binding_order = 'adp_c, pep_c'
+    prod_release_order = 'atp_m, pyr_c'
+    std_gibbs_energy = 2.1
+    std_gibbs_energy_std = 0.2
+    std_gibbs_energy_ph = 7
+    std_gibbs_energy_ionic_strength = 0.2
+    std_gibbs_energy_references = 'equilibrator'
+    comments = ''
 
-        reaction = Reaction(name=reaction_name,
-                            acronym=reaction_acronym,
-                            metanetx_id=reaction_bigg_id,
-                            bigg_id=reaction_kegg_id,
-                            kegg_id=reaction_kegg_id,
-                            compartment_name=compartment_name)
 
-        db.session.add(reaction)
+    response = client.post('/add_reaction', data=dict(
+                                name=reaction_name,
+                                acronym=reaction_acronym,
+                                grasp_id=reaction_grasp_id,
+                                reaction_string=reaction_string,
+                                bigg_id=bigg_id,
+                                kegg_id=kegg_id,
+                                metanetx_id=metanetx_id,
+                                compartment=compartment,
+                                organism=organism,
+                                models=models,
+                                enzymes=enzymes,
+                                mechanism=mechanism,
+                                mechanism_references=mechanism_references,
+                                mechanism_evidence_level=mechanism_evidence_level,
+                                subs_binding_order=subs_binding_order,
+                                prod_release_order=prod_release_order,
+                                std_gibbs_energy=std_gibbs_energy,
+                                std_gibbs_energy_std=std_gibbs_energy_std,
+                                std_gibbs_energy_ph=std_gibbs_energy_ph,
+                                std_gibbs_energy_ionic_strength=std_gibbs_energy_ionic_strength,
+                                std_gibbs_energy_references=std_gibbs_energy_references,
+                                comments=comments), follow_redirects=True)
 
-        reversible, stoichiometry = ReactionParser().parse_reaction(reaction_string)
-        for met, stoich_coef in stoichiometry.items():
-            bigg_id = re.findall('(\w+)_(?:\S+)', met)[0]
-            compartment_acronym = re.findall('(?:\S+)_(\w+)', met)[0]
-            met_db = Metabolite(bigg_id=bigg_id,
-                                grasp_id=bigg_id,
-                                compartment_acronym=compartment_acronym)
+    assert response.status_code == 200
 
-            db.session.add(met_db)
+    met_db = Metabolite.query.filter_by(bigg_id='atp').first()
+    compartment_db = Compartment.query.filter_by(acronym='c').first()
+    met_db.add_compartment(compartment_db)
 
-            reaction.add_metabolite(met_db, stoich_coef)
+    db.session.commit()
+
 
 def add_enzyme_reaction_organism():
 
@@ -132,25 +187,153 @@ def add_enzyme_reaction_organism():
     db.session.add(enzyme_reaction_model)
     enzyme_reaction_model.add_model(model)
     db.session.commit()
+    
+def add_inhibition(client):
+
+    enzyme = '1'
+    reaction = '1'
+    organism = '1'
+    models = '1'
+    inhibitor_met = 'adp'
+    affected_met = 'atp'
+    inhibition_type = 'Competitive'
+    inhibition_constant = 1.3*10**-4
+
+    evidence_level = '1'
+    references = 'https://doi.org/10.1093/bioinformatics/bty942, https://doi.org/10.1093/bioinformatics/bty943'
+    comments = ''
+
+
+
+
+    response = client.post('/add_enzyme_inhibition', data=dict(
+                                 enzyme=enzyme,
+                                 reaction=reaction,
+                                 organism=organism,
+                                 models=models,
+                                 inhibitor_met=inhibitor_met,
+                                 affected_met=affected_met,
+                                 inhibition_type=inhibition_type,
+                                 inhibition_constant=inhibition_constant,
+                                 inhibition_evidence_level=evidence_level,
+                                 references=references,
+                                 comments=comments), follow_redirects=True)
+
+    assert response.status_code == 200
+
+
+def add_activation(client):
+    enzyme = '1'
+    reaction = '1'
+    organism = '1'
+    models = '1'
+    activator_met = 'adp'
+    activation_constant = 1.3*10**-4
+
+    evidence_level = '1'
+    references = 'https://doi.org/10.1093/bioinformatics/bty942, https://doi.org/10.1093/bioinformatics/bty943'
+    comments = ''
+
+
+
+    response = client.post('/add_enzyme_activation', data=dict(
+                                 enzyme=enzyme,
+                                 reaction=reaction,
+                                 organism=organism,
+                                 models=models,
+                                 activator_met=activator_met,
+                                 activation_constant=activation_constant,
+                                 activation_evidence_level=evidence_level,
+                                 references=references,
+                                 comments=comments), follow_redirects=True)
+
+    assert response.status_code == 200
+    
+        
+def add_effector(client):
+    
+    enzyme = '1'
+    reaction = '1'
+    organism = '1'
+    models = '1'
+    effector_met = 'adp'
+    effector_type = 'Inhibiting'
+
+    evidence_level = '1'
+    references = 'https://doi.org/10.1093/bioinformatics/bty942, https://doi.org/10.1093/bioinformatics/bty943'
+    comments = ''
+
+
+    response = client.post('/add_enzyme_effector', data=dict(
+                                 enzyme=enzyme,
+                                 reaction=reaction,
+                                 organism=organism,
+                                 models=models,
+                                 effector_met=effector_met,
+                                 effector_type=effector_type,
+                                 effector_evidence_level=evidence_level,
+                                 references=references,
+                                 comments=comments), follow_redirects=True)
+
+    assert response.status_code == 200
+    
+    
+def add_misc_info(client):
+    enzyme = '1'
+    reaction = '1'
+    organism = '1'
+    models = '1'
+    topic = 'allostery'
+    description = 'looks like this met is an allosteric inhibitor for that enzyme'
+
+    evidence_level = '1'
+    references = 'https://doi.org/10.1093/bioinformatics/bty942, https://doi.org/10.1093/bioinformatics/bty943'
+    comments = ''
+
+    response = client.post('/add_enzyme_misc_info', data=dict(
+                                 enzyme=enzyme,
+                                 reaction=reaction,
+                                 organism=organism,
+                                 models=models,
+                                 topic=topic,
+                                 description=description,
+                                 evidence_level=evidence_level,
+                                 references=references,
+                                 comments=comments), follow_redirects=True)
+
+    assert response.status_code == 200
+
+
+class TestConfig(Config):
+    LOGIN_DISABLED = True
+    WTF_CSRF_ENABLED = False
+
 
 def main():
-    app=create_app()
+    # app=create_app(TestConfig)
+    #app_context = app.app_context()
+    #app_context.push()
+    app = create_app(TestConfig)
+    client = app.test_client()
     app_context = app.app_context()
     app_context.push()
 
     add_organisms()
     add_compartments()
-    add_enzymes()
+
     add_evidence_levels()
     add_mechanisms()
     add_models()
 
     add_reference_types()
     add_references()
-
-    #add_reactions()
-    #add_enzyme_reaction_model
-
+    add_enzymes(client)
+    add_reaction(client)
+    add_inhibition(client)
+    add_activation(client)
+    add_effector(client)
+    add_misc_info(client)
+    #add_enzyme_reaction_organism()
 
 main()
 

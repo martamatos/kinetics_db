@@ -149,7 +149,7 @@ def add_enzyme_inhibition():
                                                              reaction_id=form.reaction.data.id,
                                                              organism_id=form.organism.data.id).first()
 
-        enz_rxn_inhib = EnzymeReactionInhibition(enz_rxn_model_id=enz_rxn_org.id,
+        enz_rxn_inhib = EnzymeReactionInhibition(enz_rxn_org_id=enz_rxn_org.id,
                                                  inhibitor_met_id=inhib_met.id,
                                                  affected_met_id=affected_met.id,
                                                  inhibition_constant=form.inhibition_constant.data,
@@ -206,7 +206,7 @@ def add_enzyme_activation():
                                                              reaction_id=form.reaction.data.id,
                                                              organism_id=form.organism.data.id).first()
 
-        enz_rxn_activation = EnzymeReactionActivation(enz_rxn_model_id=enz_rxn_org.id,
+        enz_rxn_activation = EnzymeReactionActivation(enz_rxn_org_id=enz_rxn_org.id,
                                                      activator_met_id=activator_met.id,
                                                      activation_constant=form.activation_constant.data,
                                                      evidence_level_id = activation_evidence_level_id,
@@ -248,7 +248,7 @@ def add_enzyme_effector():
                                                              reaction_id=form.reaction.data.id,
                                                              organism_id=form.organism.data.id).first()
 
-        enz_rxn_effector = EnzymeReactionEffector(enz_rxn_model_id=enz_rxn_org.id,
+        enz_rxn_effector = EnzymeReactionEffector(enz_rxn_org_id=enz_rxn_org.id,
                                                      effector_met_id=effector_met.id,
                                                      effector_type=form.effector_type.data,
                                                      evidence_level_id = effector_evidence_level_id,
@@ -285,7 +285,7 @@ def add_enzyme_misc_info():
                                                              reaction_id=form.reaction.data.id,
                                                              organism_id=form.organism.data.id).first()
 
-        enz_rxn_misc_info = EnzymeReactionMiscInfo(enz_rxn_model_id=enz_rxn_org.id,
+        enz_rxn_misc_info = EnzymeReactionMiscInfo(enz_rxn_org_id=enz_rxn_org.id,
                                                      topic=form.topic.data,
                                                      description=form.description.data,
                                                      evidence_level_id = evidence_level_id,
@@ -413,29 +413,23 @@ def _add_metabolites_to_reaction(reaction, reaction_string):
     # (True, OrderedDict([('m_pep_c', -1.0), ('m_adp_c', -1.5), ('m_pyr_c', 1.0), ('m_atp_m', 2.0)]))
 
     for met, stoich_coef in stoichiometry.items():
-        try:
-            bigg_id = re.findall('(\w+)_(?:\S+)', met)[0]
-        except IndexError:
-                print('Did you specify all metabolites in the reaction as met_compartment?', 'danger')
-                return redirect(url_for('main.add_reactions'))
+        met_compartment = re.findall('(\w+)_(\w+)', met)[0]
 
+        bigg_id = met_compartment[0]
         met_db = Metabolite.query.filter_by(bigg_id=bigg_id).first()
 
         if not met_db:
-            try:
-                compartment_acronym = re.findall('(?:\S+)_(\w+)', met)[0]
-            except IndexError:
-                print('Did you specify all metabolites in the reaction as met_compartment?', 'danger')
-                return redirect(url_for('main.add_reactions'))
-
+            compartment_acronym = met_compartment[1]
 
             met_db = Metabolite(bigg_id=bigg_id,
-                                grasp_id=bigg_id,
-                                compartment_acronym=compartment_acronym)
+                                grasp_id=bigg_id)
 
             db.session.add(met_db)
 
-            reaction.add_metabolite(met_db, stoich_coef)
+            compartment_db = Compartment.query.filter_by(acronym=compartment_acronym).first()
+            met_db.add_compartment(compartment_db)
+
+            reaction.add_metabolite(met_db, stoich_coef, compartment_acronym)
 
     return reaction
 

@@ -3,7 +3,10 @@
     {{ data_point.name }}
 </td>
 <td>
-    {{ data_point.grasp_id }}
+    <a href="{{ url_for('main.see_reaction', reaction_acronym=data_point.acronym )}}"> {{ data_point.acronym }} </a>
+</td>
+<td>
+    {{ data_point }}
 </td>
 <td>
     {{ data_point.metanetx_id }}

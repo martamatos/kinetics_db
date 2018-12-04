@@ -8,14 +8,24 @@
 
 <div class="panel panel-default">
   <!-- Default panel contents -->
-  <div class="panel-heading"> {{ data_point.name }}</div>
+  <div class="panel-heading" style="font-size:130%;"> <strong> {{ data_name }} </strong></div>
 
   <!-- List group -->
   <ul class="list-group">
-    <li class="list-group-item">Name : {{ data_point.name }}</li>
-    <li class="list-group-item">Acronym: {{ data_point.acronym }}</li>
-    <li class="list-group-item">Isoenzyme: {{ data_point.isoenzyme }}</li>
-    <li class="list-group-item">EC number: {{ data_point.ec_number }}</li>
+      {% for data_point in data_list  %}
+        <li class="list-group-item"><strong> {{ data_point.field_name }}: </strong> {{ data_point.data }}</li>
+      {% endfor %}
+
+      {% for data_point_nested in data_list_nested  %}
+
+          <li class="list-group-item"><strong> {{ data_point_nested.field_name }}: </strong>
+                {% for elem in data_point_nested.data %}
+                    <p> {{ elem }} </p>
+            {% endfor %}
+          </li>
+
+
+      {% endfor %}
   </ul>
 </div>
 {% endblock %}

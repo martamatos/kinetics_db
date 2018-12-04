@@ -18,14 +18,14 @@ class TestConfig(Config):
     WTF_CSRF_ENABLED = False
 
 
-def populate_db(test_case):
+def populate_db(test_case, client=None):
 
     if test_case == 'reaction':
         add_compartments()
         add_evidence_levels()
         add_mechanisms()
         add_organisms()
-        add_enzymes()
+        add_enzymes(client)
         add_models()
         add_reference_types()
         add_references()
@@ -35,7 +35,7 @@ def populate_db(test_case):
         add_evidence_levels()
         add_mechanisms()
         add_organisms()
-        add_enzymes()
+        add_enzymes(client)
         add_models()
         add_reference_types()
         add_references()
@@ -145,7 +145,6 @@ class TestAddEnzyme(unittest.TestCase):
         self.assertEqual(EnzymeStructure().query.all()[0].strain, strain_list[0])
         self.assertEqual(EnzymeStructure().query.all()[1].strain, strain_list[0])
 
-
     def test_add_first_enzyme_basic(self):
 
         enzyme_name = 'Phosphofructokinase'
@@ -192,7 +191,6 @@ class TestAddEnzyme(unittest.TestCase):
 
         self.assertEqual(Enzyme().query.first().enzyme_structures.count(), 0)
         self.assertEqual(Enzyme().query.first().enzyme_organisms.count(), 0)
-
 
     def test_add_repeated_isoenzyme(self):
 
@@ -369,7 +367,6 @@ class TestAddEnzyme(unittest.TestCase):
         self.assertEqual(EnzymeOrganism().query.count(), 0)
         self.assertEqual(EnzymeStructure().query.count(), 0)
 
-
     def test_add_enzyme_pdb_structure_ids_without_organism(self):
 
         enzyme_name = 'Phosphofructokinase'
@@ -411,7 +408,6 @@ class TestAddEnzyme(unittest.TestCase):
         self.assertEqual(EnzymeOrganism().query.count(), 0)
         self.assertEqual(EnzymeStructure().query.count(), 0)
 
-
     def test_add_enzyme_mismatched_strain(self):
 
         enzyme_name = 'Phosphofructokinase'
@@ -452,7 +448,6 @@ class TestAddEnzyme(unittest.TestCase):
         self.assertEqual(Organism().query.count(), 0)
         self.assertEqual(EnzymeOrganism().query.count(), 0)
         self.assertEqual(EnzymeStructure().query.count(), 0)
-
 
     def test_add_enzyme_mismatched_strain_2(self):
 
@@ -516,7 +511,6 @@ class TestAddEnzyme(unittest.TestCase):
         self.assertEqual(EnzymeStructure().query.all()[1].pdb_id, pdb_structure_id_list[1])
         self.assertEqual(EnzymeStructure().query.all()[0].strain, strain_list[0])
         self.assertEqual(EnzymeStructure().query.all()[1].strain, strain_list[1])
-
 
     def test_add_enzyme_mismatched_strain_3(self):
 
@@ -585,7 +579,6 @@ class TestAddEnzyme(unittest.TestCase):
         self.assertEqual(EnzymeStructure().query.all()[0].strain, strain_list[0])
         self.assertEqual(EnzymeStructure().query.all()[1].strain, strain_list[0])
         self.assertEqual(EnzymeStructure().query.all()[2].strain, strain_list[0])
-
 
     def test_add_enzyme_mismatched_strain_4(self):
 
@@ -664,7 +657,7 @@ class TestAddEnzymeInhibition(unittest.TestCase):
         self.app_context.push()
         db.create_all()
 
-        populate_db('enzyme_inhibition')
+        populate_db('enzyme_inhibition', self.client)
 
         self.enzyme = '1'
         self.reaction = '1'
@@ -836,7 +829,7 @@ class TestAddEnzymeActivation(unittest.TestCase):
         self.app_context.push()
         db.create_all()
 
-        populate_db('enzyme_activation')
+        populate_db('enzyme_activation', self.client)
 
         self.enzyme = '1'
         self.reaction = '1'
@@ -854,12 +847,10 @@ class TestAddEnzymeActivation(unittest.TestCase):
         self.subs_binding_order = 'adp_c, pep_c'
         self.prod_release_order = 'pyr_c, atp_c'
 
-
     def tearDown(self):
         db.session.remove()
         db.drop_all()
         self.app_context.pop()
-
 
     def test_add_first_activation(self):
 
@@ -1000,7 +991,7 @@ class TestAddEnzymeEffector(unittest.TestCase):
         self.app_context.push()
         db.create_all()
 
-        populate_db('enzyme_effector')
+        populate_db('enzyme_effector', self.client)
 
         self.enzyme = '1'
         self.reaction = '1'
@@ -1163,7 +1154,7 @@ class TestAddEnzymeMiscInfo(unittest.TestCase):
         self.app_context.push()
         db.create_all()
 
-        populate_db('enzyme_misc_info')
+        populate_db('enzyme_misc_info', self.client)
 
         self.enzyme = '1'
         self.reaction = '1'
@@ -1317,7 +1308,7 @@ class TestAddEnzymeMiscInfo(unittest.TestCase):
         self.assertEqual(Model.query.all()[1].enzyme_reaction_misc_infos[0].id, EnzymeReactionMiscInfo.query.first().id)
         self.assertEqual(Model.query.first().enzyme_reaction_organisms.count(), 1)
 
-
+"""
 class TestAddGene(unittest.TestCase):
     def setUp(self):
         self.app = create_app(TestConfig)
@@ -1360,8 +1351,7 @@ class TestAddGene(unittest.TestCase):
         self.assertEqual(Organism().query.first().name, organism_name)
         self.assertEqual(Organism().query.first().models.count(), 1)
         self.assertEqual(Organism().query.first().models[0].name, model_name)
-
-
+"""
 
 class TestAddModel(unittest.TestCase):
     def setUp(self):
@@ -1552,7 +1542,7 @@ class TestAddEnzymeModelAssumption(unittest.TestCase):
         self.app_context.push()
         db.create_all()
 
-        populate_db('model_assumption')
+        populate_db('model_assumption', self.client)
 
         self.model = '1'
         self.assumption = 'allostery'
@@ -1693,7 +1683,7 @@ class TestAddReaction(unittest.TestCase):
         self.app_context.push()
         db.create_all()
 
-        populate_db('reaction')
+        populate_db('reaction', self.client)
 
         self.reaction_name = 'phosphofructokinase'
         self.reaction_acronym = 'PFK'
@@ -1813,28 +1803,32 @@ class TestAddReaction(unittest.TestCase):
         self.assertEqual(Metabolite.query.count(), 4)
         self.assertEqual(Metabolite.query.all()[0].bigg_id, 'pep')
         self.assertEqual(Metabolite.query.all()[0].grasp_id, 'pep')
-        self.assertEqual(Metabolite.query.all()[0].compartment_acronym, 'c')
+        self.assertEqual(Metabolite.query.all()[0].compartments[0].acronym, 'c')
         self.assertEqual(Metabolite.query.all()[1].bigg_id, 'adp')
         self.assertEqual(Metabolite.query.all()[1].grasp_id, 'adp')
-        self.assertEqual(Metabolite.query.all()[1].compartment_acronym, 'c')
+        self.assertEqual(Metabolite.query.all()[1].compartments[0].acronym, 'c')
         self.assertEqual(Metabolite.query.all()[2].bigg_id, 'pyr')
         self.assertEqual(Metabolite.query.all()[2].grasp_id, 'pyr')
-        self.assertEqual(Metabolite.query.all()[2].compartment_acronym, 'c')
+        self.assertEqual(Metabolite.query.all()[2].compartments[0].acronym, 'c')
         self.assertEqual(Metabolite.query.all()[3].bigg_id, 'atp')
         self.assertEqual(Metabolite.query.all()[3].grasp_id, 'atp')
-        self.assertEqual(Metabolite.query.all()[3].compartment_acronym, 'm')
+        self.assertEqual(Metabolite.query.all()[3].compartments[0].acronym, 'm')
 
         self.assertEqual(ReactionMetabolite.query.count(), 4)
         self.assertEqual(ReactionMetabolite.query.all()[0].metabolite.bigg_id, 'pep')
+        self.assertEqual(ReactionMetabolite.query.all()[0].met_comp_acronym, 'c')
         self.assertEqual(ReactionMetabolite.query.all()[0].stoich_coef, -1)
         self.assertEqual(ReactionMetabolite.query.all()[0].reaction.acronym, self.reaction_acronym)
         self.assertEqual(ReactionMetabolite.query.all()[1].metabolite.bigg_id, 'adp')
+        self.assertEqual(ReactionMetabolite.query.all()[1].met_comp_acronym, 'c')
         self.assertEqual(ReactionMetabolite.query.all()[1].stoich_coef, -1.5)
         self.assertEqual(ReactionMetabolite.query.all()[1].reaction.acronym, self.reaction_acronym)
         self.assertEqual(ReactionMetabolite.query.all()[2].metabolite.bigg_id, 'pyr')
+        self.assertEqual(ReactionMetabolite.query.all()[2].met_comp_acronym, 'c')
         self.assertEqual(ReactionMetabolite.query.all()[2].stoich_coef, 1)
         self.assertEqual(ReactionMetabolite.query.all()[2].reaction.acronym, self.reaction_acronym)
         self.assertEqual(ReactionMetabolite.query.all()[3].metabolite.bigg_id, 'atp')
+        self.assertEqual(ReactionMetabolite.query.all()[3].met_comp_acronym, 'm')
         self.assertEqual(ReactionMetabolite.query.all()[3].stoich_coef, 2)
         self.assertEqual(ReactionMetabolite.query.all()[3].reaction.acronym, self.reaction_acronym)
 
@@ -1942,28 +1936,32 @@ class TestAddReaction(unittest.TestCase):
         self.assertEqual(Metabolite.query.count(), 4)
         self.assertEqual(Metabolite.query.all()[0].bigg_id, 'pep')
         self.assertEqual(Metabolite.query.all()[0].grasp_id, 'pep')
-        self.assertEqual(Metabolite.query.all()[0].compartment_acronym, 'c')
+        self.assertEqual(Metabolite.query.all()[0].compartments[0].acronym, 'c')
         self.assertEqual(Metabolite.query.all()[1].bigg_id, 'adp')
         self.assertEqual(Metabolite.query.all()[1].grasp_id, 'adp')
-        self.assertEqual(Metabolite.query.all()[1].compartment_acronym, 'c')
+        self.assertEqual(Metabolite.query.all()[1].compartments[0].acronym, 'c')
         self.assertEqual(Metabolite.query.all()[2].bigg_id, 'pyr')
         self.assertEqual(Metabolite.query.all()[2].grasp_id, 'pyr')
-        self.assertEqual(Metabolite.query.all()[2].compartment_acronym, 'c')
+        self.assertEqual(Metabolite.query.all()[2].compartments[0].acronym, 'c')
         self.assertEqual(Metabolite.query.all()[3].bigg_id, 'atp')
         self.assertEqual(Metabolite.query.all()[3].grasp_id, 'atp')
-        self.assertEqual(Metabolite.query.all()[3].compartment_acronym, 'm')
+        self.assertEqual(Metabolite.query.all()[3].compartments[0].acronym, 'm')
 
         self.assertEqual(ReactionMetabolite.query.count(), 4)
         self.assertEqual(ReactionMetabolite.query.all()[0].metabolite.bigg_id, 'pep')
+        self.assertEqual(ReactionMetabolite.query.all()[0].met_comp_acronym, 'c')
         self.assertEqual(ReactionMetabolite.query.all()[0].stoich_coef, -1)
         self.assertEqual(ReactionMetabolite.query.all()[0].reaction.acronym, self.reaction_acronym)
         self.assertEqual(ReactionMetabolite.query.all()[1].metabolite.bigg_id, 'adp')
+        self.assertEqual(ReactionMetabolite.query.all()[1].met_comp_acronym, 'c')
         self.assertEqual(ReactionMetabolite.query.all()[1].stoich_coef, -1.5)
         self.assertEqual(ReactionMetabolite.query.all()[1].reaction.acronym, self.reaction_acronym)
         self.assertEqual(ReactionMetabolite.query.all()[2].metabolite.bigg_id, 'pyr')
+        self.assertEqual(ReactionMetabolite.query.all()[2].met_comp_acronym, 'c')
         self.assertEqual(ReactionMetabolite.query.all()[2].stoich_coef, 1)
         self.assertEqual(ReactionMetabolite.query.all()[2].reaction.acronym, self.reaction_acronym)
         self.assertEqual(ReactionMetabolite.query.all()[3].metabolite.bigg_id, 'atp')
+        self.assertEqual(ReactionMetabolite.query.all()[3].met_comp_acronym, 'm')
         self.assertEqual(ReactionMetabolite.query.all()[3].stoich_coef, 2)
         self.assertEqual(ReactionMetabolite.query.all()[3].reaction.acronym, self.reaction_acronym)
 
@@ -2076,30 +2074,35 @@ class TestAddReaction(unittest.TestCase):
         self.assertEqual(Metabolite.query.count(), 4)
         self.assertEqual(Metabolite.query.all()[0].bigg_id, 'pep')
         self.assertEqual(Metabolite.query.all()[0].grasp_id, 'pep')
-        self.assertEqual(Metabolite.query.all()[0].compartment_acronym, 'c')
+        self.assertEqual(Metabolite.query.all()[0].compartments[0].acronym, 'c')
         self.assertEqual(Metabolite.query.all()[1].bigg_id, 'adp')
         self.assertEqual(Metabolite.query.all()[1].grasp_id, 'adp')
-        self.assertEqual(Metabolite.query.all()[1].compartment_acronym, 'c')
+        self.assertEqual(Metabolite.query.all()[1].compartments[0].acronym, 'c')
         self.assertEqual(Metabolite.query.all()[2].bigg_id, 'pyr')
         self.assertEqual(Metabolite.query.all()[2].grasp_id, 'pyr')
-        self.assertEqual(Metabolite.query.all()[2].compartment_acronym, 'c')
+        self.assertEqual(Metabolite.query.all()[2].compartments[0].acronym, 'c')
         self.assertEqual(Metabolite.query.all()[3].bigg_id, 'atp')
         self.assertEqual(Metabolite.query.all()[3].grasp_id, 'atp')
-        self.assertEqual(Metabolite.query.all()[3].compartment_acronym, 'm')
+        self.assertEqual(Metabolite.query.all()[3].compartments[0].acronym, 'm')
 
         self.assertEqual(ReactionMetabolite.query.count(), 4)
         self.assertEqual(ReactionMetabolite.query.all()[0].metabolite.bigg_id, 'pep')
+        self.assertEqual(ReactionMetabolite.query.all()[0].met_comp_acronym, 'c')
         self.assertEqual(ReactionMetabolite.query.all()[0].stoich_coef, -1)
         self.assertEqual(ReactionMetabolite.query.all()[0].reaction.acronym, self.reaction_acronym)
         self.assertEqual(ReactionMetabolite.query.all()[1].metabolite.bigg_id, 'adp')
+        self.assertEqual(ReactionMetabolite.query.all()[1].met_comp_acronym, 'c')
         self.assertEqual(ReactionMetabolite.query.all()[1].stoich_coef, -1.5)
         self.assertEqual(ReactionMetabolite.query.all()[1].reaction.acronym, self.reaction_acronym)
         self.assertEqual(ReactionMetabolite.query.all()[2].metabolite.bigg_id, 'pyr')
+        self.assertEqual(ReactionMetabolite.query.all()[2].met_comp_acronym, 'c')
         self.assertEqual(ReactionMetabolite.query.all()[2].stoich_coef, 1)
         self.assertEqual(ReactionMetabolite.query.all()[2].reaction.acronym, self.reaction_acronym)
         self.assertEqual(ReactionMetabolite.query.all()[3].metabolite.bigg_id, 'atp')
+        self.assertEqual(ReactionMetabolite.query.all()[3].met_comp_acronym, 'm')
         self.assertEqual(ReactionMetabolite.query.all()[3].stoich_coef, 2)
         self.assertEqual(ReactionMetabolite.query.all()[3].reaction.acronym, self.reaction_acronym)
+
 
     def test_add_reaction_two_mechanism_references(self):
 
@@ -2206,28 +2209,32 @@ class TestAddReaction(unittest.TestCase):
         self.assertEqual(Metabolite.query.count(), 4)
         self.assertEqual(Metabolite.query.all()[0].bigg_id, 'pep')
         self.assertEqual(Metabolite.query.all()[0].grasp_id, 'pep')
-        self.assertEqual(Metabolite.query.all()[0].compartment_acronym, 'c')
+        self.assertEqual(Metabolite.query.all()[0].compartments[0].acronym, 'c')
         self.assertEqual(Metabolite.query.all()[1].bigg_id, 'adp')
         self.assertEqual(Metabolite.query.all()[1].grasp_id, 'adp')
-        self.assertEqual(Metabolite.query.all()[1].compartment_acronym, 'c')
+        self.assertEqual(Metabolite.query.all()[1].compartments[0].acronym, 'c')
         self.assertEqual(Metabolite.query.all()[2].bigg_id, 'pyr')
         self.assertEqual(Metabolite.query.all()[2].grasp_id, 'pyr')
-        self.assertEqual(Metabolite.query.all()[2].compartment_acronym, 'c')
+        self.assertEqual(Metabolite.query.all()[2].compartments[0].acronym, 'c')
         self.assertEqual(Metabolite.query.all()[3].bigg_id, 'atp')
         self.assertEqual(Metabolite.query.all()[3].grasp_id, 'atp')
-        self.assertEqual(Metabolite.query.all()[3].compartment_acronym, 'm')
+        self.assertEqual(Metabolite.query.all()[3].compartments[0].acronym, 'm')
 
         self.assertEqual(ReactionMetabolite.query.count(), 4)
         self.assertEqual(ReactionMetabolite.query.all()[0].metabolite.bigg_id, 'pep')
+        self.assertEqual(ReactionMetabolite.query.all()[0].met_comp_acronym, 'c')
         self.assertEqual(ReactionMetabolite.query.all()[0].stoich_coef, -1)
         self.assertEqual(ReactionMetabolite.query.all()[0].reaction.acronym, self.reaction_acronym)
         self.assertEqual(ReactionMetabolite.query.all()[1].metabolite.bigg_id, 'adp')
+        self.assertEqual(ReactionMetabolite.query.all()[1].met_comp_acronym, 'c')
         self.assertEqual(ReactionMetabolite.query.all()[1].stoich_coef, -1.5)
         self.assertEqual(ReactionMetabolite.query.all()[1].reaction.acronym, self.reaction_acronym)
         self.assertEqual(ReactionMetabolite.query.all()[2].metabolite.bigg_id, 'pyr')
+        self.assertEqual(ReactionMetabolite.query.all()[2].met_comp_acronym, 'c')
         self.assertEqual(ReactionMetabolite.query.all()[2].stoich_coef, 1)
         self.assertEqual(ReactionMetabolite.query.all()[2].reaction.acronym, self.reaction_acronym)
         self.assertEqual(ReactionMetabolite.query.all()[3].metabolite.bigg_id, 'atp')
+        self.assertEqual(ReactionMetabolite.query.all()[3].met_comp_acronym, 'm')
         self.assertEqual(ReactionMetabolite.query.all()[3].stoich_coef, 2)
         self.assertEqual(ReactionMetabolite.query.all()[3].reaction.acronym, self.reaction_acronym)
 
@@ -2267,6 +2274,184 @@ class TestAddReaction(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertTrue(b'<title>\n    Add reaction - Kinetics DB \n</title>' in response.data)
+
+        self.assertEqual(Reaction.query.count(), 0)
+        self.assertEqual(Enzyme.query.count(), 2)
+        self.assertEqual(GibbsEnergy.query.count(), 0)
+        self.assertEqual(GibbsEnergyReactionModel.query.count(), 0)
+        self.assertEqual(EnzymeReactionOrganism.query.count(), 0)
+        self.assertEqual(Mechanism.query.count(), 2)
+        self.assertEqual(Reference.query.count(), 1)
+        self.assertEqual(Model.query.count(), 2)
+        self.assertEqual(Organism.query.count(), 2)
+
+    def test_add_reaction_met_format(self):
+
+        self.reaction_string = '1 pep_c + 1.5 adpc <-> pyr_c + 2.0 atp_m'
+        self.mechanism = ''
+        self.mechanism_references = ''
+        self.mechanism_evidence_level = ''
+        self.subs_binding_order = ''
+        self.prod_release_order = ''
+
+        response = self.client.post('/add_reaction', data=dict(
+                                    name=self.reaction_name,
+                                    acronym=self.reaction_acronym,
+                                    grasp_id=self.reaction_grasp_id,
+                                    reaction_string=self.reaction_string,
+                                    bigg_id=self.bigg_id,
+                                    kegg_id=self.kegg_id,
+                                    metanetx_id=self.metanetx_id,
+                                    compartment=self.compartment,
+                                    organism=self.organism,
+                                    models=self.models,
+                                    enzymes=self.enzymes,
+                                    mechanism=self.mechanism,
+                                    mechanism_references=self.mechanism_references,
+                                    mechanism_evidence_level=self.mechanism_evidence_level,
+                                    subs_binding_order=self.subs_binding_order,
+                                    prod_release_order=self.prod_release_order,
+                                    std_gibbs_energy=self.std_gibbs_energy,
+                                    std_gibbs_energy_std=self.std_gibbs_energy_std,
+                                    std_gibbs_energy_ph=self.std_gibbs_energy_ph,
+                                    std_gibbs_energy_ionic_strength=self.std_gibbs_energy_ionic_strength,
+                                    std_gibbs_energy_references=self.std_gibbs_energy_references,
+                                    comments=self.comments), follow_redirects=True)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(b'<title>\n    Add reaction - Kinetics DB \n</title>' in response.data)
+        self.assertTrue(b'Please specify the metabolite' in response.data)
+
+        self.assertEqual(Reaction.query.count(), 0)
+        self.assertEqual(Enzyme.query.count(), 2)
+        self.assertEqual(GibbsEnergy.query.count(), 0)
+        self.assertEqual(GibbsEnergyReactionModel.query.count(), 0)
+        self.assertEqual(EnzymeReactionOrganism.query.count(), 0)
+        self.assertEqual(Mechanism.query.count(), 2)
+        self.assertEqual(Reference.query.count(), 1)
+        self.assertEqual(Model.query.count(), 2)
+        self.assertEqual(Organism.query.count(), 2)
+
+    def test_add_reaction_met_compartment(self):
+
+        self.reaction_string = '1 pep_c + 1.5 adp_x <-> pyr_c + 2.0 atp_m'
+        self.mechanism = ''
+        self.mechanism_references = ''
+        self.mechanism_evidence_level = ''
+        self.subs_binding_order = ''
+        self.prod_release_order = ''
+
+        response = self.client.post('/add_reaction', data=dict(
+                                    name=self.reaction_name,
+                                    acronym=self.reaction_acronym,
+                                    grasp_id=self.reaction_grasp_id,
+                                    reaction_string=self.reaction_string,
+                                    bigg_id=self.bigg_id,
+                                    kegg_id=self.kegg_id,
+                                    metanetx_id=self.metanetx_id,
+                                    compartment=self.compartment,
+                                    organism=self.organism,
+                                    models=self.models,
+                                    enzymes=self.enzymes,
+                                    mechanism=self.mechanism,
+                                    mechanism_references=self.mechanism_references,
+                                    mechanism_evidence_level=self.mechanism_evidence_level,
+                                    subs_binding_order=self.subs_binding_order,
+                                    prod_release_order=self.prod_release_order,
+                                    std_gibbs_energy=self.std_gibbs_energy,
+                                    std_gibbs_energy_std=self.std_gibbs_energy_std,
+                                    std_gibbs_energy_ph=self.std_gibbs_energy_ph,
+                                    std_gibbs_energy_ionic_strength=self.std_gibbs_energy_ionic_strength,
+                                    std_gibbs_energy_references=self.std_gibbs_energy_references,
+                                    comments=self.comments), follow_redirects=True)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(b'<title>\n    Add reaction - Kinetics DB \n</title>' in response.data)
+        self.assertTrue(b'The specified compartment acronym' in response.data)
+
+        self.assertEqual(Reaction.query.count(), 0)
+        self.assertEqual(Enzyme.query.count(), 2)
+        self.assertEqual(GibbsEnergy.query.count(), 0)
+        self.assertEqual(GibbsEnergyReactionModel.query.count(), 0)
+        self.assertEqual(EnzymeReactionOrganism.query.count(), 0)
+        self.assertEqual(Mechanism.query.count(), 2)
+        self.assertEqual(Reference.query.count(), 1)
+        self.assertEqual(Model.query.count(), 2)
+        self.assertEqual(Organism.query.count(), 2)
+
+    def test_add_reaction_met_subs_binding(self):
+
+        self.subs_binding_order = 'adx_c, pep_c'
+
+        response = self.client.post('/add_reaction', data=dict(
+                                    name=self.reaction_name,
+                                    acronym=self.reaction_acronym,
+                                    grasp_id=self.reaction_grasp_id,
+                                    reaction_string=self.reaction_string,
+                                    bigg_id=self.bigg_id,
+                                    kegg_id=self.kegg_id,
+                                    metanetx_id=self.metanetx_id,
+                                    compartment=self.compartment,
+                                    organism=self.organism,
+                                    models=self.models,
+                                    enzymes=self.enzymes,
+                                    mechanism=self.mechanism,
+                                    mechanism_references=self.mechanism_references,
+                                    mechanism_evidence_level=self.mechanism_evidence_level,
+                                    subs_binding_order=self.subs_binding_order,
+                                    prod_release_order=self.prod_release_order,
+                                    std_gibbs_energy=self.std_gibbs_energy,
+                                    std_gibbs_energy_std=self.std_gibbs_energy_std,
+                                    std_gibbs_energy_ph=self.std_gibbs_energy_ph,
+                                    std_gibbs_energy_ionic_strength=self.std_gibbs_energy_ionic_strength,
+                                    std_gibbs_energy_references=self.std_gibbs_energy_references,
+                                    comments=self.comments), follow_redirects=True)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(b'<title>\n    Add reaction - Kinetics DB \n</title>' in response.data)
+        self.assertTrue(b'does not match any metabolite in' in response.data)
+
+        self.assertEqual(Reaction.query.count(), 0)
+        self.assertEqual(Enzyme.query.count(), 2)
+        self.assertEqual(GibbsEnergy.query.count(), 0)
+        self.assertEqual(GibbsEnergyReactionModel.query.count(), 0)
+        self.assertEqual(EnzymeReactionOrganism.query.count(), 0)
+        self.assertEqual(Mechanism.query.count(), 2)
+        self.assertEqual(Reference.query.count(), 1)
+        self.assertEqual(Model.query.count(), 2)
+        self.assertEqual(Organism.query.count(), 2)
+
+    def test_add_reaction_met_prod_release(self):
+
+        self.prod_release_order = 'atp_m, pyr2_c'
+
+        response = self.client.post('/add_reaction', data=dict(
+                                    name=self.reaction_name,
+                                    acronym=self.reaction_acronym,
+                                    grasp_id=self.reaction_grasp_id,
+                                    reaction_string=self.reaction_string,
+                                    bigg_id=self.bigg_id,
+                                    kegg_id=self.kegg_id,
+                                    metanetx_id=self.metanetx_id,
+                                    compartment=self.compartment,
+                                    organism=self.organism,
+                                    models=self.models,
+                                    enzymes=self.enzymes,
+                                    mechanism=self.mechanism,
+                                    mechanism_references=self.mechanism_references,
+                                    mechanism_evidence_level=self.mechanism_evidence_level,
+                                    subs_binding_order=self.subs_binding_order,
+                                    prod_release_order=self.prod_release_order,
+                                    std_gibbs_energy=self.std_gibbs_energy,
+                                    std_gibbs_energy_std=self.std_gibbs_energy_std,
+                                    std_gibbs_energy_ph=self.std_gibbs_energy_ph,
+                                    std_gibbs_energy_ionic_strength=self.std_gibbs_energy_ionic_strength,
+                                    std_gibbs_energy_references=self.std_gibbs_energy_references,
+                                    comments=self.comments), follow_redirects=True)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(b'<title>\n    Add reaction - Kinetics DB \n</title>' in response.data)
+        self.assertTrue(b'does not match any metabolite in' in response.data)
 
         self.assertEqual(Reaction.query.count(), 0)
         self.assertEqual(Enzyme.query.count(), 2)
@@ -2818,32 +3003,35 @@ class TestAddReaction(unittest.TestCase):
         self.assertEqual(Reference.query.all()[0].title, true_gibbs_energy_ref)
         self.assertEqual(Reference.query.all()[0].type_type, 'Online database')
 
-
         self.assertEqual(Metabolite.query.count(), 4)
         self.assertEqual(Metabolite.query.all()[0].bigg_id, 'pep')
         self.assertEqual(Metabolite.query.all()[0].grasp_id, 'pep')
-        self.assertEqual(Metabolite.query.all()[0].compartment_acronym, 'c')
+        self.assertEqual(Metabolite.query.all()[0].compartments[0].acronym, 'c')
         self.assertEqual(Metabolite.query.all()[1].bigg_id, 'adp')
         self.assertEqual(Metabolite.query.all()[1].grasp_id, 'adp')
-        self.assertEqual(Metabolite.query.all()[1].compartment_acronym, 'c')
+        self.assertEqual(Metabolite.query.all()[1].compartments[0].acronym, 'c')
         self.assertEqual(Metabolite.query.all()[2].bigg_id, 'pyr')
         self.assertEqual(Metabolite.query.all()[2].grasp_id, 'pyr')
-        self.assertEqual(Metabolite.query.all()[2].compartment_acronym, 'c')
+        self.assertEqual(Metabolite.query.all()[2].compartments[0].acronym, 'c')
         self.assertEqual(Metabolite.query.all()[3].bigg_id, 'atp')
         self.assertEqual(Metabolite.query.all()[3].grasp_id, 'atp')
-        self.assertEqual(Metabolite.query.all()[3].compartment_acronym, 'm')
+        self.assertEqual(Metabolite.query.all()[3].compartments[0].acronym, 'm')
 
         self.assertEqual(ReactionMetabolite.query.count(), 4)
         self.assertEqual(ReactionMetabolite.query.all()[0].metabolite.bigg_id, 'pep')
+        self.assertEqual(ReactionMetabolite.query.all()[0].met_comp_acronym, 'c')
         self.assertEqual(ReactionMetabolite.query.all()[0].stoich_coef, -1)
         self.assertEqual(ReactionMetabolite.query.all()[0].reaction.acronym, self.reaction_acronym)
         self.assertEqual(ReactionMetabolite.query.all()[1].metabolite.bigg_id, 'adp')
+        self.assertEqual(ReactionMetabolite.query.all()[1].met_comp_acronym, 'c')
         self.assertEqual(ReactionMetabolite.query.all()[1].stoich_coef, -1.5)
         self.assertEqual(ReactionMetabolite.query.all()[1].reaction.acronym, self.reaction_acronym)
         self.assertEqual(ReactionMetabolite.query.all()[2].metabolite.bigg_id, 'pyr')
+        self.assertEqual(ReactionMetabolite.query.all()[2].met_comp_acronym, 'c')
         self.assertEqual(ReactionMetabolite.query.all()[2].stoich_coef, 1)
         self.assertEqual(ReactionMetabolite.query.all()[2].reaction.acronym, self.reaction_acronym)
         self.assertEqual(ReactionMetabolite.query.all()[3].metabolite.bigg_id, 'atp')
+        self.assertEqual(ReactionMetabolite.query.all()[3].met_comp_acronym, 'm')
         self.assertEqual(ReactionMetabolite.query.all()[3].stoich_coef, 2)
         self.assertEqual(ReactionMetabolite.query.all()[3].reaction.acronym, self.reaction_acronym)
 
@@ -2918,28 +3106,32 @@ class TestAddReaction(unittest.TestCase):
         self.assertEqual(Metabolite.query.count(), 4)
         self.assertEqual(Metabolite.query.all()[0].bigg_id, 'pep')
         self.assertEqual(Metabolite.query.all()[0].grasp_id, 'pep')
-        self.assertEqual(Metabolite.query.all()[0].compartment_acronym, 'c')
+        self.assertEqual(Metabolite.query.all()[0].compartments[0].acronym, 'c')
         self.assertEqual(Metabolite.query.all()[1].bigg_id, 'adp')
         self.assertEqual(Metabolite.query.all()[1].grasp_id, 'adp')
-        self.assertEqual(Metabolite.query.all()[1].compartment_acronym, 'c')
+        self.assertEqual(Metabolite.query.all()[1].compartments[0].acronym, 'c')
         self.assertEqual(Metabolite.query.all()[2].bigg_id, 'pyr')
         self.assertEqual(Metabolite.query.all()[2].grasp_id, 'pyr')
-        self.assertEqual(Metabolite.query.all()[2].compartment_acronym, 'c')
+        self.assertEqual(Metabolite.query.all()[2].compartments[0].acronym, 'c')
         self.assertEqual(Metabolite.query.all()[3].bigg_id, 'atp')
         self.assertEqual(Metabolite.query.all()[3].grasp_id, 'atp')
-        self.assertEqual(Metabolite.query.all()[3].compartment_acronym, 'm')
+        self.assertEqual(Metabolite.query.all()[3].compartments[0].acronym, 'm')
 
         self.assertEqual(ReactionMetabolite.query.count(), 4)
         self.assertEqual(ReactionMetabolite.query.all()[0].metabolite.bigg_id, 'pep')
+        self.assertEqual(ReactionMetabolite.query.all()[0].met_comp_acronym, 'c')
         self.assertEqual(ReactionMetabolite.query.all()[0].stoich_coef, -1)
         self.assertEqual(ReactionMetabolite.query.all()[0].reaction.acronym, self.reaction_acronym)
         self.assertEqual(ReactionMetabolite.query.all()[1].metabolite.bigg_id, 'adp')
+        self.assertEqual(ReactionMetabolite.query.all()[1].met_comp_acronym, 'c')
         self.assertEqual(ReactionMetabolite.query.all()[1].stoich_coef, -1.5)
         self.assertEqual(ReactionMetabolite.query.all()[1].reaction.acronym, self.reaction_acronym)
         self.assertEqual(ReactionMetabolite.query.all()[2].metabolite.bigg_id, 'pyr')
+        self.assertEqual(ReactionMetabolite.query.all()[2].met_comp_acronym, 'c')
         self.assertEqual(ReactionMetabolite.query.all()[2].stoich_coef, 1)
         self.assertEqual(ReactionMetabolite.query.all()[2].reaction.acronym, self.reaction_acronym)
         self.assertEqual(ReactionMetabolite.query.all()[3].metabolite.bigg_id, 'atp')
+        self.assertEqual(ReactionMetabolite.query.all()[3].met_comp_acronym, 'm')
         self.assertEqual(ReactionMetabolite.query.all()[3].stoich_coef, 2)
         self.assertEqual(ReactionMetabolite.query.all()[3].reaction.acronym, self.reaction_acronym)
 
@@ -3005,28 +3197,32 @@ class TestAddReaction(unittest.TestCase):
         self.assertEqual(Metabolite.query.count(), 4)
         self.assertEqual(Metabolite.query.all()[0].bigg_id, 'pep')
         self.assertEqual(Metabolite.query.all()[0].grasp_id, 'pep')
-        self.assertEqual(Metabolite.query.all()[0].compartment_acronym, 'c')
+        self.assertEqual(Metabolite.query.all()[0].compartments[0].acronym, 'c')
         self.assertEqual(Metabolite.query.all()[1].bigg_id, 'adp')
         self.assertEqual(Metabolite.query.all()[1].grasp_id, 'adp')
-        self.assertEqual(Metabolite.query.all()[1].compartment_acronym, 'c')
+        self.assertEqual(Metabolite.query.all()[1].compartments[0].acronym, 'c')
         self.assertEqual(Metabolite.query.all()[2].bigg_id, 'pyr')
         self.assertEqual(Metabolite.query.all()[2].grasp_id, 'pyr')
-        self.assertEqual(Metabolite.query.all()[2].compartment_acronym, 'c')
+        self.assertEqual(Metabolite.query.all()[2].compartments[0].acronym, 'c')
         self.assertEqual(Metabolite.query.all()[3].bigg_id, 'atp')
         self.assertEqual(Metabolite.query.all()[3].grasp_id, 'atp')
-        self.assertEqual(Metabolite.query.all()[3].compartment_acronym, 'm')
+        self.assertEqual(Metabolite.query.all()[3].compartments[0].acronym, 'm')
 
         self.assertEqual(ReactionMetabolite.query.count(), 4)
         self.assertEqual(ReactionMetabolite.query.all()[0].metabolite.bigg_id, 'pep')
+        self.assertEqual(ReactionMetabolite.query.all()[0].met_comp_acronym, 'c')
         self.assertEqual(ReactionMetabolite.query.all()[0].stoich_coef, -1)
         self.assertEqual(ReactionMetabolite.query.all()[0].reaction.acronym, self.reaction_acronym)
         self.assertEqual(ReactionMetabolite.query.all()[1].metabolite.bigg_id, 'adp')
+        self.assertEqual(ReactionMetabolite.query.all()[1].met_comp_acronym, 'c')
         self.assertEqual(ReactionMetabolite.query.all()[1].stoich_coef, -1.5)
         self.assertEqual(ReactionMetabolite.query.all()[1].reaction.acronym, self.reaction_acronym)
         self.assertEqual(ReactionMetabolite.query.all()[2].metabolite.bigg_id, 'pyr')
+        self.assertEqual(ReactionMetabolite.query.all()[2].met_comp_acronym, 'c')
         self.assertEqual(ReactionMetabolite.query.all()[2].stoich_coef, 1)
         self.assertEqual(ReactionMetabolite.query.all()[2].reaction.acronym, self.reaction_acronym)
         self.assertEqual(ReactionMetabolite.query.all()[3].metabolite.bigg_id, 'atp')
+        self.assertEqual(ReactionMetabolite.query.all()[3].met_comp_acronym, 'm')
         self.assertEqual(ReactionMetabolite.query.all()[3].stoich_coef, 2)
         self.assertEqual(ReactionMetabolite.query.all()[3].reaction.acronym, self.reaction_acronym)
 
@@ -3127,28 +3323,32 @@ class TestAddReaction(unittest.TestCase):
         self.assertEqual(Metabolite.query.count(), 4)
         self.assertEqual(Metabolite.query.all()[0].bigg_id, 'pep')
         self.assertEqual(Metabolite.query.all()[0].grasp_id, 'pep')
-        self.assertEqual(Metabolite.query.all()[0].compartment_acronym, 'c')
+        self.assertEqual(Metabolite.query.all()[0].compartments[0].acronym, 'c')
         self.assertEqual(Metabolite.query.all()[1].bigg_id, 'adp')
         self.assertEqual(Metabolite.query.all()[1].grasp_id, 'adp')
-        self.assertEqual(Metabolite.query.all()[1].compartment_acronym, 'c')
+        self.assertEqual(Metabolite.query.all()[1].compartments[0].acronym, 'c')
         self.assertEqual(Metabolite.query.all()[2].bigg_id, 'pyr')
         self.assertEqual(Metabolite.query.all()[2].grasp_id, 'pyr')
-        self.assertEqual(Metabolite.query.all()[2].compartment_acronym, 'c')
+        self.assertEqual(Metabolite.query.all()[2].compartments[0].acronym, 'c')
         self.assertEqual(Metabolite.query.all()[3].bigg_id, 'atp')
         self.assertEqual(Metabolite.query.all()[3].grasp_id, 'atp')
-        self.assertEqual(Metabolite.query.all()[3].compartment_acronym, 'm')
+        self.assertEqual(Metabolite.query.all()[3].compartments[0].acronym, 'm')
 
         self.assertEqual(ReactionMetabolite.query.count(), 4)
         self.assertEqual(ReactionMetabolite.query.all()[0].metabolite.bigg_id, 'pep')
+        self.assertEqual(ReactionMetabolite.query.all()[0].met_comp_acronym, 'c')
         self.assertEqual(ReactionMetabolite.query.all()[0].stoich_coef, -1)
         self.assertEqual(ReactionMetabolite.query.all()[0].reaction.acronym, self.reaction_acronym)
         self.assertEqual(ReactionMetabolite.query.all()[1].metabolite.bigg_id, 'adp')
+        self.assertEqual(ReactionMetabolite.query.all()[1].met_comp_acronym, 'c')
         self.assertEqual(ReactionMetabolite.query.all()[1].stoich_coef, -1.5)
         self.assertEqual(ReactionMetabolite.query.all()[1].reaction.acronym, self.reaction_acronym)
         self.assertEqual(ReactionMetabolite.query.all()[2].metabolite.bigg_id, 'pyr')
+        self.assertEqual(ReactionMetabolite.query.all()[2].met_comp_acronym, 'c')
         self.assertEqual(ReactionMetabolite.query.all()[2].stoich_coef, 1)
         self.assertEqual(ReactionMetabolite.query.all()[2].reaction.acronym, self.reaction_acronym)
         self.assertEqual(ReactionMetabolite.query.all()[3].metabolite.bigg_id, 'atp')
+        self.assertEqual(ReactionMetabolite.query.all()[3].met_comp_acronym, 'm')
         self.assertEqual(ReactionMetabolite.query.all()[3].stoich_coef, 2)
         self.assertEqual(ReactionMetabolite.query.all()[3].reaction.acronym, self.reaction_acronym)
 

@@ -1,0 +1,22 @@
+
+<td>
+    <a href="{{ url_for('main.see_metabolite', grasp_id=data_point.grasp_id )}}"> {{ data_point.grasp_id }} </a>
+</td>
+<td>
+    {{ data_point.name }}
+</td>
+<td>
+    {{ data_point.bigg_id }}
+</td>
+<td>
+    {{ data_point.metanetx_id }}
+</td>
+<td>
+    {{ data_point.kegg_id }}
+</td>
+<td>
+    {% for compartment in data_point.compartments %}
+        {{ compartment }}
+    {% endfor %}
+
+</td>
