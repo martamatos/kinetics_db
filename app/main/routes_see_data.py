@@ -1,10 +1,11 @@
-from app.main.forms import  EnzymeForm, GeneForm, ModelForm, OrganismForm, ReactionForm
+from app.main.forms import  EnzymeForm, GeneForm, ModelForm, OrganismForm, ReactionForm, ModifyData
 from flask import render_template, flash, redirect, url_for, request
 from flask_login import  login_required
 from app import current_app, db
 from app.models import  Compartment, Enzyme, EnzymeReactionOrganism, EnzymeReactionInhibition, EnzymeReactionActivation, \
     EnzymeReactionEffector, EnzymeReactionMiscInfo, EnzymeOrganism, EnzymeStructure, EvidenceLevel, Gene, \
     GibbsEnergy, Mechanism, Metabolite, Model, Organism, Reaction, ReactionMetabolite, Reference
+from app.main.forms import OrganismForm
 from app.main import bp
 from flask import Markup
 
@@ -31,7 +32,7 @@ def see_enzyme_list():
                            data_type='enzyme', tab_status=tab_status, header=header,
                            next_url=next_url, prev_url=prev_url)
 
-@bp.route('/see_enzyme/<isoenzyme>')
+@bp.route('/see_enzyme/<isoenzyme>', methods=['GET', 'POST'])
 @login_required
 def see_enzyme(isoenzyme):
     enzyme = Enzyme.query.filter_by(isoenzyme=isoenzyme).first()
@@ -87,9 +88,12 @@ def see_enzyme(isoenzyme):
     pdb_ids = [structure.pdb_id for structure in enzyme_structures]
     data.append({'field_name': 'PDB IDs', 'data': ', '.join(pdb_ids) if pdb_ids else 'NA' })
 
+    form = ModifyData()
+    if form.validate_on_submit():
+        return redirect(url_for('main.modify_enzyme', isoenzyme=isoenzyme))
 
     return render_template("see_data_element.html", title='See enzyme', data_name=isoenzyme,  data_type='enzyme',
-                           data_list=data, data_list_nested=data_nested)
+                           data_list=data, data_list_nested=data_nested, form=form)
 
 
 @bp.route('/see_gene_list')
@@ -118,7 +122,6 @@ def see_metabolite_list():
                     <th>Name</th> \
                     <th>Bigg ID</th> \
                     <th>MetanetX ID</th> \
-                    <th>KEGG ID</th> \
                     <th>Compartment</th>")
 
     page = request.args.get('page', 1, type=int)
@@ -133,7 +136,7 @@ def see_metabolite_list():
                            next_url=next_url, prev_url=prev_url)
 
 
-@bp.route('/see_metabolite/<grasp_id>')
+@bp.route('/see_metabolite/<grasp_id>', methods=['GET', 'POST'])
 @login_required
 def see_metabolite(grasp_id):
     metabolite = Metabolite.query.filter_by(grasp_id=grasp_id).first()
@@ -145,7 +148,6 @@ def see_metabolite(grasp_id):
     data.append({'field_name': 'GRASP ID', 'data': metabolite.grasp_id})
     data.append({'field_name': 'Bigg ID', 'data': metabolite.bigg_id})
     data.append({'field_name': 'MetanetX ID', 'data': metabolite.metanetx_id})
-    data.append({'field_name': 'KEGG id', 'data': metabolite.kegg_id})
     data.append({'field_name': 'Compartment', 'data': ' ,'.join([str(compartment) for compartment in metabolite.compartments])})
 
     chebi_list = [str(chebi.chebi_id) for chebi in metabolite.chebis]
@@ -180,7 +182,7 @@ def see_model_list():
                            data_type='model', tab_status=tab_status, header=header,
                            next_url=next_url, prev_url=prev_url)
 
-@bp.route('/see_model/<model_name>')
+@bp.route('/see_model/<model_name>', methods=['GET', 'POST'])
 @login_required
 def see_model(model_name):
     model = Model.query.filter_by(name=model_name).first()
@@ -222,7 +224,7 @@ def see_organism_list():
                            data_type='organism', tab_status=tab_status, header=header,
                            next_url=next_url, prev_url=prev_url)
 
-@bp.route('/see_organism/<organism_name>')
+@bp.route('/see_organism/<organism_name>', methods=['GET', 'POST'])
 @login_required
 def see_organism(organism_name):
     organism = Organism.query.filter_by(name=organism_name).first()
@@ -232,10 +234,14 @@ def see_organism(organism_name):
 
     data.append({'field_name': 'Name', 'data': organism.name})
     models = [model.name for model in organism.models]
-    data_nested.append({'field_name': 'Models', 'data': models if models else 'NA'})
+    data_nested.append({'field_name': 'Models', 'data': models if models else ['NA']})
+
+    form = ModifyData()
+    if form.validate_on_submit():
+        return redirect(url_for('main.modify_organism', organism_name=organism_name))
 
     return render_template("see_data_element.html", title='See organism', data_name=organism.name,  data_type='organism',
-                           data_list=data, data_list_nested=data_nested)
+                           data_list=data, data_list_nested=data_nested, form=form)
 
 
 @bp.route('/see_reaction_list')
@@ -246,7 +252,6 @@ def see_reaction_list():
                     <th>Acronym</th> \
                     <th>Reaction</th> \
                     <th>MetanetX ID</th> \
-                    <th>Reactome ID</th> \
                     <th>Bigg ID</th> \
                     <th>KEGG ID</th> \
                     <th>Compartment</th>")
@@ -265,7 +270,7 @@ def see_reaction_list():
 
 
 
-@bp.route('/see_reaction/<reaction_acronym>')
+@bp.route('/see_reaction/<reaction_acronym>', methods=['GET', 'POST'])
 @login_required
 def see_reaction(reaction_acronym):
     reaction = Reaction.query.filter_by(acronym=reaction_acronym).first()
@@ -277,7 +282,6 @@ def see_reaction(reaction_acronym):
     data.append({'field_name': 'Acronym', 'data': reaction.acronym})
     data.append({'field_name': 'Reaction', 'data': str(reaction)})
     data.append({'field_name': 'MetanetX ID', 'data': reaction.metanetx_id})
-    data.append({'field_name': 'Reactome ID', 'data': reaction.reactome_id})
     data.append({'field_name': 'KEGG id', 'data': reaction.kegg_id})
     data.append({'field_name': 'Compartment', 'data': reaction.compartment_name})
 
@@ -297,5 +301,10 @@ def see_reaction(reaction_acronym):
     organisms = [enz_rxn_org.organism.name for enz_rxn_org in reaction.enzyme_reaction_organisms]
     data.append({'field_name': 'Organisms', 'data': ', '.join(organisms) if organisms else 'NA'})
 
+    form = ModifyData()
+    if form.validate_on_submit():
+        return redirect(url_for('main.modify_reaction', reaction_acronym=reaction_acronym))
+
+
     return render_template("see_data_element.html", title='See reaction', data_name=reaction.acronym,  data_type='reaction',
-                           data_list=data, data_list_nested=data_nested)
+                           data_list=data, data_list_nested=data_nested, form=form)

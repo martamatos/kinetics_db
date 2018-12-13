@@ -1,5 +1,5 @@
 from app import create_app, db
-from app.models import Compartment, Enzyme, EvidenceLevel, Mechanism, Metabolite, Model, Organism, Reaction, Reference, ReferenceType,EnzymeReactionOrganism
+from app.models import Compartment, Enzyme, EvidenceLevel, Mechanism, Metabolite, Model, Organism, Reaction, Reference, ReferenceType, EnzymeReactionOrganism
 from app.utils.parsers import ReactionParser
 import re
 from config import Config
@@ -9,8 +9,9 @@ def add_compartments():
     compartment_list = [('Cytosol', 'c'), ('Mitochondria', 'm')]
 
     for name, acronym in compartment_list:
-        compartment = Compartment(name=name, acronym=acronym)
+        compartment = Compartment(name=name, bigg_id=acronym)
         db.session.add(compartment)
+
     db.session.commit()
 
 
@@ -44,12 +45,6 @@ def add_organisms():
     db.session.commit()
 
 
-def add_references():
-    reference = Reference(title='eQuilibrator', type_type='Online database')
-    db.session.add(reference)
-    db.session.commit()
-
-
 def add_reference_types():
     reference_type_list = ['Article', 'Thesis', 'Online database', 'Book']
 
@@ -57,6 +52,14 @@ def add_reference_types():
         reference_type = ReferenceType(type=type)
         db.session.add(reference_type)
     db.session.commit()
+
+
+def add_references():
+    ref_type = ReferenceType.query.filter_by(type='Online database').first()
+    reference = Reference(title='eQuilibrator', type=ref_type)
+    db.session.add(reference)
+    db.session.commit()
+
 
 # only for development
 def add_enzymes(client):
@@ -160,7 +163,7 @@ def add_reaction(client):
 
     assert response.status_code == 200
     met_db = Metabolite.query.filter_by(bigg_id='atp').first()
-    compartment_db = Compartment.query.filter_by(acronym='m').first()
+    compartment_db = Compartment.query.filter_by(bigg_id='m').first()
     met_db.add_compartment(compartment_db)
 
     db.session.commit()
@@ -281,7 +284,7 @@ def add_misc_info(client):
 
     assert response.status_code == 200
 
-
+"""
 class TestConfig(Config):
     LOGIN_DISABLED = True
     WTF_CSRF_ENABLED = False
@@ -316,3 +319,4 @@ def main():
 #main()
 
 
+"""

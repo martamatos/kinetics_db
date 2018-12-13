@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% import 'bootstrap/wtf.html' as wtf %}
+
+
+{% block app_content %}
+
+    <h1>Add {{ header }}</h1>
+
+    <p> Mandatory fields are marked with * </p>
+
+    <div class="row">
+       <div class="col-md-4">
+            {{ wtf.quick_form(form) }}
+       </div>
+    </div>
+
+{% endblock %}
+
+
+{% block scripts %}
+    {{super()}}
+
+    {% if data_list %}
+
+        <link rel='stylesheet' href="{{ url_for('static', filename='css/easy-autocomplete.css') }}">
+        <script type=text/javascript src="{{ url_for('static', filename='js/jquery.easy-autocomplete.js') }}"></script>
+
+            <script>
+
+                var data_in = JSON.parse('{{ data_list | tojson}}');
+
+                data_in.forEach(function(data_object){
+
+                    console.log(data_object.input_data);
+                    console.log(data_object.id_value);
+
+                    var options = {
+
+                        data: data_object.input_data,
+
+                        getValue: function (element) {
+                            return element.field1;
+                        },
+
+                        list: {
+
+                            maxNumberOfElements: 1000,
+                            match: {
+                                enabled: true
+                            },
+                            sort: {
+                                enabled: true
+                            }
+                        }
+                    };
+
+                    $(data_object.id_value).easyAutocomplete(options);
+                });
+
+
+            </script>
+
+    {% endif %}
+
+{% endblock %}

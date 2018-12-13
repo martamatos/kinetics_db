@@ -51,13 +51,13 @@ class PostForm(FlaskForm):
 
 class EnzymeForm(FlaskForm):
     name = StringField('Enzyme name (e.g. phosphofructokinase) *', validators=[DataRequired()])
-    acronym = StringField('Enzyme acronym (eg. PFK) *', validators=[DataRequired()])
+    acronym = StringField('Enzyme bigg_acronym (eg. PFK) *', validators=[DataRequired()])
     isoenzyme = StringField('Isoenzyme (e.g. PFK1) *', validators=[DataRequired()])
     ec_number = StringField('EC number *', validators=[DataRequired()])
 
     organism_name = QuerySelectField('Organism name (eg. E coli)', query_factory=get_organisms, allow_blank=True)
     number_of_active_sites = IntegerField('Number of enzyme subunits (you need to specify the organism first)', validators=[Optional()])
-    gene_bigg_ids = StringField('Encoding gene bigg IDs (you need to specify the organism first)', id='gene_bigg_ids')
+    gene_names = StringField('Encoding gene bigg IDs (you need to specify the organism first)', id='gene_bigg_ids')
     uniprot_id_list = StringField('Uniprod IDs (you need to specify the organism first) ')
     pdb_structure_ids = StringField('PDB structure IDs (you need to specify the organism first) (e.g. 3H8A, 1UCW)')
     strain = StringField('Strain for the PDB structure', id='strain')
@@ -74,8 +74,8 @@ class EnzymeForm(FlaskForm):
         if number_of_active_sites.data  and not self.organism_name.data :
             raise ValidationError('If you specify the number of active sites you must also specify the organism name.')
 
-    def validate_gene_bigg_ids(self, gene_bigg_ids):
-        if gene_bigg_ids.data and not self.organism_name.data:
+    def validate_gene_names(self, gene_names):
+        if gene_names.data and not self.organism_name.data:
             raise ValidationError('If you specify encoding genes you must also specify the organism name.')
 
     def validate_uniprot_id_list(self, uniprot_id_list):
@@ -194,7 +194,7 @@ class ModelForm(FlaskForm):
 
 
 class OrganismForm(FlaskForm):
-    name = StringField('Organism name (e.g. E coli)', validators=[DataRequired()])
+    name = StringField('Organism name (e.g. E coli) *', validators=[DataRequired()])
 
     submit = SubmitField('Submit')
 
@@ -207,7 +207,7 @@ class OrganismForm(FlaskForm):
 class ReactionForm(FlaskForm):
 
     name = StringField('Reaction name (e.g. phosphofructokinase) *', validators=[DataRequired()])
-    acronym = StringField('Reaction acronym (e.g. PFK) *', validators=[DataRequired()])
+    acronym = StringField('Reaction bigg_acronym (e.g. PFK) *', validators=[DataRequired()])
     grasp_id = StringField('GRASP ID (e.g. PFK1) *', validators=[DataRequired()])
     reaction_string = StringField('Reaction string, use either Bigg IDs or Chebi IDs (e.g. 1 pep_c + 1.5 adp_c <-> 1 pyr_c + 2.0 atp_m) *', validators=[DataRequired()])
     metanetx_id = StringField('Metanetx ID')
@@ -245,9 +245,9 @@ class ReactionForm(FlaskForm):
             if not met_compartment:
                 raise ValidationError('Please specify the metabolite' + met + 'as metabolite_compartmentAcronym, e.g. adp_c.')
 
-            compartment_db = Compartment.query.filter_by(acronym=met_compartment[0][1]).first()
+            compartment_db = Compartment.query.filter_by(bigg_id=met_compartment[0][1]).first()
             if not compartment_db:
-                raise ValidationError('The specified compartment acronym' + met_compartment[0][1] + ' is not part of the database, please insert it first.')
+                raise ValidationError('The specified compartment bigg_acronym' + met_compartment[0][1] + ' is not part of the database, please insert it first.')
 
     def validate_mechanism(self, mechanism):
         if mechanism.data and not self.enzymes.data:
@@ -303,3 +303,7 @@ class ReactionForm(FlaskForm):
 
         if std_gibbs_energy_references.data  and not self.std_gibbs_energy.data :
             raise ValidationError('Please specify the standard Gibbs energy as well.')
+
+
+class ModifyData(FlaskForm):
+    submit = SubmitField('Modify')

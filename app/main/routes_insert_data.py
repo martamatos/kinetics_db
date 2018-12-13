@@ -2,14 +2,16 @@ from app.main.forms import  EnzymeForm, EnzymeActivationForm, EnzymeEffectorForm
 from flask import render_template, flash, redirect, url_for
 from flask_login import login_required
 from app import current_app, db
-from app.models import Compartment, Enzyme, EnzymeReactionOrganism, EnzymeReactionActivation, EnzymeReactionEffector, EnzymeReactionInhibition, EnzymeReactionMiscInfo, EnzymeOrganism, EnzymeStructure, EvidenceLevel, Gene, \
-    GibbsEnergy, GibbsEnergyReactionModel, Mechanism, Metabolite, Model, ModelAssumptions, Organism, Reaction, ReactionMetabolite, Reference
+from app.models import Compartment, Enzyme,EnzymeGeneOrganism,  EnzymeReactionOrganism, EnzymeReactionActivation, \
+    EnzymeReactionEffector, EnzymeReactionInhibition, EnzymeReactionMiscInfo, EnzymeOrganism, EnzymeStructure, \
+    EvidenceLevel, Gene,GibbsEnergy, GibbsEnergyReactionModel, Mechanism, Metabolite, Model, ModelAssumptions, \
+    Organism, Reaction, ReactionMetabolite, Reference
 from app.main import bp
 from app.utils.parsers import ReactionParser, parse_input_list
 import re
 
 
-def _add_enzyme_organism(enzyme, organism_id, uniprot_id_list, gene_bigg_ids, number_of_active_sites):
+def _add_enzyme_organism(enzyme, organism_id, uniprot_id_list, number_of_active_sites):
     for uniprot_id in uniprot_id_list:
         enzyme_organism_db = EnzymeOrganism.query.filter_by(uniprot_id=uniprot_id).first()
         if not enzyme_organism_db:
@@ -20,16 +22,26 @@ def _add_enzyme_organism(enzyme, organism_id, uniprot_id_list, gene_bigg_ids, nu
             db.session.add(enzyme_organism_db)
         enzyme.add_enzyme_organism(enzyme_organism_db)
 
-        # populate genes
-        if gene_bigg_ids:
-            gene_bigg_ids_list = parse_input_list(gene_bigg_ids)
-            for gene_id in gene_bigg_ids_list:
-                gene_id_db = Gene.query.filter_by(bigg_id=gene_id).first()
-                if not gene_id_db:
-                    gene_id_db = Gene(bigg_id=gene_id)
-                    db.session.add(gene_id_db)
 
-                enzyme_organism_db.add_encoding_genes(gene_id_db)
+def _add_genes(gene_names, enzyme, organism_id):
+        # populate genes
+        if gene_names:
+            gene_bigg_ids_list = parse_input_list(gene_names)
+            for gene_name in gene_bigg_ids_list:
+                gene_db = Gene.query.filter_by(name=gene_name).first()
+                if not gene_db:
+                    gene_db = Gene(name=gene_name)
+                    db.session.add(gene_db)
+                    db.session.commit()
+
+                enzyme_gene_organism_db = EnzymeGeneOrganism.query.filter_by(gene_id=gene_db.id,
+                                                                             enzyme_id=enzyme.id,
+                                                                             organism_id=organism_id).first()
+                if not enzyme_gene_organism_db:
+                    enzyme_gene_organism = EnzymeGeneOrganism(gene_id=gene_db.id,
+                                                              enzyme_id=enzyme.id,
+                                                              organism_id=organism_id)
+                    db.session.add(enzyme_gene_organism)
 
 
 def _add_enzyme_structures(enzyme, organism_id, pdb_id_list, strain_list):
@@ -87,6 +99,9 @@ def add_enzyme():
             organism_db = Organism.query.filter_by(name=form.organism_name.data.name).first()
             organism_id = organism_db.id
 
+            if form.gene_names.data:
+                _add_genes(form.gene_names.data, enzyme, organism_id)
+
             # populate enzyme_structure
             if form.pdb_structure_ids.data:
                 pdb_id_list = parse_input_list(form.pdb_structure_ids.data)
@@ -96,13 +111,15 @@ def add_enzyme():
             # populate enzyme_organism
             if form.uniprot_id_list.data:
                 uniprot_id_list = parse_input_list(form.uniprot_id_list.data)
-                _add_enzyme_organism(enzyme, organism_id, uniprot_id_list, form.gene_bigg_ids.data, form.number_of_active_sites.data)
+                _add_enzyme_organism(enzyme, organism_id, uniprot_id_list, form.number_of_active_sites.data)
+
+
 
 
         db.session.commit()
         flash('Your enzyme is now live!')
         return redirect(url_for('main.see_enzyme_list'))
-    return render_template('add_data.html', title='Add enzyme', form=form, header='enzyme', data_list=data_list)
+    return render_template('insert_data.html', title='Add enzyme', form=form, header='enzyme', data_list=data_list)
 
 
 
@@ -173,7 +190,7 @@ def add_enzyme_inhibition():
         flash('Your enzyme inhibition is now live!', 'success')
 
         return redirect(url_for('main.see_enzyme_list'))
-    return render_template('add_data.html', title='Add enzyme inhibition', form=form, header='enzyme inhibition', data_list=data_list)
+    return render_template('insert_data.html', title='Add enzyme inhibition', form=form, header='enzyme inhibition', data_list=data_list)
 
 
 @bp.route('/add_enzyme_activation', methods=['GET', 'POST'])
@@ -227,7 +244,7 @@ def add_enzyme_activation():
         flash('Your enzyme activation is now live!', 'success')
 
         return redirect(url_for('main.see_enzyme_list'))
-    return render_template('add_data.html', title='Add enzyme activation', form=form, header='enzyme activation', data_list=data_list)
+    return render_template('insert_data.html', title='Add enzyme activation', form=form, header='enzyme activation', data_list=data_list)
 
 
 @bp.route('/add_enzyme_effector', methods=['GET', 'POST'])
@@ -268,7 +285,7 @@ def add_enzyme_effector():
         flash('Your enzyme effector is now live!', 'success')
 
         return redirect(url_for('main.see_enzyme_list'))
-    return render_template('add_data.html', title='Add enzyme effector', form=form, header='enzyme effector', data_list=data_list)
+    return render_template('insert_data.html', title='Add enzyme effector', form=form, header='enzyme effector', data_list=data_list)
 
 
 @bp.route('/add_enzyme_misc_info', methods=['GET', 'POST'])
@@ -306,7 +323,7 @@ def add_enzyme_misc_info():
         flash('Your enzyme misc info is now live!', 'success')
 
         return redirect(url_for('main.see_enzyme_list'))
-    return render_template('add_data.html', title='Add enzyme misc info', form=form, header='enzyme misc info')
+    return render_template('insert_data.html', title='Add enzyme misc info', form=form, header='enzyme misc info')
 
 
 @bp.route('/add_gene', methods=['GET', 'POST'])
@@ -324,7 +341,7 @@ def add_gene():
 
         flash('Your enzyme is now live!')
         return redirect(url_for('main.see_enzyme_list'))
-    return render_template('add_data.html', title='Add gene', form=form, header='gene')
+    return render_template('insert_data.html', title='Add gene', form=form, header='gene')
 
 
 @bp.route('/add_model', methods=['GET', 'POST'])
@@ -353,8 +370,8 @@ def add_model():
 
         flash('Your model is now live!')
         return redirect(url_for('main.see_model_list'))
-    # return render_template('add_data.html', title='Add model', form=form, header='model', data_id_list=id_list, data_list=organism_data)
-    return render_template('add_data.html', title='Add model', form=form, header='model', data_list=data_list)
+    # return render_template('insert_data.html', title='Add model', form=form, header='model', data_id_list=id_list, data_list=organism_data)
+    return render_template('insert_data.html', title='Add model', form=form, header='model', data_list=data_list)
 
 
 @bp.route('/add_model_assumption', methods=['GET', 'POST'])
@@ -387,7 +404,7 @@ def add_model_assumption():
         flash('Your model assumption is now live!', 'success')
 
         return redirect(url_for('main.see_model_list'))
-    return render_template('add_data.html', title='Add model assumption', form=form, header='model assumption')
+    return render_template('insert_data.html', title='Add model assumption', form=form, header='model assumption')
 
 
 @bp.route('/add_organism', methods=['GET', 'POST'])
@@ -403,7 +420,7 @@ def add_organism():
         flash('Your organism is now live!', 'success')
 
         return redirect(url_for('main.see_organism_list'))
-    return render_template('add_data.html', title='Add organism', form=form, header='organism')
+    return render_template('insert_data.html', title='Add organism', form=form, header='organism')
 
 
 
@@ -418,18 +435,17 @@ def _add_metabolites_to_reaction(reaction, reaction_string):
         bigg_id = met_compartment[0]
         met_db = Metabolite.query.filter_by(bigg_id=bigg_id).first()
 
-        if not met_db:
-            compartment_acronym = met_compartment[1]
+        compartment_acronym = met_compartment[1]
 
+        if not met_db:
             met_db = Metabolite(bigg_id=bigg_id,
                                 grasp_id=bigg_id)
-
             db.session.add(met_db)
 
-            compartment_db = Compartment.query.filter_by(acronym=compartment_acronym).first()
-            met_db.add_compartment(compartment_db)
+        compartment_db = Compartment.query.filter_by(bigg_id=compartment_acronym).first()
+        met_db.add_compartment(compartment_db)
 
-            reaction.add_metabolite(met_db, stoich_coef, compartment_acronym)
+        reaction.add_metabolite(met_db, stoich_coef, compartment_db)
 
     return reaction
 
@@ -569,5 +585,5 @@ def add_reaction():
         flash('Your reaction is now live!', 'success')
 
         return redirect(url_for('main.see_reaction_list'))
-    return render_template('add_data.html', title='Add reaction', form=form, header='reaction', data_list=data_list)
 
+    return render_template('insert_data.html', title='Add reaction', form=form, header='reaction', data_list=data_list)
