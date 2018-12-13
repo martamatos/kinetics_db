@@ -1,0 +1,31 @@
+reaction_acronym,gene_name,bigg_id,enzyme_name,enzyme_acronym,isoenzyme,EC
+ENO,eno,b2779,enolase,ENO,ENO,4.2.1.11
+FBA,fbaB,b2097,fructose-bisphosphate aldolase class I,FBA,FBA1,4.1.2.13
+FBA,fbaA,b2925,fructose-bisphosphate aldolase class II,FBA,FBA2,4.1.2.13
+FBP,fbp,b4232,"fructose-1,6-bisphosphatase 1",FBP,FBP1,3.1.3.11
+FBP,glpX,b3925,"fructose-1,6-bisphosphatase 2",FBP,FBP2,3.1.3.11
+G6PDH2r,zwf,b1852,NADP+-dependent glucose-6-phosphate dehydrogenase,G6PD,G6PD,1.1.1.49
+GAPD,gapA,b1779,glyceraldehyde-3-phosphate dehydrogenase,GAPD,GAPD,1.2.1.12
+PFK,pfkA,b3916,6-phosphofructokinase I,PFK,PFK1,2.7.1.11
+PFK,pfkB,b1723,6-phosphofructokinase II,PFK,PFK2,2.7.1.11
+PFL,pflB,b0903,activated pyruvate-formate lyase,PFL,PFL,2.3.1.54
+PGI,pgi,b4025,glucose-6-phosphate isomerase,PGI,PGI,5.3.1.9
+PGK,pgk,b2926,phosphoglycerate kinase,PGK,PGK,2.7.2.3
+PGL,pgl,b0767,6-phosphogluconolactonase,PGL,PGL,3.1.1.31
+PGM,gpmA,b0755,"2,3-bisphosphoglycerate-dependent phosphoglycerate mutase",PGM,PGMd,5.4.2.11
+PGM,gpmM,b3612,"2,3-bisphosphoglycerate-independent phosphoglycerate mutase",PGM,PGMi,5.4.2.12
+PPC,ppc,b3956,phosphoenolpyruvate carboxylase,PPC,PPC,4.1.1.31
+PPCK,pck,b3403,phosphoenolpyruvate carboxykinase (ATP),PPCK,PPCK,4.1.1.49
+PPS,ppsA,b1702,phosphoenolpyruvate synthetase,PPS,PPS,2.7.9.2
+PTA,pta,b2297,phosphate acetyltransferase,PTA,PTA,2.3.1.8
+PYK,pykF,b1676,pyruvate kinase I,PYK,PYK1,2.7.1.40
+PYK,pykA,b1854,pyruvate kinase II,PYK,PYK2,2.7.1.40
+RPE,rpe,b3386,ribulose-phosphate 3-epimerase,RPE,RPE,5.1.3.1
+RPI,rpiA,b2914,ribose-5-phosphate isomerase A,RPI,RPI,5.3.1.6
+SUCOAS,,,succinyl-CoA synthetase,SUCOAS,SUCOAS_complex,6.2.1.5
+SUCOAS,sucD,b0729,succinyl-CoA synthetase subunit α,SUCOAS,SUCOASa,6.2.1.5
+SUCOAS,sucC,b0728,succinyl-CoA synthetase subunit β,SUCOAS,SUCOASb,6.2.1.5
+TALB,talB,b0008,transaldolase B,TALB,TALB,2.2.1.2
+TKT,tktA,b2935,transketolase 1,TKT,TKT1,2.2.1.1
+TKT,tktB,b2465,transketolase 2,TKT,TKT2,2.2.1.1
+TPI,tpiA,b3919,triose-phosphate isomerase,TPI,TPI,5.3.1.1
