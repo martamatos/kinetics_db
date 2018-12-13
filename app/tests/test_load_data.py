@@ -1,11 +1,11 @@
 import unittest
 
 from app import create_app, db
-from app.load_data.load_initial_data import load_compartments, load_enzymes, load_genes, load_metabolites, \
-    load_organisms, load_reactions, load_reference_types
-from app.models import Compartment, Enzyme, Gene, Metabolite, Organism, Reaction, \
+from app.models import Compartment, Enzyme, EnzymeGeneOrganism, Gene, Metabolite, Organism, Reaction, \
     ReactionMetabolite, ReferenceType
 from config import Config
+from load_data.load_initial_data import load_compartments, load_enzymes, load_genes, load_metabolites, \
+    load_organisms, load_reactions, load_reference_types
 
 
 class TestConfig(Config):
@@ -69,6 +69,9 @@ class TestLoadGenes(unittest.TestCase):
         self.app_context.push()
         db.create_all()
 
+        load_enzymes()
+        load_organisms()
+
     def tearDown(self):
         db.session.remove()
         db.drop_all()
@@ -81,6 +84,7 @@ class TestLoadGenes(unittest.TestCase):
             print(gene)
 
         self.assertEqual(Gene.query.count(), 29)
+        self.assertEqual(EnzymeGeneOrganism.query.count(), 29)
 
 
 class TestLoadMetabolites(unittest.TestCase):

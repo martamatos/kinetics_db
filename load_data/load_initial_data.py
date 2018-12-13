@@ -9,10 +9,10 @@ import re
 import pandas as pd
 
 from app import db
-from app.load_data import compartment_data_file, ecoli_core_model, metabolite_data_file, reaction_data_file, \
+from app.models import Compartment, Enzyme, EnzymeGeneOrganism, Gene, Metabolite, Organism, Reaction, ReferenceType
+from load_data import compartment_data_file, ecoli_core_model, metabolite_data_file, reaction_data_file, \
     reaction_ec_data_file, enzymes_genes_data_file
-from app.load_data.load_sbml_models import load_sbml_model, Flavor
-from app.models import Compartment, Enzyme, Gene, Metabolite, Organism, Reaction, ReferenceType
+from load_data.load_sbml_models import load_sbml_model, Flavor
 
 
 def load_compartments():
@@ -67,14 +67,25 @@ def load_enzymes():
 def load_genes():
     """
     Gets all gene names in enzymes_genes_data_file and adds them to the database.
+    Afterwards it adds the gene associations to the enzymes and organism.
 
     :return: None
     """
     genes_df = pd.read_csv(enzymes_genes_data_file, sep=',')
 
-    for gene_name in genes_df['gene_name'].dropna().values:
-        gene = Gene(name=gene_name)
+    organism = Organism.query.filter_by(name='E. coli').first()
+    genes_df = genes_df.loc[genes_df['gene_name'].dropna().index, :]
+
+    for row in genes_df.index:
+        gene = Gene(name=genes_df.loc[row, 'gene_name'])
         db.session.add(gene)
+
+        enzyme = Enzyme.query.filter_by(isoenzyme=genes_df.loc[row, 'isoenzyme']).first()
+        enzyme_gene_organism = EnzymeGeneOrganism(gene_id=gene.id,
+                                                  enzyme_id=enzyme.id,
+                                                  organism_id=organism.id)
+
+        db.session.add(enzyme_gene_organism)
 
     db.session.commit()
 
@@ -265,3 +276,16 @@ def load_reference_types():
 
 
 # TODO add evidence levels and mechanisms
+
+
+def main():
+    load_organisms()
+
+    load_enzymes()
+    load_genes()
+
+    load_compartments()
+    load_metabolites()
+    load_reactions()
+
+    load_reference_types()

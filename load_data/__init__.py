@@ -1,0 +1,6 @@
+ecoli_core_model = '/home/mrama/kineticsDB/kinetics_db/data/e_coli_core.xml'
+compartment_data_file = '/home/mrama/kineticsDB/kinetics_db/data/compartment_data.tsv'
+metabolite_data_file = '/home/mrama/kineticsDB/kinetics_db/data/chem_xref.tsv'
+reaction_data_file = '/home/mrama/kineticsDB/kinetics_db/data/reac_xref.tsv'
+reaction_ec_data_file = '/home/mrama/kineticsDB/kinetics_db/data/reac_prop.tsv'
+enzymes_genes_data_file = '/home/mrama/kineticsDB/kinetics_db/data/ecoli_enzymes_manual.csv'
