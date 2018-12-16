@@ -1,11 +1,11 @@
 import unittest
 
 from app import create_app, db
+from app.load_data.load_initial_data import load_compartments, load_enzymes, load_genes, load_metabolites, \
+    load_organisms, load_reactions, load_reference_types
 from app.models import Compartment, Enzyme, EnzymeGeneOrganism, Gene, Metabolite, Organism, Reaction, \
     ReactionMetabolite, ReferenceType
 from config import Config
-from load_data.load_initial_data import load_compartments, load_enzymes, load_genes, load_metabolites, \
-    load_organisms, load_reactions, load_reference_types
 
 
 class TestConfig(Config):

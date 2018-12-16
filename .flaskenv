@@ -1,1 +1,1 @@
-FLASK_APP=microblog.py
+FLASK_APP=kinetics_db.py
