@@ -6,23 +6,30 @@ from wtforms.ext.sqlalchemy.fields import QuerySelectField, QuerySelectMultipleF
 from app.utils.parsers import parse_input_list, ReactionParser
 import re
 
+
 def get_compartments():
     return Compartment.query
+
 
 def get_enzymes():
     return Enzyme.query
 
+
 def get_evidence_names():
     return EvidenceLevel.query
+
 
 def get_reactions():
     return Reaction.query
 
+
 def get_mechanisms():
     return Mechanism.query
 
+
 def get_models():
     return Model.query
+
 
 def get_organisms():
     return Organism.query
@@ -42,6 +49,7 @@ class EditProfileForm(FlaskForm):
             user = User.query.filter_by(username=self.username.data).first()
             if user is not None:
                 raise ValidationError('Please use a different username.')
+
 
 class PostForm(FlaskForm):
     post = TextAreaField('Say something', validators=[
@@ -160,7 +168,6 @@ class EnzymeMiscInfoForm(FlaskForm):
 
 class GeneForm(FlaskForm):
     name = StringField('Gene name (e.g. pfkA) *', validators=[DataRequired()])
-    bigg_id = StringField('Bigg ID (eg. pfkA)')
     organism = QuerySelectField('Organism name (eg. E coli)', query_factory=get_organisms)
 
     submit = SubmitField('Submit')
@@ -307,3 +314,18 @@ class ReactionForm(FlaskForm):
 
 class ModifyData(FlaskForm):
     submit = SubmitField('Modify')
+
+
+from flask_wtf import FlaskForm
+from wtforms import StringField, SelectMultipleField
+from wtforms.widgets import ListWidget, CheckboxInput
+from wtforms.validators import Required
+
+class MultiCheckboxField(SelectMultipleField):
+    widget = ListWidget(prefix_label=False)
+    option_widget = CheckboxInput()
+
+
+class FormProject(FlaskForm):
+    Code = StringField('Code', [Required(message='Please enter your code')])
+    Tasks = MultiCheckboxField('Proses', [Required(message='Please tick your task')], choices=[('nyapu','Nyapu'), ('ngepel','Ngepel')])
