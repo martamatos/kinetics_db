@@ -554,15 +554,16 @@ def add_reaction():
 
         for enzyme in form.enzymes.data:
 
-            enzyme_reaction_organism = EnzymeReactionOrganism(enzyme_id=enzyme.id,
-                                                                reaction_id = reaction.id,
-                                                                organism_id=form.organism.data.id,
-                                                                mechanism_id= mechanism_id,
-                                                                mech_evidence_level_id=mech_evidence_level_id,
-                                                                grasp_id=form.grasp_id.data,
-                                                                subs_binding_order=form.subs_binding_order.data,
-                                                                prod_release_order=form.prod_release_order.data,
-                                                                comments=form.comments.data)
+            enzyme_reaction_organism = EnzymeReactionOrganism(id=EnzymeReactionOrganism.query.count()+1,
+                                                              enzyme_id=enzyme.id,
+                                                              reaction_id=reaction.id,
+                                                              organism_id=form.organism.data.id,
+                                                              mechanism_id=mechanism_id,
+                                                              mech_evidence_level_id=mech_evidence_level_id,
+                                                              grasp_id=form.grasp_id.data,
+                                                              subs_binding_order=form.subs_binding_order.data,
+                                                              prod_release_order=form.prod_release_order.data,
+                                                              comments=form.comments.data)
             db.session.add(enzyme_reaction_organism)
 
             if form.mechanism_references.data:

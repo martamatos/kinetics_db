@@ -983,10 +983,10 @@ class EvidenceLevel(db.Model):
 
 class EnzymeReactionOrganism(db.Model):
     __tablename__ = 'enzyme_reaction_organism'
-    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    enzyme_id = db.Column(db.Integer, db.ForeignKey(Enzyme.id))
-    reaction_id = db.Column(db.Integer, db.ForeignKey(Reaction.id))
-    organism_id = db.Column(db.Integer, db.ForeignKey(Organism.id))
+    id = db.Column(db.Integer, nullable=False)
+    enzyme_id = db.Column(db.Integer, db.ForeignKey(Enzyme.id), primary_key=True)
+    reaction_id = db.Column(db.Integer, db.ForeignKey(Reaction.id), primary_key=True)
+    organism_id = db.Column(db.Integer, db.ForeignKey(Organism.id), primary_key=True)
     mechanism_id = db.Column(db.Integer, db.ForeignKey(Mechanism.id))
     mech_evidence_level_id = db.Column(db.Integer, db.ForeignKey(EvidenceLevel.id))
 
