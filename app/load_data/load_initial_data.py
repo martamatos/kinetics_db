@@ -12,7 +12,8 @@ from app import create_app, db
 from app.load_data import COMPARTMENT_DATA_FILE, ECOLI_CORE_MODEL, METABOLITE_DATA_FILE, REACTION_DATA_FILE, \
     REACTION_EC_DATA_FILE, ENZYME_GENES_DATA_FILE
 from app.load_data.load_sbml_models import load_sbml_model, Flavor
-from app.models import Compartment, Enzyme, EnzymeGeneOrganism, Gene, Metabolite, Organism, Reaction, ReferenceType
+from app.models import Compartment, Enzyme, EnzymeGeneOrganism, Gene, Metabolite, Organism, Reaction, ReferenceType, \
+    EnzymeReactionOrganism
 from app.utils.misc import clear_data
 from config import Config
 
@@ -263,6 +264,36 @@ def load_reactions():
     db.session.commit()
 
 
+def load_enzyme_reaction_relation():
+    """
+    Gets all reaction and respective catalyzing enzymes and creates populates the table enzyme_reaction_organism for
+     E. coli.
+
+    :return: None
+    """
+    data_df = pd.read_csv(ENZYME_GENES_DATA_FILE, sep=',')
+
+    organism = Organism.query.filter_by(name='E. coli').first()
+
+    id = 1
+    for row in data_df.index:
+        if data_df.loc[row, 'isoenzyme'] != 'SUCOASa' and data_df.loc[row, 'isoenzyme'] != 'SUCOASb':
+            enzyme = Enzyme.query.filter_by(isoenzyme=data_df.loc[row, 'isoenzyme']).first()
+            reaction = Reaction.query.filter_by(acronym=data_df.loc[row, 'reaction_acronym']).first()
+            print(enzyme)
+            print(reaction)
+            print('----')
+            enzyme_reaction_organism = EnzymeReactionOrganism(id=id,
+                                                              enzyme_id=enzyme.id,
+                                                              reaction_id=reaction.id,
+                                                              organism_id=organism.id)
+
+            db.session.add(enzyme_reaction_organism)
+            id += 1
+
+    db.session.commit()
+
+
 def load_reference_types():
     """
     Loads four types of references into database.
@@ -294,12 +325,13 @@ def main():
 
     load_organisms()
 
-    load_enzymes()
-    load_genes()
-
     load_compartments()
     load_metabolites()
     load_reactions()
 
+    load_enzymes()
+    load_genes()
+
     load_reference_types()
 
+    load_enzyme_reaction_relation()

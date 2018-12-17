@@ -2,9 +2,9 @@ import unittest
 
 from app import create_app, db
 from app.load_data.load_initial_data import load_compartments, load_enzymes, load_genes, load_metabolites, \
-    load_organisms, load_reactions, load_reference_types
+    load_organisms, load_reactions, load_reference_types, load_enzyme_reaction_relation
 from app.models import Compartment, Enzyme, EnzymeGeneOrganism, Gene, Metabolite, Organism, Reaction, \
-    ReactionMetabolite, ReferenceType
+    ReactionMetabolite, ReferenceType, EnzymeReactionOrganism
 from config import Config
 
 
@@ -174,6 +174,30 @@ class TestLoadReferenceTypes(unittest.TestCase):
     def test_load_reference_types(self):
         load_reference_types()
         self.assertEqual(ReferenceType.query.count(), 4)
+
+
+class TestLoadEnzymeReactionRelation(unittest.TestCase):
+    def setUp(self):
+        self.app = create_app(TestConfig)
+        self.client = self.app.test_client()
+        self.app_context = self.app.app_context()
+        self.app_context.push()
+        db.create_all()
+
+        load_organisms()
+        load_enzymes()
+        load_compartments()
+        load_metabolites()
+        load_reactions()
+
+    def tearDown(self):
+        db.session.remove()
+        db.drop_all()
+        self.app_context.pop()
+
+    def test_load_enzyme_reaction_relation(self):
+        load_enzyme_reaction_relation()
+        self.assertEqual(EnzymeReactionOrganism.query.count(), 28)
 
 
 if __name__ == '__main__':
