@@ -12,9 +12,6 @@
     {{ data_point.metanetx_id }}
 </td>
 <td>
-    {{ data_point.kegg_id }}
-</td>
-<td>
     {% for compartment in data_point.compartments %}
         {{ compartment }}
     {% endfor %}

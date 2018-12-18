@@ -172,7 +172,7 @@ def see_model_list():
 
 
     page = request.args.get('page', 1, type=int)
-    models = Model.query.order_by(Model.timestamp.desc()).paginate(
+    models = Model.query.order_by(Model.name.asc()).paginate(
         page, current_app.config['POSTS_PER_PAGE'], False)
     next_url = url_for('main.see_model_list', page=models.next_num) \
         if models.has_next else None
@@ -181,6 +181,7 @@ def see_model_list():
     return render_template("see_data.html", title='See models', data=models.items,
                            data_type='model', tab_status=tab_status, header=header,
                            next_url=next_url, prev_url=prev_url)
+
 
 @bp.route('/see_model/<model_name>', methods=['GET', 'POST'])
 @login_required
@@ -193,18 +194,46 @@ def see_model(model_name):
     data.append({'field_name': 'Name', 'data': model.name})
     data.append({'field_name': 'Organism', 'data': model.organism_name})
     data.append({'field_name': 'Strain', 'data': model.strain})
-    data.append({'field_name': 'Comment', 'data': model.comments})
+    data.append({'field_name': 'Comments', 'data': model.comments})
 
     assumptions = [assumption for assumption in model.model_assumptions]
     data_nested.append({'field_name': 'Assumptions', 'data': [', '.join(assumptions)] if assumptions else ['NA']})
 
-    reaction_ids = [enz_rxn_org.reaction_id for enz_rxn_org in model.enzyme_reaction_organisms]
-    reactions = [str(reaction) for reaction in Reaction.query.filter(Reaction.id.in_(reaction_ids))]
-    data_nested.append({'field_name': 'Reactions', 'data': [', '.join(reactions)] if reactions else ['NA']})
+    #reaction_ids = [enz_rxn_org.reaction_id for enz_rxn_org in model.enzyme_reaction_organisms]
+    #reactions = [str(reaction) for reaction in Reaction.query.filter(Reaction.id.in_(reaction_ids))]
 
+    if model.enzyme_reaction_organisms:
+        reaction_data = []
+        for enz_rxn_org in model.enzyme_reaction_organisms:
+            reaction_data.append(enz_rxn_org)
+            for inhibitor in enz_rxn_org.enzyme_reaction_inhibitors:
+                if model.has_enzyme_reaction_inhibitor(inhibitor):
+                    reaction_data.append('-> ' + str(inhibitor))
+
+            for activator in enz_rxn_org.enzyme_reaction_activators:
+                if model.has_enzyme_reaction_activator(activator):
+                    reaction_data.append('-> ' + str(activator))
+
+            for effector in enz_rxn_org.enzyme_reaction_effectors:
+                if model.has_enzyme_reaction_effector(effector):
+                    reaction_data.append('-> ' + str(effector))
+
+            for misc_info in enz_rxn_org.enzyme_reaction_misc_infos:
+                if model.has_enzyme_reaction_misc_info(misc_info):
+                    reaction_data.append('-> ' + str(misc_info))
+
+
+        #data_nested.append({'field_name': 'Reactions', 'data': model.enzyme_reaction_organisms if model.enzyme_reaction_organisms else ['NA']})
+        data_nested.append({'field_name': 'Reactions', 'data': reaction_data})
+    else:
+        data_nested.append({'field_name': 'Reactions', 'data': ['NA']})
+
+    form = ModifyData()
+    if form.validate_on_submit():
+        return redirect(url_for('main.modify_model', model_name=model_name, title='Modify model'))
 
     return render_template("see_data_element.html", title='See model', data_name=model.name,  data_type='model',
-                           data_list=data, data_list_nested=data_nested)
+                           data_list=data, data_list_nested=data_nested, form=form)
 
 
 @bp.route('/see_organism_list')
@@ -223,6 +252,7 @@ def see_organism_list():
     return render_template("see_data.html", title='See organisms', data=organisms.items,
                            data_type='organism', tab_status=tab_status, header=header,
                            next_url=next_url, prev_url=prev_url)
+
 
 @bp.route('/see_organism/<organism_name>', methods=['GET', 'POST'])
 @login_required
@@ -258,11 +288,11 @@ def see_reaction_list():
 
 
     page = request.args.get('page', 1, type=int)
-    reactions = Reaction.query.order_by(Reaction.timestamp.desc()).paginate(
+    reactions = Reaction.query.order_by(Reaction.name.asc()).paginate(
         page, current_app.config['POSTS_PER_PAGE'], False)
-    next_url = url_for('main.reactions', page=reactions.next_num) \
+    next_url = url_for('main.see_reaction_list', page=reactions.next_num) \
         if reactions.has_next else None
-    prev_url = url_for('main.reactions', page=reactions.prev_num) \
+    prev_url = url_for('main.see_reaction_list', page=reactions.prev_num) \
         if reactions.has_prev else None
     return render_template("see_data.html", title='See reactions', data=reactions.items,
                            data_type='reaction', tab_status=tab_status,  header=header,
@@ -292,7 +322,7 @@ def see_reaction(reaction_acronym):
     # TODO catalyzing genes
 
     gibbs_energies = [str(gibbs_energy_rxn_model.gibbs_energy) + ' (' + str(gibbs_energy_rxn_model.model.name) + ')' for gibbs_energy_rxn_model in reaction.gibbs_energy_reaction_models]
-    data_nested.append({'field_name': 'Gibbs energies', 'data': gibbs_energies if gibbs_energies else 'NA'})
+    data_nested.append({'field_name': 'Gibbs energies', 'data': gibbs_energies if gibbs_energies else ['NA']})
 
     enz_rxn_org_models = [enz_rxn_org.models for enz_rxn_org in reaction.enzyme_reaction_organisms]
     models = [item.name for sublist in enz_rxn_org_models for item in sublist]

@@ -308,7 +308,7 @@ def load_reference_types():
     db.session.commit()
 
 
-# TODO add evidence levels and mechanisms
+# TODO add evidence levels and mechanisms, add empty field to all tables
 
 
 class LoadDataConfig(Config):

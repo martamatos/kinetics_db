@@ -1,7 +1,10 @@
 from flask_wtf import FlaskForm
 from wtforms import FloatField, IntegerField, SelectField, StringField, SubmitField, TextAreaField
 from wtforms.validators import ValidationError, DataRequired, Length, Optional
-from app.models import Compartment, Enzyme, EnzymeStructure, EvidenceLevel, Mechanism, Model, Organism, Reaction, User
+from app.models import Compartment, Enzyme, EnzymeStructure, EvidenceLevel, Mechanism, Model, Organism, Reaction, User,\
+                        EnzymeReactionOrganism, EnzymeReactionInhibition, EnzymeReactionActivation, \
+                        EnzymeReactionEffector, ModelAssumptions
+
 from wtforms.ext.sqlalchemy.fields import QuerySelectField, QuerySelectMultipleField
 from app.utils.parsers import parse_input_list, ReactionParser
 import re
@@ -15,16 +18,32 @@ def get_enzymes():
     return Enzyme.query
 
 
+def get_enzyme_activations():
+    return EnzymeReactionActivation.query
+
+
+def get_enzyme_effectors():
+    return EnzymeReactionEffector.query
+
+
+def get_enzyme_inhibitions():
+    return EnzymeReactionInhibition.query
+
+
+def get_enzyme_reaction_organisms():
+    return EnzymeReactionOrganism.query
+
+
 def get_evidence_names():
     return EvidenceLevel.query
 
 
-def get_reactions():
-    return Reaction.query
-
-
 def get_mechanisms():
     return Mechanism.query
+
+
+def get_model_assumptions():
+    return ModelAssumptions.query
 
 
 def get_models():
@@ -33,6 +52,10 @@ def get_models():
 
 def get_organisms():
     return Organism.query
+
+
+def get_reactions():
+    return Reaction.query
 
 
 class EditProfileForm(FlaskForm):
@@ -66,7 +89,7 @@ class EnzymeForm(FlaskForm):
     organism_name = QuerySelectField('Organism name (eg. E coli)', query_factory=get_organisms, allow_blank=True)
     number_of_active_sites = IntegerField('Number of enzyme subunits (you need to specify the organism first)', validators=[Optional()])
     gene_names = StringField('Encoding gene bigg IDs (you need to specify the organism first)', id='gene_bigg_ids')
-    uniprot_id_list = StringField('Uniprod IDs (you need to specify the organism first) ')
+    uniprot_id_list = StringField('Uniprot IDs (you need to specify the organism first) ')
     pdb_structure_ids = StringField('PDB structure IDs (you need to specify the organism first) (e.g. 3H8A, 1UCW)')
     strain = StringField('Strain for the PDB structure', id='strain')
 
@@ -106,7 +129,7 @@ class EnzymeInhibitionForm(FlaskForm):
     enzyme = QuerySelectField('Isoenzyme *', query_factory=get_enzymes)
     reaction = QuerySelectField('Reaction *', query_factory=get_reactions)
     organism = QuerySelectField('Organism *', query_factory=get_organisms)
-    models = QuerySelectMultipleField('Model', query_factory=get_models)
+    models = QuerySelectMultipleField('Model', query_factory=get_models, allow_blank=True)
     inhibitor_met = StringField('Inhibiting metabolite (e.g. adp), please use bigg IDs *', validators=[DataRequired()], id='metabolite_list')
     affected_met = StringField('Affected metabolite (e.g. atp), please use bigg IDs', id='metabolite_list')
     inhibition_type = SelectField('Inhibition type', choices=[('Unknown', 'Unknown'), ('Competitive', 'Competitive'),
@@ -126,7 +149,7 @@ class EnzymeActivationForm(FlaskForm):
     enzyme = QuerySelectField('Isoenzyme *', query_factory=get_enzymes, validators=[DataRequired()])
     reaction = QuerySelectField('Reaction *', query_factory=get_reactions, validators=[DataRequired()])
     organism = QuerySelectField('Organism *', query_factory=get_organisms)
-    models = QuerySelectMultipleField('Model', query_factory=get_models)
+    models = QuerySelectMultipleField('Model', query_factory=get_models, allow_blank=True)
     activator_met = StringField('Activating metabolite (e.g. adp), please use bigg IDs *', validators=[DataRequired()], id='metabolite_list')
     activation_constant = FloatField('Activation constant (in M)', validators=[Optional()])
     activation_evidence_level = QuerySelectField('Activation inhibition evidence level', query_factory=get_evidence_names, allow_blank=True)
@@ -141,7 +164,7 @@ class EnzymeEffectorForm(FlaskForm):
     enzyme = QuerySelectField('Isoenzyme *', query_factory=get_enzymes, validators=[DataRequired()])
     reaction = QuerySelectField('Reaction *', query_factory=get_reactions, validators=[DataRequired()])
     organism = QuerySelectField('Organism *', query_factory=get_organisms)
-    models = QuerySelectMultipleField('Model', query_factory=get_models)
+    models = QuerySelectMultipleField('Model', query_factory=get_models, allow_blank=True)
     effector_met = StringField('Effector metabolite (e.g. adp), please use bigg IDs *', validators=[DataRequired()], id='metabolite_list')
     effector_type = SelectField('Effector type',  choices=[('Activating', 'Activating'), ('Inhibiting', 'Inhibiting')])
     effector_evidence_level = QuerySelectField('Effector evidence level', query_factory=get_evidence_names, allow_blank=True)
@@ -156,7 +179,7 @@ class EnzymeMiscInfoForm(FlaskForm):
     enzyme = QuerySelectField('Isoenzyme *', query_factory=get_enzymes, validators=[DataRequired()])
     reaction = QuerySelectField('Reaction *', query_factory=get_reactions, validators=[DataRequired()])
     organism = QuerySelectField('Organism *', query_factory=get_organisms)
-    models = QuerySelectMultipleField('Model', query_factory=get_models)
+    models = QuerySelectMultipleField('Model', query_factory=get_models, allow_blank=True)
     topic = StringField('Topic (e.g. allostery) *', validators=[DataRequired()])
     description = TextAreaField('Description *',  validators=[DataRequired()])
     evidence_level = QuerySelectField('Evidence level', query_factory=get_evidence_names, allow_blank=True)
@@ -168,7 +191,7 @@ class EnzymeMiscInfoForm(FlaskForm):
 
 class GeneForm(FlaskForm):
     name = StringField('Gene name (e.g. pfkA) *', validators=[DataRequired()])
-    organism = QuerySelectField('Organism name (eg. E coli)', query_factory=get_organisms)
+    organism = QuerySelectField('Organism name (eg. E. coli) *', query_factory=get_organisms)
 
     submit = SubmitField('Submit')
 
@@ -187,9 +210,12 @@ class ModelAssumptionsForm(FlaskForm):
 
 
 class ModelForm(FlaskForm):
+
     name = StringField('Model name (e.g. E coli - iteration 1) *', validators=[DataRequired()])
     organism_name = StringField('Organism name (e.g. E coli) *', validators=[DataRequired()], id='organism_name')
     strain = StringField('Organism strain (e.g. MG1655)')
+    enz_rxn_orgs = QuerySelectMultipleField('Reactions in the model', query_factory=get_enzyme_reaction_organisms, allow_blank=True)
+
     comments = TextAreaField('Comments')
 
     submit = SubmitField('Submit')
@@ -198,6 +224,41 @@ class ModelForm(FlaskForm):
         model_db = Model.query.filter_by(name=name.data).first()
         if model_db:
             raise ValidationError('A model with that name already exists, please use another name')
+
+
+class ModelModifyForm(FlaskForm):
+
+    def __init__(self, data):
+        FlaskForm.__init__(self, data=data)
+        self.local_data = data
+
+    name = StringField('Model name (e.g. E coli - iteration 1) *', validators=[DataRequired()])
+    organism_name = StringField('Organism name (e.g. E coli) *', validators=[DataRequired()], id='organism_name')
+    strain = StringField('Organism strain (e.g. MG1655)')
+    enz_rxn_orgs = QuerySelectMultipleField('Reactions', query_factory=get_enzyme_reaction_organisms, allow_blank=True)
+    model_inhibitions = QuerySelectMultipleField('Enzyme inhibitions', query_factory=get_enzyme_inhibitions, allow_blank=True)
+    model_activations = QuerySelectMultipleField('Enzyme activations', query_factory=get_enzyme_activations, allow_blank=True)
+    model_effectors = QuerySelectMultipleField('Enzyme effectors', query_factory=get_enzyme_effectors, allow_blank=True)
+    model_assumptions = QuerySelectMultipleField('Model assumptions', query_factory=get_model_assumptions, allow_blank=True)
+
+    comments = TextAreaField('Comments')
+
+    submit = SubmitField('Submit')
+
+    def validate_name(self, name):
+
+        if name.data != self.local_data['name']:
+            model_db = Model.query.filter_by(name=name.data).first()
+            if model_db:
+                raise ValidationError('A model with that name already exists, please use either the original name or another one.')
+
+
+class ModelFormBase(FlaskForm):
+
+    model_base = QuerySelectField('Models', query_factory=get_models, allow_blank=True)
+
+    submit = SubmitField('Continue')
+
 
 
 class OrganismForm(FlaskForm):
@@ -222,8 +283,8 @@ class ReactionForm(FlaskForm):
     kegg_id = StringField('Kegg ID')
 
     compartment = QuerySelectField('Compartment name', query_factory=get_compartments, allow_blank=True)
-    organism = QuerySelectField('Organism name *' , query_factory=get_organisms)
-    models = QuerySelectMultipleField('Model name' , query_factory=get_models)
+    organism = QuerySelectField('Organism name *', query_factory=get_organisms)
+    models = QuerySelectMultipleField('Model name', query_factory=get_models, allow_blank=True)
     enzymes = QuerySelectMultipleField('Isoenzyme(s) that catalyze the reaction (e.g. PFK1, PFK2) *', query_factory=get_enzymes, validators=[DataRequired()])
 
     mechanism = QuerySelectField('Enzyme mechanism name (if you add the mechanism, you also need to add the isoenzyme(s) that catalyze the reaction)', query_factory=get_mechanisms, allow_blank=True)
@@ -288,9 +349,9 @@ class ReactionForm(FlaskForm):
 
     def validate_std_gibbs_energy_std(self, std_gibbs_energy_std):
         if not self.models.data:
-            raise ValidationError('Gibbs energies cannot be added to reactions alone, a model must be associated as well. Please add model name. ')
+            raise ValidationError('Gibbs energies cannot be added to reactions alone, a model must be associated as well. Please add model name.')
 
-        if std_gibbs_energy_std.data  and not self.std_gibbs_energy.data :
+        if std_gibbs_energy_std.data and not self.std_gibbs_energy.data :
             raise ValidationError('Please specify the standard Gibbs energy as well.')
 
 
@@ -315,17 +376,3 @@ class ReactionForm(FlaskForm):
 class ModifyData(FlaskForm):
     submit = SubmitField('Modify')
 
-
-from flask_wtf import FlaskForm
-from wtforms import StringField, SelectMultipleField
-from wtforms.widgets import ListWidget, CheckboxInput
-from wtforms.validators import Required
-
-class MultiCheckboxField(SelectMultipleField):
-    widget = ListWidget(prefix_label=False)
-    option_widget = CheckboxInput()
-
-
-class FormProject(FlaskForm):
-    Code = StringField('Code', [Required(message='Please enter your code')])
-    Tasks = MultiCheckboxField('Proses', [Required(message='Please tick your task')], choices=[('nyapu','Nyapu'), ('ngepel','Ngepel')])

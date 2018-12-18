@@ -6,6 +6,7 @@ from config import Config
 
 
 def add_compartments():
+
     compartment_list = [('Cytosol', 'c'), ('Mitochondria', 'm')]
 
     for name, acronym in compartment_list:
@@ -162,8 +163,10 @@ def add_reaction(client):
                                 comments=comments), follow_redirects=True)
 
     assert response.status_code == 200
+
     met_db = Metabolite.query.filter_by(bigg_id='atp').first()
     compartment_db = Compartment.query.filter_by(bigg_id='m').first()
+
     met_db.add_compartment(compartment_db)
 
     db.session.commit()
@@ -183,9 +186,6 @@ def add_inhibition(client):
     evidence_level = '1'
     references = 'https://doi.org/10.1093/bioinformatics/bty942, https://doi.org/10.1093/bioinformatics/bty943'
     comments = ''
-
-
-
 
     response = client.post('/add_enzyme_inhibition', data=dict(
                                  enzyme=enzyme,

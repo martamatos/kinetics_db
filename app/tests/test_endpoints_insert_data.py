@@ -31,6 +31,17 @@ def populate_db(test_case, client=None):
         add_reference_types()
         add_references()
 
+    elif test_case == 'model':
+        add_compartments()
+        add_evidence_levels()
+        add_mechanisms()
+        add_organisms()
+        add_enzymes(client)
+        add_models()
+        add_reference_types()
+        add_references()
+        add_reaction(client)
+
     else:
         add_compartments()
         add_evidence_levels()
@@ -1351,6 +1362,7 @@ class TestAddGene(unittest.TestCase):
         self.assertEqual(Organism().query.first().models[0].name, model_name)
 """
 
+
 class TestAddModel(unittest.TestCase):
     def setUp(self):
         self.app = create_app(TestConfig)
@@ -1366,8 +1378,8 @@ class TestAddModel(unittest.TestCase):
 
     def test_add_first_model(self):
 
-        model_name = 'E. coli - iteration 1'
-        organism_name = 'E. coli'
+        model_name = 'E. coli - iteration x'
+        organism_name = 'E. coli2'
         strain = 'MG16555'
         comments = 'Just testing...'
 
@@ -1393,40 +1405,50 @@ class TestAddModel(unittest.TestCase):
         self.assertEqual(Organism().query.first().models.count(), 1)
         self.assertEqual(Organism().query.first().models[0].name, model_name)
 
-
+    # TODO updated
     def test_add_model_for_existing_organism(self):
 
-        model_name = 'E. coli - iteration 1'
+
+        populate_db('model', self.client)
+
+        model_name = 'E. coli - iteration x'
         organism_name = 'E. coli'
         strain = 'MG16555'
+        enz_rxn_orgs = EnzymeReactionOrganism.query.all()[0]
         comments = 'Just testing...'
 
-        organism = Organism(name=organism_name)
-        db.session.add(organism)
 
         self.assertEqual(Organism().query.first().name, organism_name)
-        self.assertEqual(Organism().query.first().models.count(), 0)
+        self.assertEqual(Organism().query.first().models.count(), 2)
 
-        self.assertEqual(Model.query.count(), 0)
-        self.assertEqual(Organism.query.count(), 1)
+        self.assertEqual(Model.query.count(), 2)
+        self.assertEqual(Organism.query.count(), 2)
 
+        self.assertEqual(EnzymeReactionOrganism.query.count(), 2)
 
+        print(enz_rxn_orgs)
+        print('ssss---')
         response = self.client.post('/add_model', data=dict(
                                     name=model_name,
                                     organism_name=organism_name,
                                     strain=strain,
                                     comments=comments), follow_redirects=True)
 
-
+        print(response.data)
         self.assertEqual(response.status_code, 200)
         self.assertTrue(b'<title>\n    See models - Kinetics DB \n</title>' in response.data)
         self.assertTrue(b'Your model is now live!' in response.data)
 
-        self.assertEqual(Model().query.first().name, model_name)
-        self.assertEqual(Model().query.first().strain, strain)
-        self.assertEqual(Model().query.first().comments, comments)
-        self.assertEqual(Organism().query.first().models.count(), 1)
-        self.assertEqual(Organism().query.first().models[0].name, model_name)
+        print(Model().query.all()[0].enzyme_reaction_organisms.count())
+        print(Model().query.all()[1].enzyme_reaction_organisms.count())
+        print(Model().query.all()[2].enzyme_reaction_organisms.count())
+
+        self.assertEqual(Model().query.all()[2].name, model_name)
+        self.assertEqual(Model().query.all()[2].strain, strain)
+        self.assertEqual(Model().query.all()[2].enzyme_reaction_organisms.count(), 0)
+        self.assertEqual(Model().query.all()[2].comments, comments)
+        self.assertEqual(Organism().query.all()[0].models.count(), 3)
+        self.assertEqual(Organism().query.all()[0].models[2].name, model_name)
 
 
     def test_add_model_empty_organism_name(self):
@@ -1712,16 +1734,13 @@ class TestAddReaction(unittest.TestCase):
         db.drop_all()
         self.app_context.pop()
 
-
     def test_add_first_reaction(self):
-
 
         true_isoenzyme_acronym = 'PFK1'
         true_gibbs_energy_ref = 'eQuilibrator'
         self.models = '1'
         self.enzymes = '1'
         self.mechanism_references = 'https://doi.org/10.1093/bioinformatics/bty942'
-
 
         response = self.client.post('/add_reaction', data=dict(
                                     name=self.reaction_name,
@@ -2100,7 +2119,6 @@ class TestAddReaction(unittest.TestCase):
         self.assertEqual(ReactionMetabolite.query.all()[3].compartment.bigg_id, 'm')
         self.assertEqual(ReactionMetabolite.query.all()[3].stoich_coef, 2)
         self.assertEqual(ReactionMetabolite.query.all()[3].reaction.acronym, self.reaction_acronym)
-
 
     def test_add_reaction_two_mechanism_references(self):
 

@@ -340,10 +340,8 @@ class Enzyme(db.Model):
         secondaryjoin=(enzyme_complex_subunit.c.enzyme_subunit_id == id),
         backref=db.backref('enzyme_complex_subunit', lazy='dynamic'), lazy='dynamic')
 
-
     def __repr__(self):
         return str(self.isoenzyme)
-
 
     def add_structure(self, structure):
             if not self.has_structure(structure):
@@ -607,6 +605,9 @@ class Reaction(db.Model):
         reaction_string += ' <-> '
         reaction_string += ' + '.join([str(met.stoich_coef) + ' ' + str(met.metabolite) + '_' + str(met.compartment)
                                          for met in self.metabolites if met.stoich_coef > 0])
+
+        #return reaction_string
+
         return ': '.join([self.acronym, reaction_string])
 
 
@@ -664,6 +665,9 @@ class Organism(db.Model):
     enzyme_gene_organisms = db.relationship('EnzymeGeneOrganism', back_populates='organism', lazy='dynamic')
 
     def __repr__(self):
+        return str(self.name)
+
+    def __str__(self):
         return str(self.name)
 
     def add_enzyme_organism(self, enzyme_organism):
@@ -785,6 +789,9 @@ class Model(db.Model):
         return self.enzyme_reaction_organisms.filter(
             EnzymeReactionOrganism.id == enzyme_reaction_organism.id).count() > 0
 
+    def empty_enzyme_reaction_organisms(self):
+        self.enzyme_reaction_organisms = []
+
 
     def add_model_assumption(self, model_assumption):
         if not self.has_model_assumption(model_assumption):
@@ -797,6 +804,73 @@ class Model(db.Model):
     def has_model_assumption(self, model_assumption):
         return self.model_assumptions.filter(
             ModelAssumptions.id == model_assumption.id).count() > 0
+
+    def emtpy_model_assumptions(self):
+        self.model_assumptions = []
+
+
+    def add_enzyme_reaction_inhibitor(self, enzyme_reaction_inhibitor):
+        if not self.has_enzyme_reaction_inhibitor(enzyme_reaction_inhibitor):
+            self.enzyme_reaction_inhibitions.append(enzyme_reaction_inhibitor)
+
+    def remove_enzyme_reaction_inhibitor(self, enzyme_reaction_inhibitor):
+        if self.has_enzyme_reaction_inhibitor(enzyme_reaction_inhibitor):
+            self.enzyme_reaction_inhibitions.remove(enzyme_reaction_inhibitor)
+
+    def has_enzyme_reaction_inhibitor(self, enzyme_reaction_inhibitor):
+        return self.enzyme_reaction_inhibitions.filter(
+            enzyme_reaction_inhibition_model.c.inhibition_id == enzyme_reaction_inhibitor.id).count() > 0
+
+    def emtpy_enzyme_reaction_inhibitions(self):
+        self.enzyme_reaction_inhibitions = []
+
+
+    def add_enzyme_reaction_activator(self, enzyme_reaction_activator):
+        if not self.has_enzyme_reaction_activator(enzyme_reaction_activator):
+            self.enzyme_reaction_activations.append(enzyme_reaction_activator)
+
+    def remove_enzyme_reaction_activator(self, enzyme_reaction_activator):
+        if self.has_enzyme_reaction_activator(enzyme_reaction_activator):
+            self.enzyme_reaction_activations.remove(enzyme_reaction_activator)
+
+    def has_enzyme_reaction_activator(self, enzyme_reaction_activator):
+        return self.enzyme_reaction_activations.filter(
+            enzyme_reaction_activation_model.c.activation_id == enzyme_reaction_activator.id).count() > 0
+
+    def emtpy_enzyme_reaction_activations(self):
+        self.enzyme_reaction_activations = []
+
+
+    def add_enzyme_reaction_effector(self, enzyme_reaction_effector):
+        if not self.has_enzyme_reaction_effector(enzyme_reaction_effector):
+            self.enzyme_reaction_effectors.append(enzyme_reaction_effector)
+
+    def remove_enzyme_reaction_effector(self, enzyme_reaction_effector):
+        if self.has_enzyme_reaction_effector(enzyme_reaction_effector):
+            self.enzyme_reaction_effectors.remove(enzyme_reaction_effector)
+
+    def has_enzyme_reaction_effector(self, enzyme_reaction_effector):
+        return self.enzyme_reaction_effectors.filter(
+            enzyme_reaction_effector_model.c.effector_id == enzyme_reaction_effector.id).count() > 0
+
+    def emtpy_enzyme_reaction_effectors(self):
+        self.enzyme_reaction_effectors = []
+
+
+    def add_enzyme_reaction_misc_info(self, enzyme_reaction_misc_info):
+        if not self.has_enzyme_reaction_misc_info(enzyme_reaction_misc_info):
+            self.enzyme_reaction_misc_infos.append(enzyme_reaction_misc_info)
+
+    def remove_enzyme_reaction_misc_info(self, enzyme_reaction_misc_info):
+        if self.has_enzyme_reaction_misc_info(enzyme_reaction_misc_info):
+            self.enzyme_reaction_misc_infos.remove(enzyme_reaction_misc_info)
+
+    def has_enzyme_reaction_misc_info(self, enzyme_reaction_misc_info):
+        return self.enzyme_reaction_misc_infos.filter(
+            enzyme_reaction_misc_info_model.c.misc_info_id == enzyme_reaction_misc_info.id).count() > 0
+
+    def emtpy_enzyme_reaction_misc_infos(self):
+        self.enzyme_reaction_misc_infos = []
 
 
 class GibbsEnergy(db.Model):
@@ -1015,6 +1089,11 @@ class EnzymeReactionOrganism(db.Model):
         'Reference', secondary=reference_mechanism,
         primaryjoin=(reference_mechanism.c.mechanism_id == id),
         back_populates='enzyme_reaction_mechanisms', lazy='dynamic')
+
+
+    def __repr__(self):
+        return '; '.join([str(self.organism), str(self.enzyme), str(self.reaction)])
+
 
     def add_enzyme_reaction_inhibition(self, enzyme_reaction_inhibition):
         if not self.has_inhib(enzyme_reaction_inhibition):
