@@ -88,8 +88,8 @@ class EnzymeForm(FlaskForm):
 
     organism_name = QuerySelectField('Organism name (eg. E coli)', query_factory=get_organisms, allow_blank=True)
     number_of_active_sites = IntegerField('Number of enzyme subunits (you need to specify the organism first)', validators=[Optional()])
-    gene_names = StringField('Encoding gene bigg IDs (you need to specify the organism first)', id='gene_bigg_ids')
-    uniprot_id_list = StringField('Uniprot IDs (you need to specify the organism first) ')
+    gene_names = StringField('Encoding gene names (you need to specify the organism first)', id='gene_bigg_ids')
+    uniprot_id_list = StringField('Uniprot IDs (you need to specify the organism first) (e.g. Q5FKG6, P21777)')
     pdb_structure_ids = StringField('PDB structure IDs (you need to specify the organism first) (e.g. 3H8A, 1UCW)')
     strain = StringField('Strain for the PDB structure', id='strain')
 
@@ -191,7 +191,6 @@ class EnzymeMiscInfoForm(FlaskForm):
 
 class GeneForm(FlaskForm):
     name = StringField('Gene name (e.g. pfkA) *', validators=[DataRequired()])
-    organism = QuerySelectField('Organism name (eg. E. coli) *', query_factory=get_organisms)
 
     submit = SubmitField('Submit')
 

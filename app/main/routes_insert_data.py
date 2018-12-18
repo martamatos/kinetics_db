@@ -333,8 +333,7 @@ def add_gene():
     form = GeneForm()
 
     if form.validate_on_submit():
-        gene = Enzyme(name=form.name.data,
-                      bigg_id=form.bigg_id.data)
+        gene = Gene(name=form.name.data)
 
         db.session.add(gene)
 
