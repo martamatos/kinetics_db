@@ -710,7 +710,7 @@ class TestAddEnzymeInhibition(unittest.TestCase):
                                      comments=self.comments), follow_redirects=True)
 
         self.assertEqual(response.status_code, 200)
-        self.assertTrue(b'<title>\n    See enzymes - Kinetics DB \n</title>' in response.data)
+        self.assertTrue(b'<title>\n    See enzyme inhibitor - Kinetics DB \n</title>' in response.data)
         self.assertTrue(b'Your enzyme inhibition is now live!' in response.data)
 
 
@@ -778,7 +778,7 @@ class TestAddEnzymeInhibition(unittest.TestCase):
                                      comments=self.comments), follow_redirects=True)
 
         self.assertEqual(response.status_code, 200)
-        self.assertTrue(b'<title>\n    See enzymes - Kinetics DB \n</title>' in response.data)
+        self.assertTrue(b'<title>\n    See enzyme inhibitor - Kinetics DB \n</title>' in response.data)
         self.assertTrue(b'Your enzyme inhibition is now live!' in response.data)
 
 
@@ -876,7 +876,7 @@ class TestAddEnzymeActivation(unittest.TestCase):
                                      comments=self.comments), follow_redirects=True)
 
         self.assertEqual(response.status_code, 200)
-        self.assertTrue(b'<title>\n    See enzymes - Kinetics DB \n</title>' in response.data)
+        self.assertTrue(b'<title>\n    See enzyme activator - Kinetics DB \n</title>' in response.data)
         self.assertTrue(b'Your enzyme activation is now live!' in response.data)
 
 
@@ -941,7 +941,7 @@ class TestAddEnzymeActivation(unittest.TestCase):
                                      comments=self.comments), follow_redirects=True)
 
         self.assertEqual(response.status_code, 200)
-        self.assertTrue(b'<title>\n    See enzymes - Kinetics DB \n</title>' in response.data)
+        self.assertTrue(b'<title>\n    See enzyme activator - Kinetics DB \n</title>' in response.data)
         self.assertTrue(b'Your enzyme activation is now live!' in response.data)
 
 
@@ -1038,7 +1038,7 @@ class TestAddEnzymeEffector(unittest.TestCase):
                                      comments=self.comments), follow_redirects=True)
 
         self.assertEqual(response.status_code, 200)
-        self.assertTrue(b'<title>\n    See enzymes - Kinetics DB \n</title>' in response.data)
+        self.assertTrue(b'<title>\n    See enzyme effector - Kinetics DB \n</title>' in response.data)
         self.assertTrue(b'Your enzyme effector is now live!' in response.data)
 
 
@@ -1103,7 +1103,7 @@ class TestAddEnzymeEffector(unittest.TestCase):
                                      comments=self.comments), follow_redirects=True)
 
         self.assertEqual(response.status_code, 200)
-        self.assertTrue(b'<title>\n    See enzymes - Kinetics DB \n</title>' in response.data)
+        self.assertTrue(b'<title>\n    See enzyme effector - Kinetics DB \n</title>' in response.data)
         self.assertTrue(b'Your enzyme effector is now live!' in response.data)
 
 
@@ -1201,7 +1201,7 @@ class TestAddEnzymeMiscInfo(unittest.TestCase):
                                      comments=self.comments), follow_redirects=True)
 
         self.assertEqual(response.status_code, 200)
-        self.assertTrue(b'<title>\n    See enzymes - Kinetics DB \n</title>' in response.data)
+        self.assertTrue(b'<title>\n    See enzyme misc info - Kinetics DB \n</title>' in response.data)
         self.assertTrue(b'Your enzyme misc info is now live!' in response.data)
 
 
@@ -1266,7 +1266,7 @@ class TestAddEnzymeMiscInfo(unittest.TestCase):
                                      comments=self.comments), follow_redirects=True)
 
         self.assertEqual(response.status_code, 200)
-        self.assertTrue(b'<title>\n    See enzymes - Kinetics DB \n</title>' in response.data)
+        self.assertTrue(b'<title>\n    See enzyme misc info - Kinetics DB \n</title>' in response.data)
         self.assertTrue(b'Your enzyme misc info is now live!' in response.data)
 
 

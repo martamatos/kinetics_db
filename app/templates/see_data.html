@@ -12,6 +12,11 @@
       <li role="presentation" class="{{ tab_status["metabolites"] }}"><a href="{{ url_for('main.see_metabolite_list') }}">Metabolites</a></li>
       <li role="presentation" class="{{ tab_status["organisms"] }}"><a href="{{ url_for('main.see_organism_list') }}">Organisms</a></li>
       <li role="presentation" class="{{ tab_status["reactions"] }}"><a href="{{ url_for('main.see_reaction_list') }}">Reactions</a></li>
+      <li role="presentation" class="{{ tab_status["enzyme_inhibitors"] }}"><a href="{{ url_for('main.see_enzyme_inhibitors_list') }}">Enzyme inhibition</a></li>
+      <li role="presentation" class="{{ tab_status["enzyme_activators"] }}"><a href="{{ url_for('main.see_enzyme_activators_list') }}">Enzyme activation</a></li>
+      <li role="presentation" class="{{ tab_status["enzyme_effectors"] }}"><a href="{{ url_for('main.see_enzyme_effectors_list') }}">Enzyme effectors</a></li>
+      <li role="presentation" class="{{ tab_status["enzyme_misc_info"] }}"><a href="{{ url_for('main.see_enzyme_misc_info_list') }}">Enzyme misc info</a></li>
+      <li role="presentation" class="{{ tab_status["model_assumptions"] }}"><a href="{{ url_for('main.see_model_assumptions_list') }}">Model assumptions</a></li>
     </ul>
 
     <table class="table table-striped">

@@ -10,7 +10,7 @@ from app.main.routes_modify_data import modify_model
 from app.main import bp
 from app.utils.parsers import ReactionParser, parse_input_list
 from app.main.utils import add_enzyme_structures, add_enzyme_organism, add_enzyme_genes, add_metabolites_to_reaction, \
-    add_gibbs_energy, add_mechanism_references
+    add_gibbs_energy, add_mechanism_references, add_references, check_metabolite
 
 import re
 
@@ -74,28 +74,6 @@ def add_enzyme():
     return render_template('insert_data.html', title='Add enzyme', form=form, header='Add enzyme', data_list=data_list)
 
 
-def _check_metabolite(bigg_id):
-    met_db = Metabolite.query.filter_by(bigg_id=bigg_id).first()
-    if not met_db:
-        met_db = Metabolite(bigg_id=bigg_id,
-                            grasp_id=bigg_id)
-        db.session.add(met_db)
-
-    return met_db
-
-
-def _add_references(references):
-    reference_list = parse_input_list(references)
-    ref_db_list = []
-    for reference in reference_list:
-        ref_db = Reference.query.filter_by(doi=reference).first()
-        if not ref_db:
-            ref_db = Reference(doi=reference)
-        ref_db_list.append(ref_db)
-
-    return ref_db_list
-
-
 @bp.route('/add_enzyme_inhibition', methods=['GET', 'POST'])
 @login_required
 def add_enzyme_inhibition():
@@ -108,14 +86,21 @@ def add_enzyme_inhibition():
 
     if form.validate_on_submit():
 
-        inhib_met = _check_metabolite(form.inhibitor_met.data)
-        affected_met = _check_metabolite(form.affected_met.data)
+        inhib_met = check_metabolite(form.inhibitor_met.data)
+        affected_met = check_metabolite(form.affected_met.data)
         inhibition_evidence_level_id = form.inhibition_evidence_level.data.id if form.inhibition_evidence_level.data else None
 
 
         enz_rxn_org = EnzymeReactionOrganism.query.filter_by(enzyme_id=form.enzyme.data.id,
                                                              reaction_id=form.reaction.data.id,
                                                              organism_id=form.organism.data.id).first()
+
+        if not enz_rxn_org:
+            enz_rxn_org = EnzymeReactionOrganism(enzyme_id=form.enzyme.data.id,
+                                                 reaction_id=form.reaction.data.id,
+                                                 organism_id=form.organism.data.id)
+            db.session.add(enz_rxn_org)
+            db.session.commit()
 
         enz_rxn_inhib = EnzymeReactionInhibition(enz_rxn_org_id=enz_rxn_org.id,
                                                  inhibitor_met_id=inhib_met.id,
@@ -131,16 +116,15 @@ def add_enzyme_inhibition():
                 enz_rxn_inhib.add_model(model)
 
         if form.references.data:
-            ref_db_list = _add_references(form.references.data)
+            ref_db_list = add_references(form.references.data)
             for ref_db in ref_db_list:
                 enz_rxn_inhib.add_reference(ref_db)
 
         db.session.commit()
 
-
         flash('Your enzyme inhibition is now live!', 'success')
+        return redirect(url_for('main.see_enzyme_inhibitor', inhibitor_id=enz_rxn_inhib.id))
 
-        return redirect(url_for('main.see_enzyme_list'))
     return render_template('insert_data.html', title='Add enzyme inhibition', form=form, header='Add enzyme inhibition', data_list=data_list)
 
 
@@ -156,7 +140,7 @@ def add_enzyme_activation():
 
     if form.validate_on_submit():
 
-        activator_met = _check_metabolite(form.activator_met.data)
+        activator_met = check_metabolite(form.activator_met.data)
         activation_evidence_level_id = form.activation_evidence_level.data.id if form.activation_evidence_level.data else None
 
 
@@ -164,10 +148,17 @@ def add_enzyme_activation():
                                                              reaction_id=form.reaction.data.id,
                                                              organism_id=form.organism.data.id).first()
 
+        if not enz_rxn_org:
+            enz_rxn_org = EnzymeReactionOrganism(enzyme_id=form.enzyme.data.id,
+                                                 reaction_id=form.reaction.data.id,
+                                                 organism_id=form.organism.data.id)
+            db.session.add(enz_rxn_org)
+            db.session.commit()
+
         enz_rxn_activation = EnzymeReactionActivation(enz_rxn_org_id=enz_rxn_org.id,
                                                      activator_met_id=activator_met.id,
                                                      activation_constant=form.activation_constant.data,
-                                                     evidence_level_id = activation_evidence_level_id,
+                                                     evidence_level_id=activation_evidence_level_id,
                                                      comments=form.comments.data)
         db.session.add(enz_rxn_activation)
 
@@ -176,7 +167,7 @@ def add_enzyme_activation():
                 enz_rxn_activation.add_model(model)
 
         if form.references.data:
-            ref_db_list = _add_references(form.references.data)
+            ref_db_list = add_references(form.references.data)
             for ref_db in ref_db_list:
                 enz_rxn_activation.add_reference(ref_db)
 
@@ -184,7 +175,7 @@ def add_enzyme_activation():
 
         flash('Your enzyme activation is now live!', 'success')
 
-        return redirect(url_for('main.see_enzyme_list'))
+        return redirect(url_for('main.see_enzyme_activator', activator_id=enz_rxn_activation.id))
     return render_template('insert_data.html', title='Add enzyme activation', form=form, header='Add enzyme activation', data_list=data_list)
 
 
@@ -199,18 +190,25 @@ def add_enzyme_effector():
     data_list = [metabolite_list]
 
     if form.validate_on_submit():
-        effector_met = _check_metabolite(form.effector_met.data)
+        effector_met = check_metabolite(form.effector_met.data)
         effector_evidence_level_id = form.effector_evidence_level.data.id if form.effector_evidence_level.data else None
 
-        enz_rxn_org = EnzymeReactionOrganism.query.filter_by(enzyme_id = form.enzyme.data.id,
+        enz_rxn_org = EnzymeReactionOrganism.query.filter_by(enzyme_id=form.enzyme.data.id,
                                                              reaction_id=form.reaction.data.id,
                                                              organism_id=form.organism.data.id).first()
 
+        if not enz_rxn_org:
+            enz_rxn_org = EnzymeReactionOrganism(enzyme_id=form.enzyme.data.id,
+                                                 reaction_id=form.reaction.data.id,
+                                                 organism_id=form.organism.data.id)
+            db.session.add(enz_rxn_org)
+            db.session.commit()
+
         enz_rxn_effector = EnzymeReactionEffector(enz_rxn_org_id=enz_rxn_org.id,
-                                                     effector_met_id=effector_met.id,
-                                                     effector_type=form.effector_type.data,
-                                                     evidence_level_id = effector_evidence_level_id,
-                                                     comments=form.comments.data)
+                                                  effector_met_id=effector_met.id,
+                                                  effector_type=form.effector_type.data,
+                                                  evidence_level_id=effector_evidence_level_id,
+                                                  comments=form.comments.data)
         db.session.add(enz_rxn_effector)
 
         if form.models.data:
@@ -218,14 +216,14 @@ def add_enzyme_effector():
                 enz_rxn_effector.add_model(model)
 
         if form.references.data:
-            ref_db_list = _add_references(form.references.data)
+            ref_db_list = add_references(form.references.data)
             for ref_db in ref_db_list:
                 enz_rxn_effector.add_reference(ref_db)
 
         db.session.commit()
         flash('Your enzyme effector is now live!', 'success')
 
-        return redirect(url_for('main.see_enzyme_list'))
+        return redirect(url_for('main.see_enzyme_effector', effector_id=enz_rxn_effector.id))
     return render_template('insert_data.html', title='Add enzyme effector', form=form, header='Add enzyme effector', data_list=data_list)
 
 
@@ -239,14 +237,20 @@ def add_enzyme_misc_info():
 
         evidence_level_id = form.evidence_level.data.id if form.evidence_level.data else None
 
-        enz_rxn_org = EnzymeReactionOrganism.query.filter_by(enzyme_id = form.enzyme.data.id,
+        enz_rxn_org = EnzymeReactionOrganism.query.filter_by(enzyme_id=form.enzyme.data.id,
                                                              reaction_id=form.reaction.data.id,
                                                              organism_id=form.organism.data.id).first()
+        if not enz_rxn_org:
+            enz_rxn_org = EnzymeReactionOrganism(enzyme_id=form.enzyme.data.id,
+                                                 reaction_id=form.reaction.data.id,
+                                                 organism_id=form.organism.data.id)
+            db.session.add(enz_rxn_org)
+            db.session.commit()
 
         enz_rxn_misc_info = EnzymeReactionMiscInfo(enz_rxn_org_id=enz_rxn_org.id,
                                                      topic=form.topic.data,
                                                      description=form.description.data,
-                                                     evidence_level_id = evidence_level_id,
+                                                     evidence_level_id=evidence_level_id,
                                                      comments=form.comments.data)
         db.session.add(enz_rxn_misc_info)
 
@@ -255,7 +259,7 @@ def add_enzyme_misc_info():
                 enz_rxn_misc_info.add_model(model)
 
         if form.references.data:
-            ref_db_list = _add_references(form.references.data)
+            ref_db_list = add_references(form.references.data)
             for ref_db in ref_db_list:
                 enz_rxn_misc_info.add_reference(ref_db)
 
@@ -263,7 +267,7 @@ def add_enzyme_misc_info():
 
         flash('Your enzyme misc info is now live!', 'success')
 
-        return redirect(url_for('main.see_enzyme_list'))
+        return redirect(url_for('main.see_enzyme_misc_info', misc_info_id=enz_rxn_misc_info.id))
     return render_template('insert_data.html', title='Add enzyme misc info', form=form, header='Add enzyme misc info')
 
 
@@ -355,7 +359,7 @@ def add_model_assumption():
         db.session.add(model_assumption)
 
         if form.references.data:
-            ref_db_list = _add_references(form.references.data)
+            ref_db_list = add_references(form.references.data)
             for ref_db in ref_db_list:
                 model_assumption.add_reference(ref_db)
 

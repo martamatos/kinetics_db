@@ -1352,6 +1352,11 @@ class EnzymeReactionEffector(db.Model):
         return self.references.filter(
             reference_effector.c.reference_id == reference.id).count() > 0
 
+    def empty_references(self):
+        for ref in self.references:
+            if reference_effector.c.effector_id == self.id:
+                self.remove_reference(ref)
+
     def add_model(self, model):
         if not self.is_in_model(model):
             self.models.append(model)
@@ -1363,6 +1368,11 @@ class EnzymeReactionEffector(db.Model):
     def is_in_model(self, model):
         return self.models.filter(
             enzyme_reaction_effector_model.c.model_id == model.id).count() > 0
+
+    def empty_models(self):
+        for model in self.models:
+            if enzyme_reaction_effector_model.c.effector_id == self.id:
+                self.remove_model(model)
 
 
 class EnzymeReactionMiscInfo(db.Model):

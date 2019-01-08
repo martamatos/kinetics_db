@@ -1,0 +1,21 @@
+<td>
+    <a href="{{ url_for('main.see_enzyme_inhibitor', inhibitor_id=data_point.id )}}"> {{ data_point.id }} </a>
+</td>
+<td>
+    {{ data_point.inhibitor_met.name }}
+</td>
+<td>
+    {{ data_point.inhibition_type }}
+</td>
+<td>
+    {{ data_point.affected_met.name }}
+</td>
+<td>
+    {{ data_point.enzyme_reaction_organism.enzyme }}
+</td>
+<td>
+    {{ data_point.enzyme_reaction_organism.reaction.acronym }}
+</td>
+<td>
+    {{ data_point.enzyme_reaction_organism.organism }}
+</td>

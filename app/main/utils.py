@@ -194,3 +194,25 @@ def add_mechanism_references(mechanism_references, enzyme_reaction_model):
                 db.session.add(ref_db)
 
             enzyme_reaction_model.add_mechanism_reference(ref_db)
+
+
+def add_references(references):
+    reference_list = parse_input_list(references)
+    ref_db_list = []
+    for reference in reference_list:
+        ref_db = Reference.query.filter_by(doi=reference).first()
+        if not ref_db:
+            ref_db = Reference(doi=reference)
+        ref_db_list.append(ref_db)
+
+    return ref_db_list
+
+
+def check_metabolite(bigg_id):
+    met_db = Metabolite.query.filter_by(bigg_id=bigg_id).first()
+    if not met_db:
+        met_db = Metabolite(bigg_id=bigg_id,
+                            grasp_id=bigg_id)
+        db.session.add(met_db)
+
+    return met_db
