@@ -1,4 +1,4 @@
-from app.main.forms import  EnzymeForm, GeneForm, ModelForm, OrganismForm, ReactionForm, ModifyData
+from app.main.forms import  EnzymeForm, GeneForm, ModelForm, OrganismForm, ReactionForm, ModifyDataForm
 from flask import render_template, flash, redirect, url_for, request
 from flask_login import  login_required
 from app import current_app, db
@@ -31,6 +31,7 @@ def see_enzyme_list():
     return render_template("see_data.html", title='See enzymes', data=enzymes.items,
                            data_type='enzyme', tab_status=tab_status, header=header,
                            next_url=next_url, prev_url=prev_url)
+
 
 @bp.route('/see_enzyme/<isoenzyme>', methods=['GET', 'POST'])
 @login_required
@@ -84,13 +85,13 @@ def see_enzyme(isoenzyme):
     # TODO: add encoding genes
 
     uniprot_ids = [enz_org.uniprot_id for enz_org in enzyme_organism]
-    data.append({'field_name': 'Uniprot IDs', 'data': ', '.join(uniprot_ids) if uniprot_ids else 'NA' })
+    data.append({'field_name': 'Uniprot IDs', 'data': ', '.join(uniprot_ids) if uniprot_ids else 'NA'})
     pdb_ids = [structure.pdb_id for structure in enzyme_structures]
-    data.append({'field_name': 'PDB IDs', 'data': ', '.join(pdb_ids) if pdb_ids else 'NA' })
+    data.append({'field_name': 'PDB IDs', 'data': ', '.join(pdb_ids) if pdb_ids else 'NA'})
 
-    form = ModifyData()
+    form = ModifyDataForm()
     if form.validate_on_submit():
-        return redirect(url_for('main.modify_enzyme', isoenzyme=isoenzyme))
+        return redirect(url_for('main.modify_enzyme_select_organism', isoenzyme=isoenzyme))
 
     return render_template("see_data_element.html", title='See enzyme', data_name=isoenzyme,  data_type='enzyme',
                            data_list=data, data_list_nested=data_nested, form=form)
@@ -228,7 +229,7 @@ def see_model(model_name):
     else:
         data_nested.append({'field_name': 'Reactions', 'data': ['NA']})
 
-    form = ModifyData()
+    form = ModifyDataForm()
     if form.validate_on_submit():
         return redirect(url_for('main.modify_model', model_name=model_name, title='Modify model'))
 
@@ -266,7 +267,7 @@ def see_organism(organism_name):
     models = [model.name for model in organism.models]
     data_nested.append({'field_name': 'Models', 'data': models if models else ['NA']})
 
-    form = ModifyData()
+    form = ModifyDataForm()
     if form.validate_on_submit():
         return redirect(url_for('main.modify_organism', organism_name=organism_name))
 
@@ -331,9 +332,9 @@ def see_reaction(reaction_acronym):
     organisms = [enz_rxn_org.organism.name for enz_rxn_org in reaction.enzyme_reaction_organisms]
     data.append({'field_name': 'Organisms', 'data': ', '.join(organisms) if organisms else 'NA'})
 
-    form = ModifyData()
+    form = ModifyDataForm()
     if form.validate_on_submit():
-        return redirect(url_for('main.modify_reaction', reaction_acronym=reaction_acronym))
+        return redirect(url_for('main.modify_reaction_select_organism', reaction_acronym=reaction_acronym))
 
 
     return render_template("see_data_element.html", title='See reaction', data_name=reaction.acronym,  data_type='reaction',

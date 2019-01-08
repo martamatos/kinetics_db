@@ -6,7 +6,7 @@ from app.main.routes_insert_data import add_model
 from app.models import User, Post, Compartment, Enzyme, EnzymeOrganism, EnzymeStructure, Gene, Metabolite, Model, \
     Organism, Reaction, ReactionMetabolite, EnzymeGeneOrganism
 from config import Config
-from app.main.routes_insert_data import _add_metabolites_to_reaction, _add_enzyme_organism, _add_enzyme_structures
+from app.main.utils import add_metabolites_to_reaction, add_enzyme_organism, add_enzyme_structures
 from app.utils.parsers import parse_input_list
 import re
 

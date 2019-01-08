@@ -12,7 +12,6 @@ from flask_sqlalchemy import SQLAlchemy
 from config import Config
 
 
-
 try:
     from wtforms.fields import HiddenField
 except ImportError:

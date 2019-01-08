@@ -327,7 +327,7 @@ class Enzyme(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     name = db.Column(db.String)
     acronym = db.Column(db.String)
-    isoenzyme = db.Column(db.String, unique=True)
+    isoenzyme = db.Column(db.String, unique=True, nullable=False)
     ec_number = db.Column(db.String)
     timestamp = db.Column(db.DateTime, index=True, default=datetime.utcnow)
     enzyme_structures = db.relationship('EnzymeStructure', back_populates='enzyme', lazy='dynamic')
@@ -355,6 +355,11 @@ class Enzyme(db.Model):
         return self.enzyme_structures.filter(
             EnzymeStructure.id == structure.id)
 
+    def empty_structures(self, organism_id):
+        for enz_struct in self.enzyme_structures:
+            if enz_struct.organism_id == organism_id:
+                EnzymeStructure.query.filter(EnzymeStructure.id == enz_struct.id).delete()
+
 
     def add_enzyme_organism(self, enzyme_organism):
         if not self.is_part_of_enzyme_organism(enzyme_organism):
@@ -367,6 +372,11 @@ class Enzyme(db.Model):
     def is_part_of_enzyme_organism(self, enzyme_organism):
         return self.enzyme_organisms.filter(
             EnzymeOrganism.id == enzyme_organism.id)
+
+    def empty_enzyme_organisms(self, organism_id):
+        for enz_org in self.enzyme_organisms:
+            if enz_org.organism_id == organism_id:
+                EnzymeOrganism.query.filter(EnzymeOrganism.id == enz_org.id).delete()
 
 
     def add_enzyme_reaction_organism(self, enzyme_reaction_organism):
@@ -393,6 +403,13 @@ class Enzyme(db.Model):
     def has_subunit(self, enzyme_subunit):
         return self.enzyme_subunits.filter(
              enzyme_complex_subunit.c.enzyme_subunit_id == enzyme_subunit.id).count() > 0
+
+
+    def empty_enzyme_gene_organisms(self, organism_id):
+        for enz_gene_org in self.enzyme_gene_organisms:
+            if enz_gene_org.organism_id == organism_id:
+                EnzymeGeneOrganism.query.filter(EnzymeGeneOrganism.enzyme_id == enz_gene_org.enzyme_id,
+                                                EnzymeGeneOrganism.enzyme_id == self.id).delete()
 
 
 class Gene(db.Model):
@@ -469,6 +486,7 @@ class ReactionMetabolite(db.Model):
     metabolite_id = db.Column(db.Integer, db.ForeignKey('metabolite.id'), primary_key=True)
     compartment_id = db.Column(db.Integer, db.ForeignKey('compartment.id'), primary_key=True)
     stoich_coef = db.Column(db.Integer)
+
     metabolite = db.relationship('Metabolite', back_populates='reactions')
     reaction = db.relationship('Reaction', back_populates='metabolites')
     compartment = db.relationship('Compartment')
@@ -615,16 +633,10 @@ class Reaction(db.Model):
         self.metabolites.append(ReactionMetabolite(reaction_id=self.id, metabolite_id=metabolite.id,
                                                    stoich_coef=stoich_coef, compartment=compartment))
 
-    """def remove_metabolite(self, metabolite, stoich_coef, compartment_acronym):
-        if self.met_involved_in_reaction(metabolite):
-            row = ReactionMetabolite.query.filter_by(reaction_id=self.id, metabolite_id=metabolite.id,
-                                                     met_comp_acronym=compartment_acronym).first()
-            # delete the row from db session if it exists
-            if row is not None:
-                db.session.delete(row)
-                db.session.commit()
-            self.metabolites.remove(row)"""
-
+    def empty_metabolites(self):
+        for met in self.metabolites:
+            ReactionMetabolite.query.filter(ReactionMetabolite.reaction_id == self.id,
+                                            ReactionMetabolite.metabolite_id == met.id).delete()
 
 
     def add_enzyme_organism(self, enzyme_organism):
@@ -908,9 +920,10 @@ class GibbsEnergy(db.Model):
 
 class GibbsEnergyReactionModel(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    gibbs_energy_id = db.Column(db.Integer, db.ForeignKey(GibbsEnergy.id))
-    model_id = db.Column(db.Integer, db.ForeignKey(Model.id))
-    reaction_id = db.Column(db.Integer, db.ForeignKey(Reaction.id))
+    gibbs_energy_id = db.Column(db.Integer, db.ForeignKey(GibbsEnergy.id), nullable=False)
+    model_id = db.Column(db.Integer, db.ForeignKey(Model.id), nullable=False)
+    reaction_id = db.Column(db.Integer, db.ForeignKey(Reaction.id), nullable=False)
+
     model = db.relationship('Model', back_populates='gibbs_energy_reaction_models')
     reaction = db.relationship('Reaction', back_populates='gibbs_energy_reaction_models')
     gibbs_energy = db.relationship('GibbsEnergy', back_populates='gibbs_energy_reaction_models')
@@ -919,8 +932,8 @@ class GibbsEnergyReactionModel(db.Model):
 class EnzymeStructure(db.Model):
     __tablename__ = 'enzyme_structure'
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    enzyme_id = db.Column(db.Integer, db.ForeignKey(Enzyme.id))
-    organism_id = db.Column(db.Integer, db.ForeignKey(Organism.id))
+    enzyme_id = db.Column(db.Integer, db.ForeignKey(Enzyme.id), nullable=False)
+    organism_id = db.Column(db.Integer, db.ForeignKey(Organism.id), nullable=False)
     pdb_id = db.Column(db.String, unique=True)
     strain = db.Column(db.String)
 
@@ -953,9 +966,9 @@ class Mechanism(db.Model):
 class EnzymeOrganism(db.Model):
     __tablename__ = 'enzyme_organism'
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    enzyme_id = db.Column(db.Integer, db.ForeignKey(Enzyme.id))
-    organism_id = db.Column(db.Integer, db.ForeignKey(Organism.id))
-    uniprot_id = db.Column(db.String, unique=True)
+    enzyme_id = db.Column(db.Integer, db.ForeignKey(Enzyme.id), nullable=False)
+    organism_id = db.Column(db.Integer, db.ForeignKey(Organism.id), nullable=False)
+    uniprot_id = db.Column(db.String, unique=True, nullable=False)
     n_active_sites = db.Column(db.Integer)
 
     enzyme = db.relationship('Enzyme', back_populates='enzyme_organisms')
@@ -1159,6 +1172,10 @@ class EnzymeReactionOrganism(db.Model):
         return self.mechanism_references.filter(
             reference_mechanism.c.reference_id == reference.id).count() > 0
 
+    def empty_mechanism_references(self):
+        for mech_ref in self.mechanism_references:
+            if reference_mechanism.c.mechanism_id == self.id:
+                self.remove_mechanism_reference(mech_ref)
 
     def add_model(self, model):
         if not self.is_in_model(model):

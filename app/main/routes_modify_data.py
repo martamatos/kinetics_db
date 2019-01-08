@@ -1,36 +1,144 @@
 from app.main.forms import EnzymeForm, EnzymeActivationForm, EnzymeEffectorForm, EnzymeInhibitionForm, \
-    EnzymeMiscInfoForm, GeneForm, ModelAssumptionsForm, ModelForm, OrganismForm, ReactionForm, ModelModifyForm
+    EnzymeMiscInfoForm, GeneForm, ModelAssumptionsForm, ModelForm, OrganismForm, ReactionForm, ModelModifyForm, \
+    SelectOrganismForm, SelectIsoenzymeForm, SelectModelForm
 from flask import render_template, flash, redirect, url_for
 from flask_login import login_required
 from app import current_app, db
 from app.models import Compartment, Enzyme, EnzymeReactionOrganism, EnzymeReactionActivation, EnzymeReactionEffector, EnzymeReactionInhibition, EnzymeReactionMiscInfo, EnzymeOrganism, EnzymeStructure, EvidenceLevel, Gene, \
-    GibbsEnergy, GibbsEnergyReactionModel, Mechanism, Metabolite, Model, ModelAssumptions, Organism, Reaction, ReactionMetabolite, Reference
+    GibbsEnergy, GibbsEnergyReactionModel, Mechanism, Metabolite, Model, ModelAssumptions, Organism, Reaction, ReactionMetabolite, Reference, EnzymeGeneOrganism
 from app.main import bp
 from app.utils.parsers import ReactionParser, parse_input_list
+from app.main.utils import add_enzyme_structures, add_enzyme_organism, add_enzyme_genes, add_metabolites_to_reaction, \
+    add_gibbs_energy, add_mechanism_references
 import re
+from flask import request
+import json
 
 
+@bp.route('/modify_enzyme_select_organism/<isoenzyme>', methods=['GET', 'POST'])
+@login_required
+def modify_enzyme_select_organism(isoenzyme):
 
-"""
+    form_organism = SelectOrganismForm()
+
+    if form_organism.validate_on_submit():
+
+        enzyme = Enzyme.query.filter_by(isoenzyme=isoenzyme).first()
+
+        data_form = dict(name=enzyme.name,
+                         acronym=enzyme.acronym,
+                         isoenzyme=enzyme.isoenzyme,
+                         ec_number=enzyme.ec_number)
+
+        if form_organism.organism.data:
+
+            data_form['organism_name'] = form_organism.organism.data.name
+
+            organism = form_organism.organism.data
+
+            if enzyme.enzyme_organisms.count() > 0:
+
+                enz_org_list = enzyme.enzyme_organisms.filter(EnzymeOrganism.organism == organism).all()
+                if enz_org_list:
+                    uniprot_id_list = []
+                    n_active_sites = 0
+                    for enz_org in enz_org_list:
+                        uniprot_id_list.append(enz_org.uniprot_id)
+                        n_active_sites = enz_org.n_active_sites
+
+                    data_form['uniprot_id_list'] = ', '.join(uniprot_id_list)
+                    data_form['number_of_active_sites'] = n_active_sites
+
+            if enzyme.enzyme_structures.count() > 0:
+
+                enz_struct_list = enzyme.enzyme_structures.filter(EnzymeStructure.organism == organism).all()
+                if enz_struct_list:
+                    pdb_id_list = []
+                    strain_list = []
+                    for enz_struct in enz_struct_list:
+                        pdb_id_list.append(enz_struct.pdb_id)
+                        strain_list.append(enz_struct.strain)
+
+                    data_form['pdb_structure_ids'] = ', '.join(pdb_id_list)
+                    data_form['strain'] = ', '.join(strain_list)
+
+            if enzyme.enzyme_gene_organisms.count() > 0:
+                enz_gene_org_list = enzyme.enzyme_gene_organisms.filter(EnzymeGeneOrganism.organism == organism).all()
+                if enz_gene_org_list:
+                    gene_list = []
+                    for enz_gene_org in enz_gene_org_list:
+                        gene_list.append(enz_gene_org.gene.name)
+
+                    data_form['gene_names'] = ', '.join(gene_list)
+
+        return redirect(url_for('main.modify_enzyme', isoenzyme=isoenzyme, data_form=data_form))
+
+    return render_template('insert_data.html', title='Modify enzyme', form=form_organism, header='Modify enzyme')
+
+
 @bp.route('/modify_enzyme/<isoenzyme>', methods=['GET', 'POST'])
 @login_required
 def modify_enzyme(isoenzyme):
 
-    data_form = dict(name=organism_name)
-    form = OrganismForm(data=data_form)
+    data_form = request.args.get('data_form')
+    data_form = json.loads(data_form.replace("'", "\""))
+
+    if 'organism_name' in data_form:
+        data_form['organism_name'] = Organism.query.filter_by(name=data_form['organism_name']).first()
+
+    form = EnzymeForm(data=data_form, flag='modify')
+
+    genes = Gene.query.all()
+    gene_bigg_ids = {'id_value': '#gene_bigg_ids', 'input_data': [{'field1': gene.name} for gene in genes] if genes else []}
+
+    enzyme_structures = EnzymeStructure.query.all()
+    enzyme_structure_strains = set([enzyme_structure.strain for enzyme_structure in enzyme_structures]) if enzyme_structures else []
+    strain = {'id_value': '#strain', 'input_data': [{'field1': strain} for strain in
+              enzyme_structure_strains] if enzyme_structures else []}
+
+    data_list = [gene_bigg_ids, strain]
+
+    print('modify submitted', form.is_submitted())
 
     if form.validate_on_submit():
-        organism = Organism.query.filter_by(name=organism_name).first()
-        organism.name = form.name.data
+        print('what the heck?!')
+
+        enzyme = Enzyme.query.filter_by(isoenzyme=isoenzyme).first()
+
+        enzyme.name = form.name.data
+        enzyme.acronym = form.acronym.data
+        enzyme.isoenzyme = form.isoenzyme.data
+        enzyme.ec_number = form.ec_number.data
+
+        if form.organism_name.data:
+            #organism_db = Organism.query.filter_by(name=form.organism_name.data.name).first()
+            organism_id = form.organism_name.data.id
+            enzyme.empty_enzyme_gene_organisms(organism_id)
+            enzyme.empty_structures(organism_id)
+            enzyme.empty_enzyme_organisms(organism_id)
+
+            if form.gene_names.data:
+                add_enzyme_genes(form.gene_names.data, enzyme, organism_id)
+
+            # populate enzyme_structure
+            if form.pdb_structure_ids.data:
+                pdb_id_list = parse_input_list(form.pdb_structure_ids.data)
+                strain_list = parse_input_list(form.strain.data)
+                add_enzyme_structures(enzyme, organism_id, pdb_id_list, strain_list)
+
+            # populate enzyme_organism
+            if form.uniprot_id_list.data:
+                 uniprot_id_list = parse_input_list(form.uniprot_id_list.data)
+                 add_enzyme_organism(enzyme, organism_id, uniprot_id_list, form.number_of_active_sites.data)
+
         db.session.commit()
 
-        flash('Your organism has been modified', 'success')
+        flash('Your enzyme has been changed.')
+        return redirect(url_for('main.see_enzyme', isoenzyme=isoenzyme))
 
-        return redirect(url_for('main.see_organism', organism_name=form.name.data))
+    return render_template('insert_data.html', title='Modify enzyme', form=form, header='Modify enzyme', data_list=data_list)
 
-    return render_template('insert_data.html', title='Modify organism', form=form, header='organism')
 
-"""
 @bp.route('/modify_organism/<organism_name>', methods=['GET', 'POST'])
 @login_required
 def modify_organism(organism_name):
@@ -120,50 +228,196 @@ def modify_model(model_name):
 
     return render_template('insert_data.html', title='Modify model', form=form, header='Modify model', data_list=data_list)
 
-"""
 
-@bp.route('/modify_enzyme/<reaction_acronym>', methods=['GET', 'POST'])
+@bp.route('/modify_reaction_select_organism/<reaction_acronym>', methods=['GET', 'POST'])
+@login_required
+def modify_reaction_select_organism(reaction_acronym):
+
+    form_organism = SelectOrganismForm()
+
+    if form_organism.validate_on_submit():
+        if not form_organism.organism.data:
+            return render_template('insert_data.html', title='Modify reaction', form=form_organism, header='Modify reaction',
+                                   text='Please select an organism')
+        else:
+            data_form = dict()
+            data_form['organism'] = form_organism.organism.data.name
+
+        return redirect(url_for('main.modify_reaction_select_isoenzyme', reaction_acronym=reaction_acronym, data_form=data_form))
+
+    return render_template('insert_data.html', title='Modify reaction', form=form_organism, header='Modify reaction')
+
+
+@bp.route('/modify_reaction_select_isoenzyme/<reaction_acronym>', methods=['GET', 'POST'])
+@login_required
+def modify_reaction_select_isoenzyme(reaction_acronym):
+
+    data_form = request.args.get('data_form')
+    data_form = json.loads(data_form.replace("'", "\""))
+
+    organism = Organism.query.filter_by(name=data_form['organism']).first()
+    reaction = Reaction.query.filter_by(acronym=reaction_acronym).first()
+    enzyme_rxn_orgs = EnzymeReactionOrganism.query.filter_by(reaction_id=reaction.id,
+                                                             organism_id=organism.id).all()
+    enzyme_ids = [enz_rxn_org.enzyme_id for enz_rxn_org in enzyme_rxn_orgs]
+    enzymes = Enzyme.query.filter(Enzyme.id.in_(enzyme_ids)).all()
+    isoenzyme_data_form = dict(enzyme=enzymes)
+
+    form_isoenzymes = SelectIsoenzymeForm(data=isoenzyme_data_form)
+
+    if form_isoenzymes.validate_on_submit():
+
+        data_form['isoenzyme'] = form_isoenzymes.enzyme.data[0].acronym
+
+        return redirect(url_for('main.modify_reaction_select_model', reaction_acronym=reaction_acronym, data_form=data_form))
+
+    return render_template('insert_data.html', title='Modify reaction', form=form_isoenzymes, header='Modify reaction')
+
+
+@bp.route('/modify_reaction_select_model/<reaction_acronym>', methods=['GET', 'POST'])
+@login_required
+def modify_reaction_select_model(reaction_acronym):
+
+    data_form = request.args.get('data_form')
+    data_form = json.loads(data_form.replace("'", "\""))
+
+    organism = Organism.query.filter_by(name=data_form['organism']).first()
+    reaction = Reaction.query.filter_by(acronym=reaction_acronym).first()
+    enzyme = Enzyme.query.filter_by(isoenzyme=data_form['isoenzyme']).first()
+
+    enzyme_rxn_org = EnzymeReactionOrganism.query.filter_by(reaction_id=reaction.id,
+                                                             organism_id=organism.id,
+                                                             enzyme_id=enzyme.id).first()
+
+    form_model = SelectModelForm(data=enzyme_rxn_org.models)
+
+    if form_model.validate_on_submit():
+        if form_model.model.data:
+            data_form['model'] = form_model.model.data[0].name
+        else:
+            data_form['model'] = []
+
+        return redirect(url_for('main.modify_reaction', reaction_acronym=reaction_acronym, data_form=data_form))
+
+    return render_template('insert_data.html', title='Modify reaction', form=form_model, header='Modify reaction')
+
+
+@bp.route('/modify_reaction/<reaction_acronym>', methods=['GET', 'POST'])
 @login_required
 def modify_reaction(reaction_acronym):
 
-    reaction = Reaction.query.filter_by(bigg_acronym=reaction_acronym).first()
+    data_form = request.args.get('data_form')
+    data_form = json.loads(data_form.replace("'", "\""))
 
-    data_form = dict(name=reaction.name,
-                    bigg_acronym=reaction.bigg_acronym,
-                    grasp_id=,
-                    reaction_string=str(reaction),
-                    metanetx_id=reaction.metanetx_id,
-                    bigg_id=reaction.bigg_id,
-                    kegg_id=reaction.kegg_id,
+    reaction = Reaction.query.filter_by(acronym=reaction_acronym).first()
+    organism = Organism.query.filter_by(name=data_form['organism']).first()
+    enzyme = Enzyme.query.filter_by(isoenzyme=data_form['isoenzyme']).first()
 
-                    compartment=,
-                    organism =,
-                    models =,
-                    enzymes =,
+    enzyme_rxn_org = EnzymeReactionOrganism.query.filter_by(reaction_id=reaction.id,
+                                                            organism_id=organism.id,
+                                                            enzyme_id=enzyme.id).first()
 
-                    mechanism =,
-                    mechanism_references =,
-                    mechanism_evidence_level =,
-                    subs_binding_order =,
-                    prod_release_order =,
+    mech_references = ', '.join([ref.doi for ref in enzyme_rxn_org.mechanism_references])
 
-                    std_gibbs_energy =,
-                    std_gibbs_energy_std =,
-                    std_gibbs_energy_ph =,
-                    std_gibbs_energy_ionic_strength =,
-                    std_gibbs_energy_references =,
-                    comments=)
+    data_form['name'] = reaction.name
+    data_form['acronym'] = reaction.acronym
+    data_form['grasp_id'] = enzyme_rxn_org.grasp_id
+    data_form['reaction_string'] = str(reaction)
+    data_form['metanetx_id'] = reaction.metanetx_id
+    data_form['bigg_id'] = reaction.bigg_id
+    data_form['kegg_id'] = reaction.kegg_id
+    data_form['organism'] = organism.name
+    data_form['enzymes'] = [enzyme]
+    data_form['comments'] = enzyme_rxn_org.comments
 
-    form = ReactionForm(data=data_form)
+    model_names = [model.name for model in enzyme_rxn_org.models]
+
+    if reaction.compartment:
+        data_form['compartment'] = reaction.compartment.name
+
+    if enzyme_rxn_org.mechanism:
+        data_form['mechanism'] = enzyme_rxn_org.mechanism.name
+        data_form['mechanism_references'] = mech_references
+        data_form['mechanism_evidence_level'] = enzyme_rxn_org.mech_evidence.name
+        data_form['subs_binding_order'] = enzyme_rxn_org.subs_binding_order
+        data_form['prod_release_order'] = enzyme_rxn_org.prod_release_order
+
+    if data_form['model']:
+        model = Model.query.filter_by(name=data_form['model']).first()
+        data_form['models'] = [model]
+
+        if data_form['model'] in model_names:
+            gibbs_energy = GibbsEnergyReactionModel.query.filter_by(model_id=data_form['model'].id,
+                                                                    reaction_id=reaction.id).first()
+
+            data_form['std_gibbs_energy'] = gibbs_energy.standard_dg
+            data_form['std_gibbs_energy_std'] = gibbs_energy.standard_dg_std
+            data_form['std_gibbs_energy_ph'] = gibbs_energy.ph
+            data_form['std_gibbs_energy_ionic_strength'] = gibbs_energy.ionic_strength
+            data_form['std_gibbs_energy_references'] = ', '.join([ref.doi for ref in gibbs_energy.references])
+
+    form = ReactionForm(data=data_form, flag='modify')
 
     if form.validate_on_submit():
-        organism = Organism.query.filter_by(name=organism_name).first()
-        organism.name = form.name.data
+
+        compartment_name = form.compartment.data.name if form.compartment.data else ''
+        reaction.name = form.name.data
+        reaction.acronym = form.acronym.data,
+        reaction.metanetx_id = form.metanetx_id.data,
+        reaction.bigg_id = form.bigg_id.data,
+        reaction.kegg_id = form.kegg_id.data,
+        reaction.compartment_name = compartment_name
+
+        db.session.add(reaction)
+
+        add_metabolites_to_reaction(reaction, form.reaction_string.data)
+
+        if compartment_name:
+            compartment = Compartment.query.filter_by(name=compartment_name).first()
+            compartment.add_reaction(reaction)
+
+        mechanism_id = form.mechanism.data.id if form.mechanism.data else ''
+        mech_evidence_level_id = form.mechanism_evidence_level.data.id if form.mechanism_evidence_level.data else ''
+
+        if len(form.enzymes.data) == 1 and enzyme_rxn_org.enzyme_id == form.enzymes.data[0].id \
+                and enzyme_rxn_org.organism_id == form.organism.data.id:
+
+            enzyme_rxn_org.mechanism_id = mechanism_id
+            enzyme_rxn_org.mech_evidence_level_id = mech_evidence_level_id
+            enzyme_rxn_org.grasp_id = form.grasp_id.data
+            enzyme_rxn_org.subs_binding_order = form.subs_binding_order.data
+            enzyme_rxn_org.prod_release_order = form.prod_release_order.data
+            enzyme_rxn_org.comments = form.comments.data
+
+        else:
+            enzyme_rxn_org = EnzymeReactionOrganism(id=EnzymeReactionOrganism.query.count()+1,
+                                                    enzyme_id=enzyme.id,
+                                                    reaction_id=reaction.id,
+                                                    organism_id=form.organism.data.id,
+                                                    mechanism_id=mechanism_id,
+                                                    mech_evidence_level_id=mech_evidence_level_id,
+                                                    grasp_id=form.grasp_id.data,
+                                                    subs_binding_order=form.subs_binding_order.data,
+                                                    prod_release_order=form.prod_release_order.data,
+                                                    comments=form.comments.data)
+            db.session.add(enzyme_rxn_org)
+
+        if form.mechanism_references.data:
+            enzyme_rxn_org.empty_mechanism_references()
+            add_mechanism_references(form.mechanism_references.data, enzyme_rxn_org)
+
+        if form.models.data:
+            for model in form.models.data:
+
+                if form.std_gibbs_energy.data:
+                    add_gibbs_energy(reaction.id, model.id, form.std_gibbs_energy.data, form.std_gibbs_energy_std.data,
+                                     form.std_gibbs_energy_ph.data, form.std_gibbs_energy_ionic_strength.data,
+                                     form.std_gibbs_energy_references.data)
+
         db.session.commit()
 
-        flash('Your organism has been modified', 'success')
+        flash('Your reaction has been modified', 'success')
 
-        return redirect(url_for('main.see_reaction', reaction_acronym=form.bigg_acronym.data))
+        return redirect(url_for('main.see_reaction', reaction_acronym=form.acronym.data))
 
-    return render_template('insert_data.html', title='Modify reaction', form=form, header='organism')
-"""
+    return render_template('insert_data.html', title='Modify reaction', form=form, header='Modify reaction')

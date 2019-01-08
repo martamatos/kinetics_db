@@ -9,61 +9,10 @@ from app.models import Compartment, Enzyme,EnzymeGeneOrganism,  EnzymeReactionOr
 from app.main.routes_modify_data import modify_model
 from app.main import bp
 from app.utils.parsers import ReactionParser, parse_input_list
+from app.main.utils import add_enzyme_structures, add_enzyme_organism, add_enzyme_genes, add_metabolites_to_reaction, \
+    add_gibbs_energy, add_mechanism_references
+
 import re
-
-
-def _add_enzyme_organism(enzyme, organism_id, uniprot_id_list, number_of_active_sites):
-    for uniprot_id in uniprot_id_list:
-        enzyme_organism_db = EnzymeOrganism.query.filter_by(uniprot_id=uniprot_id).first()
-        if not enzyme_organism_db:
-            enzyme_organism_db = EnzymeOrganism(enzyme_id=enzyme.id,
-                                                organism_id=organism_id,
-                                                uniprot_id=uniprot_id,
-                                                n_active_sites=number_of_active_sites)
-            db.session.add(enzyme_organism_db)
-        enzyme.add_enzyme_organism(enzyme_organism_db)
-
-
-def _add_genes(gene_names, enzyme, organism_id):
-        # populate genes
-        if gene_names:
-            gene_bigg_ids_list = parse_input_list(gene_names)
-            for gene_name in gene_bigg_ids_list:
-                gene_db = Gene.query.filter_by(name=gene_name).first()
-                if not gene_db:
-                    gene_db = Gene(name=gene_name)
-                    db.session.add(gene_db)
-                    db.session.commit()
-
-                enzyme_gene_organism_db = EnzymeGeneOrganism.query.filter_by(gene_id=gene_db.id,
-                                                                             enzyme_id=enzyme.id,
-                                                                             organism_id=organism_id).first()
-                if not enzyme_gene_organism_db:
-                    enzyme_gene_organism = EnzymeGeneOrganism(gene_id=gene_db.id,
-                                                              enzyme_id=enzyme.id,
-                                                              organism_id=organism_id)
-                    db.session.add(enzyme_gene_organism)
-
-
-def _add_enzyme_structures(enzyme, organism_id, pdb_id_list, strain_list):
-
-    if len(strain_list) == 1 and len(pdb_id_list) > 1:
-        pdb_id_strain_list = zip(pdb_id_list, [strain_list[0] for i in range(len(pdb_id_list))])
-    elif len(strain_list) == 0 and len(pdb_id_list) > 1:
-        pdb_id_strain_list = zip(pdb_id_list, ['' for i in range(len(pdb_id_list))])
-    elif len(strain_list) == len(pdb_id_list):
-        pdb_id_strain_list = zip(pdb_id_list, strain_list)
-
-    for pdb_id, pdb_id_strain in pdb_id_strain_list:
-        enzyme_structure_db = EnzymeStructure.query.filter_by(pdb_id=pdb_id).first()
-        if not enzyme_structure_db:
-            enzyme_structure_db = EnzymeStructure(enzyme_id=enzyme.id,
-                                                  pdb_id=pdb_id,
-                                                  organism_id=organism_id,
-                                                  strain=pdb_id_strain)
-            db.session.add(enzyme_structure_db)
-
-        #enzyme.add_structure(enzyme_structure_db)
 
 
 @bp.route('/add_enzyme', methods=['GET', 'POST'])
@@ -80,6 +29,10 @@ def add_enzyme():
               enzyme_structure_strains] if enzyme_structures else []}
 
     data_list = [gene_bigg_ids, strain]
+
+    print('add submitted?', form.is_submitted())
+    #print(form.validate())
+    #print(form.validate_on_submit())
 
     if form.validate_on_submit():
 
@@ -101,27 +54,24 @@ def add_enzyme():
             organism_id = organism_db.id
 
             if form.gene_names.data:
-                _add_genes(form.gene_names.data, enzyme, organism_id)
+                add_enzyme_genes(form.gene_names.data, enzyme, organism_id)
 
             # populate enzyme_structure
             if form.pdb_structure_ids.data:
                 pdb_id_list = parse_input_list(form.pdb_structure_ids.data)
                 strain_list = parse_input_list(form.strain.data)
-                _add_enzyme_structures(enzyme, organism_id, pdb_id_list, strain_list)
+                add_enzyme_structures(enzyme, organism_id, pdb_id_list, strain_list)
 
             # populate enzyme_organism
             if form.uniprot_id_list.data:
                 uniprot_id_list = parse_input_list(form.uniprot_id_list.data)
-                _add_enzyme_organism(enzyme, organism_id, uniprot_id_list, form.number_of_active_sites.data)
-
-
-
+                add_enzyme_organism(enzyme, organism_id, uniprot_id_list, form.number_of_active_sites.data)
 
         db.session.commit()
+
         flash('Your enzyme is now live!')
         return redirect(url_for('main.see_enzyme_list'))
     return render_template('insert_data.html', title='Add enzyme', form=form, header='Add enzyme', data_list=data_list)
-
 
 
 def _check_metabolite(bigg_id):
@@ -204,16 +154,6 @@ def add_enzyme_activation():
     metabolite_list = {'id_value': '#metabolite_list', 'input_data': [{'field1': metabolite.bigg_id} for metabolite in metabolites] if metabolites else []}
     data_list = [metabolite_list]
 
-    """
-      isoenzyme = QuerySelectField('Isoenzyme *', query_factory=get_enzymes, validators=[DataRequired()])
-    reaction = QuerySelectField('Reaction *', query_factory=get_reactions, validators=[DataRequired()])
-    organism = QuerySelectField('Organism *', query_factory=get_organisms)
-    models = QuerySelectMultipleField('Model', query_factory=get_models)
-    activator_met = StringField('Activating metabolite (e.g. adp), please use bigg IDs *', validators=[DataRequired()], id='metabolite_list')
-    activation_constant = FloatField('Activation constant (in M)', validators=[Optional()])
-    activation_evidence_level = QuerySelectField('Activation inhibition evidence level', query_factory=get_evidence_names, allow_blank=True)
-    references = StringField('References, please use DOI (e.g. https://doi.org/10.1093/bioinformatics/bty942, http://doi.org/10.5334/jors.236)')
-    comments = TextAreaField('Comments')"""
     if form.validate_on_submit():
 
         activator_met = _check_metabolite(form.activator_met.data)
@@ -443,95 +383,6 @@ def add_organism():
     return render_template('insert_data.html', title='Add organism', form=form, header='Add organism')
 
 
-def _add_metabolites_to_reaction(reaction, reaction_string):
-
-    reversible, stoichiometry = ReactionParser().parse_reaction(reaction_string)
-    # (True, OrderedDict([('m_pep_c', -1.0), ('m_adp_c', -1.5), ('m_pyr_c', 1.0), ('m_atp_m', 2.0)]))
-
-    for met, stoich_coef in stoichiometry.items():
-        met_compartment = re.findall('(\w+)_(\w+)', met)[0]
-
-        bigg_id = met_compartment[0]
-        met_db = Metabolite.query.filter_by(bigg_id=bigg_id).first()
-
-        compartment_acronym = met_compartment[1]
-
-        if not met_db:
-            met_db = Metabolite(bigg_id=bigg_id,
-                                grasp_id=bigg_id)
-            db.session.add(met_db)
-
-        compartment_db = Compartment.query.filter_by(bigg_id=compartment_acronym).first()
-        met_db.add_compartment(compartment_db)
-
-        reaction.add_metabolite(met_db, stoich_coef, compartment_db)
-
-    return reaction
-
-
-def _add_gibbs_energy(reaction_id, model_id, standard_dg, standard_dg_std, standard_dg_ph, standard_dg_is, std_gibbs_energy_references):
-
-    gibbs_energy_db = GibbsEnergy.query.filter_by(standard_dg=standard_dg,
-                                                  standard_dg_std=standard_dg_std,
-                                                  ph=standard_dg_ph,
-                                                  ionic_strength=standard_dg_is).first()
-
-
-    if gibbs_energy_db:
-        gibbs_energy_reaction_model_db = GibbsEnergyReactionModel.query.filter_by(reaction_id=reaction_id,
-                                                                                  model_id=model_id,
-                                                                                  gibbs_energy_id=gibbs_energy_db.id).first()
-
-        if not gibbs_energy_reaction_model_db:
-            gibbs_energy_reaction_model_db = GibbsEnergyReactionModel(reaction_id=reaction_id,
-                                                                      model_id=model_id,
-                                                                      gibbs_energy_id=gibbs_energy_db.id)
-
-            db.session.add(gibbs_energy_reaction_model_db)
-
-    if not gibbs_energy_db:
-
-        gibbs_energy_db = GibbsEnergy(standard_dg=standard_dg,
-                                      standard_dg_std=standard_dg_std,
-                                      ph=standard_dg_ph,
-                                      ionic_strength=standard_dg_is)
-
-        db.session.add(gibbs_energy_db)
-        db.session.commit()
-
-        gibbs_energy_reaction_model_db = GibbsEnergyReactionModel(reaction_id=reaction_id,
-                                                                  model_id=model_id,
-                                                                  gibbs_energy_id=gibbs_energy_db.id)
-
-        db.session.add(gibbs_energy_reaction_model_db)
-
-        db.session.commit()
-
-    if std_gibbs_energy_references.lower().strip() != 'equilibrator':
-
-        gibbs_references = parse_input_list(std_gibbs_energy_references)
-        for ref_doi in gibbs_references:
-            ref_db = Reference.query.filter(doi=ref_doi).first()
-            if not ref_db:
-                ref_db = Reference(doi=ref_doi)
-                db.session.add(ref_db)
-            gibbs_energy_db.add_reference(ref_db.id)
-
-    if std_gibbs_energy_references.lower().strip() == 'equilibrator':
-        ref_db = Reference.query.filter_by(title='eQuilibrator').first()
-        gibbs_energy_db.add_reference(ref_db)
-
-
-def _add_mechanism(mechanism_references, enzyme_reaction_model):
-        mech_references = parse_input_list(mechanism_references)
-
-        for ref_doi in mech_references:
-            ref_db = Reference.query.filter_by(doi=ref_doi).first()
-            if not ref_db:
-                ref_db = Reference(doi=ref_doi)
-                db.session.add(ref_db)
-
-            enzyme_reaction_model.add_mechanism_reference(ref_db)
 
 @bp.route('/add_reaction', methods=['GET', 'POST'])
 @login_required
@@ -560,7 +411,7 @@ def add_reaction():
 
         db.session.add(reaction)
 
-        _add_metabolites_to_reaction(reaction, form.reaction_string.data)
+        add_metabolites_to_reaction(reaction, form.reaction_string.data)
 
         if compartment_name:
             compartment = Compartment.query.filter_by(name=compartment_name).first()
@@ -569,9 +420,7 @@ def add_reaction():
         mechanism_id = form.mechanism.data.id if form.mechanism.data else ''
         mech_evidence_level_id = form.mechanism_evidence_level.data.id if form.mechanism_evidence_level.data else ''
 
-
         for enzyme in form.enzymes.data:
-
             enzyme_reaction_organism = EnzymeReactionOrganism(id=EnzymeReactionOrganism.query.count()+1,
                                                               enzyme_id=enzyme.id,
                                                               reaction_id=reaction.id,
@@ -585,7 +434,7 @@ def add_reaction():
             db.session.add(enzyme_reaction_organism)
 
             if form.mechanism_references.data:
-                _add_mechanism(form.mechanism_references.data, enzyme_reaction_organism)
+                add_mechanism_references(form.mechanism_references.data, enzyme_reaction_organism)
 
             if form.models.data:
                 for model in form.models.data:
@@ -594,7 +443,7 @@ def add_reaction():
 
 
                     if form.std_gibbs_energy.data:
-                        _add_gibbs_energy(reaction.id, model.id, form.std_gibbs_energy.data, form.std_gibbs_energy_std.data,
+                        add_gibbs_energy(reaction.id, model.id, form.std_gibbs_energy.data, form.std_gibbs_energy_std.data,
                                           form.std_gibbs_energy_ph.data, form.std_gibbs_energy_ionic_strength.data,
                                           form.std_gibbs_energy_references.data)
 

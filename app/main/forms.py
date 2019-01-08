@@ -81,13 +81,20 @@ class PostForm(FlaskForm):
 
 
 class EnzymeForm(FlaskForm):
+
+    def __init__(self, data=None, flag='insert'):
+        FlaskForm.__init__(self, data=data)
+        self.local_data = data
+        self.flag = flag
+
     name = StringField('Enzyme name (e.g. phosphofructokinase) *', validators=[DataRequired()])
     acronym = StringField('Enzyme bigg_acronym (eg. PFK) *', validators=[DataRequired()])
     isoenzyme = StringField('Isoenzyme (e.g. PFK1) *', validators=[DataRequired()])
     ec_number = StringField('EC number *', validators=[DataRequired()])
 
     organism_name = QuerySelectField('Organism name (eg. E coli)', query_factory=get_organisms, allow_blank=True)
-    number_of_active_sites = IntegerField('Number of enzyme subunits (you need to specify the organism first)', validators=[Optional()])
+    number_of_active_sites = IntegerField('Number of enzyme active sites (you need to specify the organism first)',
+                                          validators=[Optional()])
     gene_names = StringField('Encoding gene names (you need to specify the organism first)', id='gene_bigg_ids')
     uniprot_id_list = StringField('Uniprot IDs (you need to specify the organism first) (e.g. Q5FKG6, P21777)')
     pdb_structure_ids = StringField('PDB structure IDs (you need to specify the organism first) (e.g. 3H8A, 1UCW)')
@@ -96,13 +103,14 @@ class EnzymeForm(FlaskForm):
     submit = SubmitField('Submit')
 
     def validate_isoenzyme(self, isoenzyme):
-        enzyme_list = Enzyme.query.all()
-        isoenzyme_list = set([enzyme.isoenzyme for enzyme in enzyme_list]) if enzyme_list else {}
-        if isoenzyme.data in isoenzyme_list:
-            raise ValidationError('The isoenzyme you specified already exists. Please choose a different name.')
+        if self.flag != 'modify' or isoenzyme.data != self.local_data['isoenzyme']:
+            enzyme_list = Enzyme.query.all()
+            isoenzyme_list = set([enzyme.isoenzyme for enzyme in enzyme_list]) if enzyme_list else {}
+            if isoenzyme.data in isoenzyme_list:
+                raise ValidationError('The isoenzyme you specified already exists. Please choose a different name.')
 
     def validate_number_of_active_sites(self, number_of_active_sites):
-        if number_of_active_sites.data  and not self.organism_name.data :
+        if number_of_active_sites.data and not self.organism_name.data :
             raise ValidationError('If you specify the number of active sites you must also specify the organism name.')
 
     def validate_gene_names(self, gene_names):
@@ -122,6 +130,7 @@ class EnzymeForm(FlaskForm):
         pdb_id_list = parse_input_list(self.pdb_structure_ids.data)
         if len(strain_list) > 1 and len(pdb_id_list) and len(strain_list) != len(pdb_id_list):
             raise ValidationError('When providing PDB IDs either provide:\n-the corresponding strains for each PDB ID;\n-a single strain name\n-or no strain names.')
+
 
 
 class EnzymeInhibitionForm(FlaskForm):
@@ -272,11 +281,15 @@ class OrganismForm(FlaskForm):
 
 
 class ReactionForm(FlaskForm):
+    def __init__(self, data=None, flag='insert'):
+        FlaskForm.__init__(self, data=data)
+        self.local_data = data
+        self.flag = flag
 
     name = StringField('Reaction name (e.g. phosphofructokinase) *', validators=[DataRequired()])
-    acronym = StringField('Reaction bigg_acronym (e.g. PFK) *', validators=[DataRequired()])
+    acronym = StringField('Reaction acronym (e.g. PFK) *', validators=[DataRequired()])
     grasp_id = StringField('GRASP ID (e.g. PFK1) *', validators=[DataRequired()])
-    reaction_string = StringField('Reaction string, use either Bigg IDs or Chebi IDs (e.g. 1 pep_c + 1.5 adp_c <-> 1 pyr_c + 2.0 atp_m) *', validators=[DataRequired()])
+    reaction_string = StringField('Reaction string, use Bigg IDs (e.g. 1 pep_c + 1.5 adp_c <-> 1 pyr_c + 2.0 atp_m) *', validators=[DataRequired()])
     metanetx_id = StringField('Metanetx ID')
     bigg_id = StringField('Bigg ID')
     kegg_id = StringField('Kegg ID')
@@ -284,7 +297,7 @@ class ReactionForm(FlaskForm):
     compartment = QuerySelectField('Compartment name', query_factory=get_compartments, allow_blank=True)
     organism = QuerySelectField('Organism name *', query_factory=get_organisms)
     models = QuerySelectMultipleField('Model name', query_factory=get_models, allow_blank=True)
-    enzymes = QuerySelectMultipleField('Isoenzyme(s) that catalyze the reaction (e.g. PFK1, PFK2) *', query_factory=get_enzymes, validators=[DataRequired()])
+    enzymes = QuerySelectMultipleField('Isoenzyme(s) that catalyze the reaction *', query_factory=get_enzymes, validators=[DataRequired()])
 
     mechanism = QuerySelectField('Enzyme mechanism name (if you add the mechanism, you also need to add the isoenzyme(s) that catalyze the reaction)', query_factory=get_mechanisms, allow_blank=True)
     mechanism_references = StringField('DOI for mechanism references (e.g. https://doi.org/10.1093/bioinformatics/bty942, http://doi.org/10.5334/jors.236) ')
@@ -301,6 +314,11 @@ class ReactionForm(FlaskForm):
     comments = TextAreaField('Comments')
 
     submit = SubmitField('Submit')
+
+    def validate_enzymes(self, enzymes):
+        if self.flag == 'modify':
+            if len(enzymes.data) > 1:
+                raise ValidationError('Please select one and only one isoenzyme.')
 
     def validate_reaction_string(self, reaction_string):
         reversible, stoichiometry = ReactionParser().parse_reaction(reaction_string.data)
@@ -368,10 +386,35 @@ class ReactionForm(FlaskForm):
         if self.std_gibbs_energy.data and not std_gibbs_energy_references.data:
             raise ValidationError('Please specify the reference for the above standard Gibbs energy.')
 
-        if std_gibbs_energy_references.data  and not self.std_gibbs_energy.data :
+        if std_gibbs_energy_references.data and not self.std_gibbs_energy.data:
             raise ValidationError('Please specify the standard Gibbs energy as well.')
 
 
-class ModifyData(FlaskForm):
+class ModifyDataForm(FlaskForm):
     submit = SubmitField('Modify')
 
+
+class SelectOrganismForm(FlaskForm):
+    organism = QuerySelectField('Organisms (leave blank if you only want to change the enzyme info).', query_factory=get_organisms, allow_blank=True)
+
+    submit = SubmitField('Continue')
+
+
+class SelectIsoenzymeForm(FlaskForm):
+    enzyme = QuerySelectMultipleField('Isoenzyme that catalyzes the reaction (select only one) *', query_factory=get_enzymes, validators=[DataRequired()])
+
+    submit = SubmitField('Continue')
+
+    def validate_enzyme(self, enzyme):
+        if len(enzyme.data) != 1:
+            raise ValidationError('Please select one and only one isoenzyme.')
+
+
+class SelectModelForm(FlaskForm):
+    model = QuerySelectMultipleField('Model name *', query_factory=get_models, validators=[DataRequired()])
+
+    submit = SubmitField('Continue')
+
+    def validate_model(self, model):
+        if len(model.data) > 1:
+            raise ValidationError('Please select only one model.')
