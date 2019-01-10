@@ -493,7 +493,7 @@ def see_model_assumptions_list():
     prev_url = url_for('main.see_model_assumptions_list', page=model_assumptions.prev_num) \
         if model_assumptions.has_prev else None
     return render_template("see_data.html", title='See model assumptions', data=model_assumptions.items,
-                           data_type='model assumptions', tab_status=tab_status, header=header,
+                           data_type='model_assumptions', tab_status=tab_status, header=header,
                            next_url=next_url, prev_url=prev_url)
 
 

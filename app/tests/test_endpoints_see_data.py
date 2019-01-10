@@ -7,7 +7,8 @@ from app.models import Compartment, Enzyme, EnzymeOrganism, EnzymeReactionOrgani
 from config import Config
 from app.utils.parsers import parse_input_list, ReactionParser
 from app.utils.populate_db import add_models, add_mechanisms, add_reaction, add_reference_types, add_enzymes, \
-    add_compartments, add_evidence_levels, add_organisms, add_references
+    add_compartments, add_evidence_levels, add_organisms, add_references, add_activations, add_effectors, \
+    add_inhibitions, add_misc_infos, add_model_assumptions
 import re
 
 
@@ -40,6 +41,11 @@ def populate_db(test_case, client=None):
         add_reference_types()
         add_references()
         add_reaction(client)
+        add_activations(client)
+        add_inhibitions(client)
+        add_effectors(client)
+        add_misc_infos(client)
+        add_model_assumptions(client)
 
 
 class TestSeeEnzyme(unittest.TestCase):
@@ -67,6 +73,122 @@ class TestSeeEnzyme(unittest.TestCase):
     def test_see_enzyme(self):
 
         response = self.client.get('/see_enzyme/PFK1', follow_redirects=True)
+
+        self.assertEqual(response.status_code, 200)
+
+
+class TestSeeEnzymeInhibitor(unittest.TestCase):
+    def setUp(self):
+        self.app = create_app(TestConfig)
+        self.client = self.app.test_client()
+        self.app_context = self.app.app_context()
+        self.app_context.push()
+        db.create_all()
+
+        populate_db('see_enzyme_inhibitor', self.client)
+
+    def tearDown(self):
+        db.session.remove()
+        db.drop_all()
+        self.app_context.pop()
+
+    def test_see_enzyme_inhibitors_list(self):
+
+        response = self.client.get('/see_enzyme_inhibitors_list', follow_redirects=True)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(b'<title>\n    See enzyme inhibitors - Kinetics DB \n</title>' in response.data)
+
+    def test_see_enzyme_inhibitor(self):
+
+        response = self.client.get('/see_enzyme_inhibitor/1', follow_redirects=True)
+
+        self.assertEqual(response.status_code, 200)
+
+
+class TestSeeEnzymeActivator(unittest.TestCase):
+    def setUp(self):
+        self.app = create_app(TestConfig)
+        self.client = self.app.test_client()
+        self.app_context = self.app.app_context()
+        self.app_context.push()
+        db.create_all()
+
+        populate_db('see_enzyme_activator', self.client)
+
+    def tearDown(self):
+        db.session.remove()
+        db.drop_all()
+        self.app_context.pop()
+
+    def test_see_enzyme_activators_list(self):
+
+        response = self.client.get('/see_enzyme_activators_list', follow_redirects=True)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(b'<title>\n    See enzyme activators - Kinetics DB \n</title>' in response.data)
+
+    def test_see_enzyme_activator(self):
+
+        response = self.client.get('/see_enzyme_activator/1', follow_redirects=True)
+
+        self.assertEqual(response.status_code, 200)
+
+
+class TestSeeEnzymeEffector(unittest.TestCase):
+    def setUp(self):
+        self.app = create_app(TestConfig)
+        self.client = self.app.test_client()
+        self.app_context = self.app.app_context()
+        self.app_context.push()
+        db.create_all()
+
+        populate_db('see_enzyme_effector', self.client)
+
+    def tearDown(self):
+        db.session.remove()
+        db.drop_all()
+        self.app_context.pop()
+
+    def test_see_enzyme_effectors_list(self):
+
+        response = self.client.get('/see_enzyme_effectors_list', follow_redirects=True)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(b'<title>\n    See enzyme effectors - Kinetics DB \n</title>' in response.data)
+
+    def test_see_enzyme_effector(self):
+
+        response = self.client.get('/see_enzyme_effector/1', follow_redirects=True)
+
+        self.assertEqual(response.status_code, 200)
+
+
+class TestSeeEnzymeMiscInfo(unittest.TestCase):
+    def setUp(self):
+        self.app = create_app(TestConfig)
+        self.client = self.app.test_client()
+        self.app_context = self.app.app_context()
+        self.app_context.push()
+        db.create_all()
+
+        populate_db('see_enzyme_misc_info', self.client)
+
+    def tearDown(self):
+        db.session.remove()
+        db.drop_all()
+        self.app_context.pop()
+
+    def test_see_enzyme_misc_info_list(self):
+
+        response = self.client.get('/see_enzyme_misc_info_list', follow_redirects=True)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(b'<title>\n    See enzyme misc info - Kinetics DB \n</title>' in response.data)
+
+    def test_see_enzyme_misc_info(self):
+
+        response = self.client.get('/see_enzyme_misc_info/1', follow_redirects=True)
 
         self.assertEqual(response.status_code, 200)
 
@@ -126,6 +248,35 @@ class TestSeeModel(unittest.TestCase):
     def test_see_model(self):
 
         response = self.client.get('/see_model/E. coli - iteration 2', follow_redirects=True)
+
+        self.assertEqual(response.status_code, 200)
+
+
+class TestSeeModelAssumption(unittest.TestCase):
+    def setUp(self):
+        self.app = create_app(TestConfig)
+        self.client = self.app.test_client()
+        self.app_context = self.app.app_context()
+        self.app_context.push()
+        db.create_all()
+
+        populate_db('see_model_assumption', self.client)
+
+    def tearDown(self):
+        db.session.remove()
+        db.drop_all()
+        self.app_context.pop()
+
+    def test_see_model_assumption_list(self):
+
+        response = self.client.get('/see_model_assumptions_list', follow_redirects=True)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(b'<title>\n    See model assumptions - Kinetics DB \n</title>' in response.data)
+
+    def test_see_model_assumption(self):
+
+        response = self.client.get('/see_model_assumption/1', follow_redirects=True)
 
         self.assertEqual(response.status_code, 200)
 
