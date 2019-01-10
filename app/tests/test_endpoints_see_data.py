@@ -64,7 +64,6 @@ class TestSeeEnzyme(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTrue(b'<title>\n    See enzymes - Kinetics DB \n</title>' in response.data)
 
-
     def test_see_enzyme(self):
 
         response = self.client.get('/see_enzyme/PFK1', follow_redirects=True)
@@ -93,7 +92,6 @@ class TestSeeMetabolite(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertTrue(b'<title>\n    See metabolites - Kinetics DB \n</title>' in response.data)
-
 
     def test_see_metabolite(self):
 

@@ -98,11 +98,7 @@ def modify_enzyme(isoenzyme):
 
     data_list = [gene_bigg_ids, strain]
 
-    print('modify submitted', form.is_submitted())
-
     if form.validate_on_submit():
-        print('what the heck?!')
-
         enzyme = Enzyme.query.filter_by(isoenzyme=isoenzyme).first()
 
         enzyme.name = form.name.data
@@ -133,8 +129,8 @@ def modify_enzyme(isoenzyme):
 
         db.session.commit()
 
-        flash('Your enzyme has been changed.')
-        return redirect(url_for('main.see_enzyme', isoenzyme=isoenzyme))
+        flash('Your enzyme has been modified.')
+        return redirect(url_for('main.see_enzyme', isoenzyme=form.isoenzyme.data))
 
     return render_template('insert_data.html', title='Modify enzyme', form=form, header='Modify enzyme', data_list=data_list)
 
@@ -142,6 +138,13 @@ def modify_enzyme(isoenzyme):
 @bp.route('/modify_enzyme_inhibitor/<inhibitor_id>', methods=['GET', 'POST'])
 @login_required
 def modify_enzyme_inhibitor(inhibitor_id):
+    """
+    Enzyme inhibitions can only be added to models through this view, not removed, so that a given user doesn't mess
+    around with other users models.
+
+    :param inhibitor_id:
+    :return:
+    """
 
     metabolites = Metabolite.query.all()
     metabolite_list = {'id_value': '#metabolite_list', 'input_data': [{'field1': metabolite.bigg_id} for metabolite in metabolites] if metabolites else []}
@@ -150,9 +153,9 @@ def modify_enzyme_inhibitor(inhibitor_id):
     enz_inhibitor = EnzymeReactionInhibition.query.filter_by(id=inhibitor_id).first()
     enz_inhibitor_refs = ', '.join([ref.doi for ref in enz_inhibitor.references]) if enz_inhibitor.references else ''
 
-    form = EnzymeInhibitionForm(enzyme=enz_inhibitor.enzyme_reaction.organism.enzyme,
-                                reaction=enz_inhibitor.enzyme_reaction.organism.reaction,
-                                organism=enz_inhibitor.enzyme_reaction.organism.organism,
+    form = EnzymeInhibitionForm(enzyme=enz_inhibitor.enzyme_reaction_organism.enzyme,
+                                reaction=enz_inhibitor.enzyme_reaction_organism.reaction,
+                                organism=enz_inhibitor.enzyme_reaction_organism.organism,
                                 models=enz_inhibitor.models,
                                 inhibitor_met=enz_inhibitor.inhibitor_met.bigg_id,
                                 affected_met=enz_inhibitor.affected_met.bigg_id,
@@ -164,28 +167,30 @@ def modify_enzyme_inhibitor(inhibitor_id):
 
     if form.validate_on_submit():
 
-        if not (form.enzyme.data.id == enz_inhibitor.enzyme_reaction.organism.enzyme.id and
-                form.reaction.data.id == enz_inhibitor.enzyme_reaction.organism.reaction.id and
-                form.organism.data.id == enz_inhibitor.enzyme_reaction.organism.organism.id):
+        if not (form.enzyme.data.id == enz_inhibitor.enzyme_reaction_organism.enzyme.id and
+                form.reaction.data.id == enz_inhibitor.enzyme_reaction_organism.reaction.id and
+                form.organism.data.id == enz_inhibitor.enzyme_reaction_organism.organism.id):
 
             enz_rxn_org = EnzymeReactionOrganism.query.filter_by(enzyme_id=form.enzyme.data.id,
                                                                  reaction_id=form.reaction.data.id,
                                                                  organism_id=form.organism.data.id).first()
 
             if not enz_rxn_org:
-                enz_rxn_org = EnzymeReactionOrganism(enzyme_id=form.enzyme.data.id,
+                enz_rxn_org = EnzymeReactionOrganism(id=EnzymeReactionOrganism.query.count()+1,
+                                                     enzyme_id=form.enzyme.data.id,
                                                      reaction_id=form.reaction.data.id,
                                                      organism_id=form.organism.data.id)
 
                 db.session.add(enz_rxn_org)
                 db.session.commit()
 
-                enz_inhibitor.enzyme_reaction_organism = enz_rxn_org
+            enz_inhibitor.enzyme_reaction_organism = enz_rxn_org
 
-        activator_met = check_metabolite(form.inhibitor_met.data)
-        enz_inhibitor.inhibitor_met = activator_met
+        inhibitor_met = check_metabolite(form.inhibitor_met.data)
+        enz_inhibitor.inhibitor_met = inhibitor_met
         affected_met = check_metabolite(form.affected_met.data)
         enz_inhibitor.affected_met = affected_met
+        enz_inhibitor.inhibition_type = form.inhibition_type.data
         enz_inhibitor.inhibition_constant = form.inhibition_constant.data
 
         inhibition_evidence_level_id = form.inhibition_evidence_level.data.id if form.inhibition_evidence_level.data else None
@@ -194,7 +199,7 @@ def modify_enzyme_inhibitor(inhibitor_id):
         enz_inhibitor.comments = form.comments.data
 
         if form.models.data:
-            enz_inhibitor.empty_models()
+            #enz_inhibitor.empty_models()
             for model in form.models.data:
                 enz_inhibitor.add_model(model)
 
@@ -206,7 +211,7 @@ def modify_enzyme_inhibitor(inhibitor_id):
                 enz_inhibitor.add_reference(ref_db)
         db.session.commit()
 
-        flash('Your enzyme activation is now live!', 'success')
+        flash('Your enzyme inhibition has been modified.', 'success')
 
         return redirect(url_for('main.see_enzyme_inhibitor', inhibitor_id=inhibitor_id))
 
@@ -217,6 +222,13 @@ def modify_enzyme_inhibitor(inhibitor_id):
 @bp.route('/modify_enzyme_activator/<activator_id>', methods=['GET', 'POST'])
 @login_required
 def modify_enzyme_activator(activator_id):
+    """
+    Enzyme activations can only be added to models through this view, not removed, so that a given user doesn't mess
+    around with other users models.
+
+    :param activator_id:
+    :return:
+    """
 
     metabolites = Metabolite.query.all()
     metabolite_list = {'id_value': '#metabolite_list', 'input_data': [{'field1': metabolite.bigg_id} for metabolite in metabolites] if metabolites else []}
@@ -225,9 +237,9 @@ def modify_enzyme_activator(activator_id):
     enz_activator = EnzymeReactionActivation.query.filter_by(id=activator_id).first()
     enz_activator_refs = ', '.join([ref.doi for ref in enz_activator.references]) if enz_activator.references else ''
 
-    form = EnzymeActivationForm(enzyme=enz_activator.enzyme_reaction.organism.enzyme,
-                                reaction=enz_activator.enzyme_reaction.organism.reaction,
-                                organism=enz_activator.enzyme_reaction.organism.organism,
+    form = EnzymeActivationForm(enzyme=enz_activator.enzyme_reaction_organism.enzyme,
+                                reaction=enz_activator.enzyme_reaction_organism.reaction,
+                                organism=enz_activator.enzyme_reaction_organism.organism,
                                 models=enz_activator.models,
                                 activator_met=enz_activator.activator_met.bigg_id,
                                 activation_constant=enz_activator.activation_constant,
@@ -237,23 +249,24 @@ def modify_enzyme_activator(activator_id):
 
     if form.validate_on_submit():
 
-        if not (form.enzyme.data.id == enz_activator.enzyme_reaction.organism.enzyme.id and
-                form.reaction.data.id == enz_activator.enzyme_reaction.organism.reaction.id and
-                form.organism.data.id == enz_activator.enzyme_reaction.organism.organism.id):
+        if not (form.enzyme.data.id == enz_activator.enzyme_reaction_organism.enzyme.id and
+                form.reaction.data.id == enz_activator.enzyme_reaction_organism.reaction.id and
+                form.organism.data.id == enz_activator.enzyme_reaction_organism.organism.id):
 
             enz_rxn_org = EnzymeReactionOrganism.query.filter_by(enzyme_id=form.enzyme.data.id,
                                                                  reaction_id=form.reaction.data.id,
                                                                  organism_id=form.organism.data.id).first()
 
             if not enz_rxn_org:
-                enz_rxn_org = EnzymeReactionOrganism(enzyme_id=form.enzyme.data.id,
+                enz_rxn_org = EnzymeReactionOrganism(id=EnzymeReactionOrganism.query.count()+1,
+                                                     enzyme_id=form.enzyme.data.id,
                                                      reaction_id=form.reaction.data.id,
                                                      organism_id=form.organism.data.id)
 
                 db.session.add(enz_rxn_org)
                 db.session.commit()
 
-                enz_activator.enzyme_reaction_organism = enz_rxn_org
+            enz_activator.enzyme_reaction_organism = enz_rxn_org
 
         activator_met = check_metabolite(form.activator_met.data)
         enz_activator.activator_met = activator_met
@@ -265,7 +278,7 @@ def modify_enzyme_activator(activator_id):
         enz_activator.comments = form.comments.data
 
         if form.models.data:
-            enz_activator.empty_models()
+            #enz_activator.empty_models()
             for model in form.models.data:
                 enz_activator.add_model(model)
 
@@ -277,7 +290,7 @@ def modify_enzyme_activator(activator_id):
                 enz_activator.add_reference(ref_db)
         db.session.commit()
 
-        flash('Your enzyme activation is now live!', 'success')
+        flash('Your enzyme activation has been modified.', 'success')
 
         return redirect(url_for('main.see_enzyme_activator', activator_id=activator_id))
 
@@ -288,6 +301,13 @@ def modify_enzyme_activator(activator_id):
 @bp.route('/modify_enzyme_effector/<effector_id>', methods=['GET', 'POST'])
 @login_required
 def modify_enzyme_effector(effector_id):
+    """
+    Enzyme effectors can only be added to models through this view, not removed, so that a given user doesn't mess
+    around with other users models.
+
+    :param effector_id:
+    :return:
+    """
 
     metabolites = Metabolite.query.all()
     metabolite_list = {'id_value': '#metabolite_list', 'input_data': [{'field1': metabolite.bigg_id} for metabolite in metabolites] if metabolites else []}
@@ -296,9 +316,9 @@ def modify_enzyme_effector(effector_id):
     enz_effector = EnzymeReactionEffector.query.filter_by(id=effector_id).first()
     enz_effector_refs = ', '.join([ref.doi for ref in enz_effector.references]) if enz_effector.references else ''
 
-    form = EnzymeEffectorForm(enzyme=enz_effector.enzyme_reaction.organism.enzyme,
-                              reaction=enz_effector.enzyme_reaction.organism.reaction,
-                              organism=enz_effector.enzyme_reaction.organism.organism,
+    form = EnzymeEffectorForm(enzyme=enz_effector.enzyme_reaction_organism.enzyme,
+                              reaction=enz_effector.enzyme_reaction_organism.reaction,
+                              organism=enz_effector.enzyme_reaction_organism.organism,
                               models=enz_effector.models,
                               effector_met=enz_effector.effector_met.bigg_id,
                               effector_type=enz_effector.effector_type,
@@ -308,16 +328,19 @@ def modify_enzyme_effector(effector_id):
 
     if form.validate_on_submit():
 
-        if not (form.enzyme.data.id == enz_effector.enzyme_reaction.organism.enzyme.id and
-                form.reaction.data.id == enz_effector.enzyme_reaction.organism.reaction.id and
-                form.organism.data.id == enz_effector.enzyme_reaction.organism.organism.id):
+        if not (form.enzyme.data.id == enz_effector.enzyme_reaction_organism.enzyme.id and
+                form.reaction.data.id == enz_effector.enzyme_reaction_organism.reaction.id and
+                form.organism.data.id == enz_effector.enzyme_reaction_organism.organism.id):
 
             enz_rxn_org = EnzymeReactionOrganism.query.filter_by(enzyme_id=form.enzyme.data.id,
                                                                  reaction_id=form.reaction.data.id,
                                                                  organism_id=form.organism.data.id).first()
 
+            enz_effector.enzyme_reaction_organism = enz_rxn_org
+
             if not enz_rxn_org:
-                enz_rxn_org = EnzymeReactionOrganism(enzyme_id=form.enzyme.data.id,
+                enz_rxn_org = EnzymeReactionOrganism(id=EnzymeReactionOrganism.query.count()+1,
+                                                     enzyme_id=form.enzyme.data.id,
                                                      reaction_id=form.reaction.data.id,
                                                      organism_id=form.organism.data.id)
 
@@ -336,7 +359,7 @@ def modify_enzyme_effector(effector_id):
         enz_effector.comments = form.comments.data
 
         if form.models.data:
-            enz_effector.empty_models()
+            #enz_effector.empty_models()
             for model in form.models.data:
                 enz_effector.add_model(model)
 
@@ -348,7 +371,7 @@ def modify_enzyme_effector(effector_id):
                 enz_effector.add_reference(ref_db)
 
         db.session.commit()
-        flash('Your enzyme effector is now live!', 'success')
+        flash('Your enzyme effector has been modified.', 'success')
 
         return redirect(url_for('main.see_enzyme_effector', effector_id=effector_id))
 
@@ -359,39 +382,47 @@ def modify_enzyme_effector(effector_id):
 @bp.route('/modify_enzyme_misc_info/<misc_info_id>', methods=['GET', 'POST'])
 @login_required
 def modify_enzyme_misc_info(misc_info_id):
+    """
+    Enzyme misc info can only be added to models through this view, not removed, so that a given user doesn't mess
+    around with other users models.
+
+    :param misc_info_id:
+    :return:
+    """
 
     enz_misc_info = EnzymeReactionMiscInfo.query.filter_by(id=misc_info_id).first()
     enz_misc_info_refs = ', '.join([ref.doi for ref in enz_misc_info.references]) if enz_misc_info.references else ''
 
-    form = EnzymeMiscInfoForm(enzyme=enz_misc_info.enzyme_reaction.organism.enzyme,
-                              reaction=enz_misc_info.enzyme_reaction.organism.reaction,
-                              organism=enz_misc_info.enzyme_reaction.organism.organism,
+    form = EnzymeMiscInfoForm(enzyme=enz_misc_info.enzyme_reaction_organism.enzyme,
+                              reaction=enz_misc_info.enzyme_reaction_organism.reaction,
+                              organism=enz_misc_info.enzyme_reaction_organism.organism,
                               models=enz_misc_info.models,
                               topic=enz_misc_info.topic,
                               description=enz_misc_info.description,
-                              effector_evidence_level=enz_misc_info.evidence,
+                              evidence_level=enz_misc_info.evidence,
                               references=enz_misc_info_refs,
                               comments=enz_misc_info.comments)
 
     if form.validate_on_submit():
 
-        if not (form.enzyme.data.id == enz_misc_info.enzyme_reaction.organism.enzyme.id and
-                form.reaction.data.id == enz_misc_info.enzyme_reaction.organism.reaction.id and
-                form.organism.data.id == enz_misc_info.enzyme_reaction.organism.organism.id):
+        if not (form.enzyme.data.id == enz_misc_info.enzyme_reaction_organism.enzyme.id and
+                form.reaction.data.id == enz_misc_info.enzyme_reaction_organism.reaction.id and
+                form.organism.data.id == enz_misc_info.enzyme_reaction_organism.organism.id):
 
             enz_rxn_org = EnzymeReactionOrganism.query.filter_by(enzyme_id=form.enzyme.data.id,
                                                                  reaction_id=form.reaction.data.id,
                                                                  organism_id=form.organism.data.id).first()
 
             if not enz_rxn_org:
-                enz_rxn_org = EnzymeReactionOrganism(enzyme_id=form.enzyme.data.id,
+                enz_rxn_org = EnzymeReactionOrganism(id=EnzymeReactionOrganism.query.count()+1,
+                                                     enzyme_id=form.enzyme.data.id,
                                                      reaction_id=form.reaction.data.id,
                                                      organism_id=form.organism.data.id)
 
                 db.session.add(enz_rxn_org)
                 db.session.commit()
 
-                enz_misc_info.enzyme_reaction_organism = enz_rxn_org
+            enz_misc_info.enzyme_reaction_organism = enz_rxn_org
 
         enz_misc_info.topic = form.topic.data
         enz_misc_info.description = form.description.data
@@ -402,7 +433,7 @@ def modify_enzyme_misc_info(misc_info_id):
         enz_misc_info.comments = form.comments.data
 
         if form.models.data:
-            enz_misc_info.empty_models()
+            #enz_misc_info.empty_models()
             for model in form.models.data:
                 enz_misc_info.add_model(model)
 
@@ -414,31 +445,12 @@ def modify_enzyme_misc_info(misc_info_id):
                 enz_misc_info.add_reference(ref_db)
 
         db.session.commit()
-        flash('Your enzyme effector is now live!', 'success')
+        flash('Your enzyme misc info has been modified.', 'success')
 
         return redirect(url_for('main.see_enzyme_misc_info', misc_info_id=misc_info_id))
 
     return render_template('insert_data.html', title='Modify enzyme misc info', form=form,
                            header='Modify enzyme misc info')
-
-
-@bp.route('/modify_organism/<organism_name>', methods=['GET', 'POST'])
-@login_required
-def modify_organism(organism_name):
-
-    data_form = dict(name=organism_name)
-    form = OrganismForm(data=data_form)
-
-    if form.validate_on_submit():
-        organism = Organism.query.filter_by(name=organism_name).first()
-        organism.name = form.name.data
-        db.session.commit()
-
-        flash('Your organism has been modified', 'success')
-
-        return redirect(url_for('main.see_organism', organism_name=form.name.data))
-
-    return render_template('insert_data.html', title='Modify organism', form=form, header='Modify organism')
 
 
 @bp.route('/modify_model/<model_name>', methods=['GET', 'POST'])
@@ -471,17 +483,16 @@ def modify_model(model_name):
             db.session.add(organism)
 
         model.name = form.name.data
-        model.organism_name = form.organism_name.data,
-        model.strain = form.strain.data,
+        model.organism_name = form.organism_name.data
+        model.strain = form.strain.data
         model.comments = form.comments.data
+
         model.empty_enzyme_reaction_organisms()
         model.emtpy_enzyme_reaction_inhibitions()
         model.emtpy_enzyme_reaction_activations()
         model.emtpy_enzyme_reaction_effectors()
         model.emtpy_enzyme_reaction_misc_infos()
         model.emtpy_model_assumptions()
-
-        db.session.commit()
 
         if form.enz_rxn_orgs.data:
             for enz_rxn_org in form.enz_rxn_orgs.data:
@@ -499,6 +510,10 @@ def modify_model(model_name):
             for model_effector in form.model_effectors.data:
                 model.add_enzyme_reaction_effector(model_effector)
 
+        if form.model_misc_infos.data:
+            for model_misc_info in form.model_misc_infos.data:
+                model.add_enzyme_reaction_misc_info(model_misc_info)
+
         if form.model_assumptions.data:
             for model_assumption in form.model_assumptions.data:
                 model.add_model_assumption(model_assumption)
@@ -510,6 +525,64 @@ def modify_model(model_name):
         return redirect(url_for('main.see_model', model_name=form.name.data))
 
     return render_template('insert_data.html', title='Modify model', form=form, header='Modify model', data_list=data_list)
+
+
+@bp.route('/modify_model_assumption/<model_assumption_id>', methods=['GET', 'POST'])
+@login_required
+def modify_model_assumption(model_assumption_id):
+
+    model_assumption = ModelAssumptions.query.filter_by(id=model_assumption_id).first()
+    model_assumption_refs = ', '.join([ref.doi for ref in model_assumption.references]) if model_assumption.references else ''
+
+    form = ModelAssumptionsForm(model=model_assumption.model,
+                                assumption=model_assumption.assumption,
+                                description=model_assumption.description,
+                                evidence_level=model_assumption.evidence,
+                                included_in_model=model_assumption.included_in_model,
+                                references=model_assumption_refs,
+                                comments=model_assumption.comments)
+
+    if form.validate_on_submit():
+
+        model_assumption.assumption = form.assumption.data
+        model_assumption.description = form.description.data
+        model_assumption_evidence_level_id = form.evidence_level.data.id if form.evidence_level.data else None
+        model_assumption.evidence_level_id = model_assumption_evidence_level_id
+        model_assumption.comments = form.comments.data
+        model_assumption.model = form.model.data
+
+        if form.references.data:
+            model_assumption.empty_references()
+
+            ref_db_list = add_references(form.references.data)
+            for ref_db in ref_db_list:
+                model_assumption.add_reference(ref_db)
+
+        db.session.commit()
+        flash('Your model assumption has been modified.', 'success')
+
+        return redirect(url_for('main.see_model_assumption', model_assumption_id=model_assumption_id))
+
+    return render_template('insert_data.html', title='Modify model assumption', form=form,
+                           header='Modify model assumption')
+
+
+@bp.route('/modify_organism/<organism_name>', methods=['GET', 'POST'])
+@login_required
+def modify_organism(organism_name):
+
+    data_form = dict(name=organism_name)
+    form = OrganismForm(data=data_form)
+
+    if form.validate_on_submit():
+        organism = Organism.query.filter_by(name=organism_name).first()
+        organism.name = form.name.data
+        db.session.commit()
+
+        flash('Your organism has been modified', 'success')
+        return redirect(url_for('main.see_organism', organism_name=form.name.data))
+
+    return render_template('insert_data.html', title='Modify organism', form=form, header='Modify organism')
 
 
 @bp.route('/modify_reaction_select_organism/<reaction_acronym>', methods=['GET', 'POST'])
@@ -588,6 +661,14 @@ def modify_reaction_select_model(reaction_acronym):
 @bp.route('/modify_reaction/<reaction_acronym>', methods=['GET', 'POST'])
 @login_required
 def modify_reaction(reaction_acronym):
+    """
+
+    The models associated to a given enzyme_reaction_organism are never removed, only added. This is to avoid that user
+    2 by mistake removes the association between a given enzyme_reaction_organism and the models from user 1.
+
+    :param reaction_acronym:
+    :return:
+    """
 
     data_form = request.args.get('data_form')
     data_form = json.loads(data_form.replace("'", "\""))
@@ -630,14 +711,15 @@ def modify_reaction(reaction_acronym):
         data_form['models'] = [model]
 
         if data_form['model'] in model_names:
-            gibbs_energy = GibbsEnergyReactionModel.query.filter_by(model_id=data_form['model'].id,
-                                                                    reaction_id=reaction.id).first()
+            gibbs_energy_rxn_model = GibbsEnergyReactionModel.query.filter_by(model_id=model.id,
+                                                                              reaction_id=reaction.id).first()
+            gibbs_energy = GibbsEnergy.query.filter_by(id=gibbs_energy_rxn_model.gibbs_energy_id).first()
 
             data_form['std_gibbs_energy'] = gibbs_energy.standard_dg
             data_form['std_gibbs_energy_std'] = gibbs_energy.standard_dg_std
             data_form['std_gibbs_energy_ph'] = gibbs_energy.ph
             data_form['std_gibbs_energy_ionic_strength'] = gibbs_energy.ionic_strength
-            data_form['std_gibbs_energy_references'] = ', '.join([ref.doi for ref in gibbs_energy.references])
+            data_form['std_gibbs_energy_references'] = ', '.join([ref.doi if ref.doi is not None else ref.title for ref in gibbs_energy.references.all()]) if gibbs_energy.references else ''
 
     form = ReactionForm(data=data_form, flag='modify')
 
@@ -645,14 +727,15 @@ def modify_reaction(reaction_acronym):
 
         compartment_name = form.compartment.data.name if form.compartment.data else ''
         reaction.name = form.name.data
-        reaction.acronym = form.acronym.data,
-        reaction.metanetx_id = form.metanetx_id.data,
-        reaction.bigg_id = form.bigg_id.data,
-        reaction.kegg_id = form.kegg_id.data,
+        reaction.acronym = form.acronym.data
+        reaction.metanetx_id = form.metanetx_id.data
+        reaction.bigg_id = form.bigg_id.data
+        reaction.kegg_id = form.kegg_id.data
         reaction.compartment_name = compartment_name
 
         db.session.add(reaction)
 
+        reaction.empty_metabolites()
         add_metabolites_to_reaction(reaction, form.reaction_string.data)
 
         if compartment_name:
@@ -662,28 +745,28 @@ def modify_reaction(reaction_acronym):
         mechanism_id = form.mechanism.data.id if form.mechanism.data else ''
         mech_evidence_level_id = form.mechanism_evidence_level.data.id if form.mechanism_evidence_level.data else ''
 
-        if len(form.enzymes.data) == 1 and enzyme_rxn_org.enzyme_id == form.enzymes.data[0].id \
-                and enzyme_rxn_org.organism_id == form.organism.data.id:
+        if not (len(form.enzymes.data) == 1 and enzyme_rxn_org.enzyme_id == form.enzymes.data[0].id
+                and enzyme_rxn_org.organism_id == form.organism.data.id):
 
-            enzyme_rxn_org.mechanism_id = mechanism_id
-            enzyme_rxn_org.mech_evidence_level_id = mech_evidence_level_id
-            enzyme_rxn_org.grasp_id = form.grasp_id.data
-            enzyme_rxn_org.subs_binding_order = form.subs_binding_order.data
-            enzyme_rxn_org.prod_release_order = form.prod_release_order.data
-            enzyme_rxn_org.comments = form.comments.data
+            enzyme_rxn_org = EnzymeReactionOrganism.query.filter_by(enzyme_id=form.enzymes.data[0].id,
+                                                                    reaction_id=reaction.id,
+                                                                    organism_id=form.organism.data.id).first()
 
-        else:
-            enzyme_rxn_org = EnzymeReactionOrganism(id=EnzymeReactionOrganism.query.count()+1,
-                                                    enzyme_id=enzyme.id,
-                                                    reaction_id=reaction.id,
-                                                    organism_id=form.organism.data.id,
-                                                    mechanism_id=mechanism_id,
-                                                    mech_evidence_level_id=mech_evidence_level_id,
-                                                    grasp_id=form.grasp_id.data,
-                                                    subs_binding_order=form.subs_binding_order.data,
-                                                    prod_release_order=form.prod_release_order.data,
-                                                    comments=form.comments.data)
-            db.session.add(enzyme_rxn_org)
+            if not enzyme_rxn_org:
+
+                enzyme_rxn_org = EnzymeReactionOrganism(id=EnzymeReactionOrganism.query.count()+1,
+                                                        enzyme_id=form.enzymes.data[0].id,
+                                                        reaction_id=reaction.id,
+                                                        organism_id=form.organism.data.id)
+                db.session.add(enzyme_rxn_org)
+                db.session.commit()
+
+        enzyme_rxn_org.mechanism_id = mechanism_id
+        enzyme_rxn_org.mech_evidence_level_id = mech_evidence_level_id
+        enzyme_rxn_org.grasp_id = form.grasp_id.data
+        enzyme_rxn_org.subs_binding_order = form.subs_binding_order.data
+        enzyme_rxn_org.prod_release_order = form.prod_release_order.data
+        enzyme_rxn_org.comments = form.comments.data
 
         if form.mechanism_references.data:
             enzyme_rxn_org.empty_mechanism_references()
@@ -691,6 +774,7 @@ def modify_reaction(reaction_acronym):
 
         if form.models.data:
             for model in form.models.data:
+                enzyme_rxn_org.add_model(model)
 
                 if form.std_gibbs_energy.data:
                     add_gibbs_energy(reaction.id, model.id, form.std_gibbs_energy.data, form.std_gibbs_energy_std.data,

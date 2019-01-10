@@ -12,6 +12,7 @@ followers = db.Table('followers',
     db.Column('followed_id', db.Integer, db.ForeignKey('user.id'))
 )
 
+
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     username = db.Column(db.String(64), index=True, unique=True)
@@ -76,6 +77,7 @@ class User(UserMixin, db.Model):
 @login.user_loader
 def load_user(id):
     return User.query.get(int(id))
+
 
 class Post(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
@@ -196,6 +198,8 @@ class Reference(db.Model):
         primaryjoin=(reference_gibbs_energy.c.reference_id == id),
         back_populates='references', lazy='dynamic')
 
+    def __repr__(self):
+        return str(self.doi) if self.doi else str(self.title)
 
     def add_author(self, author):
         if not self.is_authored_by(author):
@@ -330,6 +334,7 @@ class Enzyme(db.Model):
     isoenzyme = db.Column(db.String, unique=True, nullable=False)
     ec_number = db.Column(db.String)
     timestamp = db.Column(db.DateTime, index=True, default=datetime.utcnow)
+
     enzyme_structures = db.relationship('EnzymeStructure', back_populates='enzyme', lazy='dynamic')
     enzyme_organisms = db.relationship('EnzymeOrganism', back_populates='enzyme', lazy='dynamic')
     enzyme_reaction_organisms = db.relationship('EnzymeReactionOrganism', back_populates='enzyme', lazy='dynamic')
@@ -634,9 +639,10 @@ class Reaction(db.Model):
                                                    stoich_coef=stoich_coef, compartment=compartment))
 
     def empty_metabolites(self):
-        for met in self.metabolites:
-            ReactionMetabolite.query.filter(ReactionMetabolite.reaction_id == self.id,
-                                            ReactionMetabolite.metabolite_id == met.id).delete()
+        for rxn_met in self.metabolites:
+            ReactionMetabolite.query.filter(ReactionMetabolite.reaction_id == rxn_met.reaction_id,
+                                            ReactionMetabolite.compartment_id == rxn_met.compartment_id,
+                                            ReactionMetabolite.metabolite_id == rxn_met.metabolite_id).delete()
 
 
     def add_enzyme_organism(self, enzyme_organism):
@@ -1173,9 +1179,7 @@ class EnzymeReactionOrganism(db.Model):
             reference_mechanism.c.reference_id == reference.id).count() > 0
 
     def empty_mechanism_references(self):
-        for mech_ref in self.mechanism_references:
-            if reference_mechanism.c.mechanism_id == self.id:
-                self.remove_mechanism_reference(mech_ref)
+        self.mechanism_references = []
 
     def add_model(self, model):
         if not self.is_in_model(model):
@@ -1252,6 +1256,9 @@ class EnzymeReactionInhibition(db.Model):
         return self.models.filter(
             enzyme_reaction_inhibition_model.c.model_id == model.id).count() > 0
 
+    def empty_references(self):
+        self.references = []
+
 
 class EnzymeReactionActivation(db.Model):
     __tablename__ = 'enzyme_reaction_activation'
@@ -1309,6 +1316,9 @@ class EnzymeReactionActivation(db.Model):
         return self.models.filter(
             enzyme_reaction_activation_model.c.model_id == model.id).count() > 0
 
+    def empty_references(self):
+        self.references = []
+
 
 class EnzymeReactionEffector(db.Model):
     __tablename__ = 'enzyme_reaction_effector'
@@ -1353,9 +1363,8 @@ class EnzymeReactionEffector(db.Model):
             reference_effector.c.reference_id == reference.id).count() > 0
 
     def empty_references(self):
-        for ref in self.references:
-            if reference_effector.c.effector_id == self.id:
-                self.remove_reference(ref)
+        self.references = []
+
 
     def add_model(self, model):
         if not self.is_in_model(model):
@@ -1417,6 +1426,10 @@ class EnzymeReactionMiscInfo(db.Model):
         return self.references.filter(
             reference_misc_info.c.reference_id == reference.id).count() > 0
 
+    def empty_references(self):
+        self.references = []
+
+
     def add_model(self, model):
         if not self.is_in_model(model):
             self.models.append(model)
@@ -1458,3 +1471,6 @@ class ModelAssumptions(db.Model):
     def has_reference(self, reference):
         return self.references.filter(
             reference_model_assumptions.c.reference_id == reference.id).count() > 0
+
+    def empty_references(self):
+        self.references = []

@@ -3,7 +3,7 @@ from wtforms import FloatField, IntegerField, SelectField, StringField, SubmitFi
 from wtforms.validators import ValidationError, DataRequired, Length, Optional
 from app.models import Compartment, Enzyme, EnzymeStructure, EvidenceLevel, Mechanism, Model, Organism, Reaction, User,\
                         EnzymeReactionOrganism, EnzymeReactionInhibition, EnzymeReactionActivation, \
-                        EnzymeReactionEffector, ModelAssumptions
+                        EnzymeReactionEffector, ModelAssumptions, EnzymeReactionMiscInfo
 
 from wtforms.ext.sqlalchemy.fields import QuerySelectField, QuerySelectMultipleField
 from app.utils.parsers import parse_input_list, ReactionParser
@@ -28,6 +28,9 @@ def get_enzyme_effectors():
 
 def get_enzyme_inhibitions():
     return EnzymeReactionInhibition.query
+
+def get_enzyme_misc_infos():
+    return EnzymeReactionMiscInfo.query
 
 
 def get_enzyme_reaction_organisms():
@@ -130,7 +133,6 @@ class EnzymeForm(FlaskForm):
         pdb_id_list = parse_input_list(self.pdb_structure_ids.data)
         if len(strain_list) > 1 and len(pdb_id_list) and len(strain_list) != len(pdb_id_list):
             raise ValidationError('When providing PDB IDs either provide:\n-the corresponding strains for each PDB ID;\n-a single strain name\n-or no strain names.')
-
 
 
 class EnzymeInhibitionForm(FlaskForm):
@@ -247,6 +249,7 @@ class ModelModifyForm(FlaskForm):
     model_inhibitions = QuerySelectMultipleField('Enzyme inhibitions', query_factory=get_enzyme_inhibitions, allow_blank=True)
     model_activations = QuerySelectMultipleField('Enzyme activations', query_factory=get_enzyme_activations, allow_blank=True)
     model_effectors = QuerySelectMultipleField('Enzyme effectors', query_factory=get_enzyme_effectors, allow_blank=True)
+    model_misc_infos = QuerySelectMultipleField('Enzyme misc info', query_factory=get_enzyme_misc_infos, allow_blank=True)
     model_assumptions = QuerySelectMultipleField('Model assumptions', query_factory=get_model_assumptions, allow_blank=True)
 
     comments = TextAreaField('Comments')
@@ -266,7 +269,6 @@ class ModelFormBase(FlaskForm):
     model_base = QuerySelectField('Models', query_factory=get_models, allow_blank=True)
 
     submit = SubmitField('Continue')
-
 
 
 class OrganismForm(FlaskForm):

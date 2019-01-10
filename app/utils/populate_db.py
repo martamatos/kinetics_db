@@ -72,11 +72,10 @@ def add_enzymes(client):
 
     organism_name = 'E. coli'
     number_of_active_sites = 4
-    gene_bigg_ids = 'b001 b003'
+    gene_bigg_ids = 'b001, b003'
     uniprot_ids = 'PC3W1, P34D'
     pdb_structure_ids = '3H8A, 1E9I'
     strain = 'WT'
-
 
     response = client.post('/add_enzyme', data=dict(
                                 name=enzyme_name,
@@ -85,11 +84,10 @@ def add_enzymes(client):
                                 ec_number=ec_number,
                                 organism_name='1',  # querySelectField
                                 number_of_active_sites=number_of_active_sites,
-                                gene_bigg_ids=gene_bigg_ids,
+                                gene_names=gene_bigg_ids,
                                 uniprot_id_list=uniprot_ids,
                                 pdb_structure_ids=pdb_structure_ids,
                                 strain=strain), follow_redirects=True)
-
 
     assert response.status_code == 200
 
@@ -123,7 +121,7 @@ def add_reaction(client):
     kegg_id = ''
 
     compartment = '1'
-    organism='1'
+    organism = '1'
     models = ['1', '2']
     enzymes = ['1','2']
     mechanism = '1'
@@ -172,7 +170,7 @@ def add_reaction(client):
     db.session.commit()
 
     
-def add_inhibition(client):
+def add_inhibitions(client):
 
     enzyme = '1'
     reaction = '1'
@@ -202,8 +200,32 @@ def add_inhibition(client):
 
     assert response.status_code == 200
 
+    inhibitor_met = 'nad'
+    affected_met = 'nadh'
+    inhibition_type = 'Competitive'
+    inhibition_constant = 1.3*10**-4
 
-def add_activation(client):
+    evidence_level = '1'
+    references = 'https://doi.org/10.1093/bioinformatics/bty942, https://doi.org/10.1093/bioinformatics/bty943'
+    comments = ''
+
+    response = client.post('/add_enzyme_inhibition', data=dict(
+                                 enzyme=enzyme,
+                                 reaction=reaction,
+                                 organism=organism,
+                                 models=models,
+                                 inhibitor_met=inhibitor_met,
+                                 affected_met=affected_met,
+                                 inhibition_type=inhibition_type,
+                                 inhibition_constant=inhibition_constant,
+                                 inhibition_evidence_level=evidence_level,
+                                 references=references,
+                                 comments=comments), follow_redirects=True)
+
+    assert response.status_code == 200
+
+
+def add_activations(client):
     enzyme = '1'
     reaction = '1'
     organism = '1'
@@ -215,7 +237,26 @@ def add_activation(client):
     references = 'https://doi.org/10.1093/bioinformatics/bty942, https://doi.org/10.1093/bioinformatics/bty943'
     comments = ''
 
+    response = client.post('/add_enzyme_activation', data=dict(
+                                 enzyme=enzyme,
+                                 reaction=reaction,
+                                 organism=organism,
+                                 models=models,
+                                 activator_met=activator_met,
+                                 activation_constant=activation_constant,
+                                 activation_evidence_level=evidence_level,
+                                 references=references,
+                                 comments=comments), follow_redirects=True)
 
+    assert response.status_code == 200
+
+
+    activator_met = 'nad'
+    activation_constant = 1.3*10**-4
+
+    evidence_level = '1'
+    references = 'https://doi.org/10.1093/bioinformatics/bty942, https://doi.org/10.1093/bioinformatics/bty943'
+    comments = ''
 
     response = client.post('/add_enzyme_activation', data=dict(
                                  enzyme=enzyme,
@@ -231,7 +272,7 @@ def add_activation(client):
     assert response.status_code == 200
     
         
-def add_effector(client):
+def add_effectors(client):
     
     enzyme = '1'
     reaction = '1'
@@ -243,7 +284,6 @@ def add_effector(client):
     evidence_level = '1'
     references = 'https://doi.org/10.1093/bioinformatics/bty942, https://doi.org/10.1093/bioinformatics/bty943'
     comments = ''
-
 
     response = client.post('/add_enzyme_effector', data=dict(
                                  enzyme=enzyme,
@@ -257,9 +297,30 @@ def add_effector(client):
                                  comments=comments), follow_redirects=True)
 
     assert response.status_code == 200
+
+
+    effector_met = 'nad'
+    effector_type = 'Activating'
+
+    evidence_level = '1'
+    references = 'https://doi.org/10.1093/bioinformatics/bty942, https://doi.org/10.1093/bioinformatics/bty943'
+    comments = ''
+
+    response = client.post('/add_enzyme_effector', data=dict(
+                                 enzyme=enzyme,
+                                 reaction=reaction,
+                                 organism=organism,
+                                 models=models,
+                                 effector_met=effector_met,
+                                 effector_type=effector_type,
+                                 effector_evidence_level=evidence_level,
+                                 references=references,
+                                 comments=comments), follow_redirects=True)
+
+    assert response.status_code == 200
+
     
-    
-def add_misc_info(client):
+def add_misc_infos(client):
     enzyme = '1'
     reaction = '1'
     organism = '1'
@@ -284,39 +345,64 @@ def add_misc_info(client):
 
     assert response.status_code == 200
 
-"""
-class TestConfig(Config):
-    LOGIN_DISABLED = True
-    WTF_CSRF_ENABLED = False
+    topic = 'blurb'
+    description = 'looks like this met is an allosteric inhibitor for that enzyme'
+
+    evidence_level = '1'
+    references = 'https://doi.org/10.1093/bioinformatics/bty942, https://doi.org/10.1093/bioinformatics/bty943'
+    comments = ''
+
+    response = client.post('/add_enzyme_misc_info', data=dict(
+                                 enzyme=enzyme,
+                                 reaction=reaction,
+                                 organism=organism,
+                                 models=models,
+                                 topic=topic,
+                                 description=description,
+                                 evidence_level=evidence_level,
+                                 references=references,
+                                 comments=comments), follow_redirects=True)
+
+    assert response.status_code == 200
 
 
-def main():
-    # app=create_app(TestConfig)
-    #app_context = app.app_context()
-    #app_context.push()
-    app = create_app(TestConfig)
-    client = app.test_client()
-    app_context = app.app_context()
-    app_context.push()
+def add_model_assumptions(client):
 
-    add_organisms()
-    add_compartments()
+    model = '1'
+    assumption = 'allostery sucks'
+    description = 'looks like this met is an allosteric inhibitor for that enzyme'
+    included_in_model = 'True'
+    evidence_level = '1'
+    references = 'https://doi.org/10.1093/bioinformatics/bty942, https://doi.org/10.1093/bioinformatics/bty943'
+    comments = ''
 
-    add_evidence_levels()
-    add_mechanisms()
-    add_models()
+    response = client.post('/add_model_assumption', data=dict(
+                            model=model,
+                            assumption=assumption,
+                            description=description,
+                            evidence_level=evidence_level,
+                            included_in_model=included_in_model,
+                            references=references,
+                            comments=comments), follow_redirects=True)
 
-    add_reference_types()
-    add_references()
-    add_enzymes(client)
-    add_reaction(client)
-    add_inhibition(client)
-    add_activation(client)
-    add_effector(client)
-    add_misc_info(client)
-    #add_enzyme_reaction_organism()
+    assert response.status_code == 200
 
-#main()
+    model = '1'
+    assumption = 'inhibition also sucks'
+    description = 'blerb'
+    included_in_model = 'True'
+    evidence_level = '1'
+    references = 'https://doi.org/10.1093/bioinformatics/bty942, https://doi.org/10.1093/bioinformatics/bty943'
+    comments = ''
 
+    response = client.post('/add_model_assumption', data=dict(
+                            model=model,
+                            assumption=assumption,
+                            description=description,
+                            evidence_level=evidence_level,
+                            included_in_model=included_in_model,
+                            references=references,
+                            comments=comments), follow_redirects=True)
 
-"""
+    assert response.status_code == 200
+

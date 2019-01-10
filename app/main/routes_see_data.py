@@ -194,7 +194,7 @@ def see_enzyme_activator(activator_id):
     data.append({'field_name': 'Isoenzyme', 'data': enz_activator.enzyme_reaction_organism.enzyme.isoenzyme})
     data.append({'field_name': 'Reaction', 'data': enz_activator.enzyme_reaction_organism.reaction})
     data.append({'field_name': 'Organism', 'data': enz_activator.enzyme_reaction_organism.organism})
-    data.append({'field_name': 'Activating metabolite', 'data': enz_activator.activator_met_id.name})
+    data.append({'field_name': 'Activating metabolite', 'data': enz_activator.activator_met.name})
     data.append({'field_name': 'Activation constant', 'data': enz_activator.activation_constant})
     data.append({'field_name': 'Evidence level', 'data': enz_activator.evidence})
     data.append({'field_name': 'Comments', 'data': enz_activator.comments})

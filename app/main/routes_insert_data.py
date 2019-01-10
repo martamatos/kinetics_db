@@ -30,10 +30,6 @@ def add_enzyme():
 
     data_list = [gene_bigg_ids, strain]
 
-    print('add submitted?', form.is_submitted())
-    #print(form.validate())
-    #print(form.validate_on_submit())
-
     if form.validate_on_submit():
 
         enzyme_db_list = Enzyme.query.filter_by(ec_number=form.ec_number.data).all()
@@ -156,10 +152,10 @@ def add_enzyme_activation():
             db.session.commit()
 
         enz_rxn_activation = EnzymeReactionActivation(enz_rxn_org_id=enz_rxn_org.id,
-                                                     activator_met_id=activator_met.id,
-                                                     activation_constant=form.activation_constant.data,
-                                                     evidence_level_id=activation_evidence_level_id,
-                                                     comments=form.comments.data)
+                                                      activator_met_id=activator_met.id,
+                                                      activation_constant=form.activation_constant.data,
+                                                      evidence_level_id=activation_evidence_level_id,
+                                                      comments=form.comments.data)
         db.session.add(enz_rxn_activation)
 
         if form.models.data:
@@ -350,12 +346,11 @@ def add_model_assumption():
         included_in_model = True if form.included_in_model.data == 'True' else False
 
         model_assumption = ModelAssumptions(model_id=form.model.data.id,
-                                             assumption=form.assumption.data,
-                                             description=form.description.data,
-                                             evidence_level_id=evidence_level_id,
-                                             #included_in_model=form.included_in_model.data,
-                                             included_in_model=included_in_model,
-                                             comments=form.comments.data)
+                                            assumption=form.assumption.data,
+                                            description=form.description.data,
+                                            evidence_level_id=evidence_level_id,
+                                            included_in_model=included_in_model,
+                                            comments=form.comments.data)
         db.session.add(model_assumption)
 
         if form.references.data:
@@ -385,7 +380,6 @@ def add_organism():
 
         return redirect(url_for('main.see_organism_list'))
     return render_template('insert_data.html', title='Add organism', form=form, header='Add organism')
-
 
 
 @bp.route('/add_reaction', methods=['GET', 'POST'])
@@ -442,9 +436,7 @@ def add_reaction():
 
             if form.models.data:
                 for model in form.models.data:
-
                     enzyme_reaction_organism.add_model(model)
-
 
                     if form.std_gibbs_energy.data:
                         add_gibbs_energy(reaction.id, model.id, form.std_gibbs_energy.data, form.std_gibbs_energy_std.data,
