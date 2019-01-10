@@ -1,11 +1,9 @@
-from app.utils.parsers import ReactionParser, parse_input_list
-
-from app import current_app, db
-from app.models import Compartment, Enzyme,EnzymeGeneOrganism,  EnzymeReactionOrganism, EnzymeReactionActivation, \
-    EnzymeReactionEffector, EnzymeReactionInhibition, EnzymeReactionMiscInfo, EnzymeOrganism, EnzymeStructure, \
-    EvidenceLevel, Gene, GibbsEnergy, GibbsEnergyReactionModel, Mechanism, Metabolite, Model, ModelAssumptions, \
-    Organism, Reaction, ReactionMetabolite, Reference
 import re
+
+from app import db
+from app.models import Compartment, EnzymeGeneOrganism, EnzymeOrganism, EnzymeStructure, \
+    Gene, GibbsEnergy, GibbsEnergyReactionModel, Metabolite, Reference
+from app.utils.parsers import ReactionParser, parse_input_list
 
 
 def add_enzyme_organism(enzyme, organism_id, uniprot_id_list, number_of_active_sites):
@@ -29,7 +27,6 @@ def add_enzyme_organism(enzyme, organism_id, uniprot_id_list, number_of_active_s
         enzyme.add_enzyme_organism(enzyme_organism_db)
 
 
-
 """
 def modify_enzyme_organism(enzyme, organism_id, uniprot_id_list, number_of_active_sites):
     for uniprot_id in uniprot_id_list:
@@ -48,6 +45,7 @@ def modify_enzyme_organism(enzyme, organism_id, uniprot_id_list, number_of_activ
 
     db.session.commit()
 """
+
 
 def add_enzyme_genes(gene_names, enzyme, organism_id):
     """
@@ -107,7 +105,6 @@ def add_enzyme_structures(enzyme, organism_id, pdb_id_list, strain_list):
 
 
 def add_metabolites_to_reaction(reaction, reaction_string):
-
     reversible, stoichiometry = ReactionParser().parse_reaction(reaction_string)
     # (True, OrderedDict([('m_pep_c', -1.0), ('m_adp_c', -1.5), ('m_pyr_c', 1.0), ('m_atp_m', 2.0)]))
 
@@ -132,8 +129,8 @@ def add_metabolites_to_reaction(reaction, reaction_string):
     return reaction
 
 
-def add_gibbs_energy(reaction_id, model_id, standard_dg, standard_dg_std, standard_dg_ph, standard_dg_is, std_gibbs_energy_references):
-
+def add_gibbs_energy(reaction_id, model_id, standard_dg, standard_dg_std, standard_dg_ph, standard_dg_is,
+                     std_gibbs_energy_references):
     gibbs_energy_db = GibbsEnergy.query.filter_by(standard_dg=standard_dg,
                                                   standard_dg_std=standard_dg_std,
                                                   ph=standard_dg_ph,
@@ -152,7 +149,6 @@ def add_gibbs_energy(reaction_id, model_id, standard_dg, standard_dg_std, standa
             db.session.add(gibbs_energy_reaction_model_db)
 
     if not gibbs_energy_db:
-
         gibbs_energy_db = GibbsEnergy(standard_dg=standard_dg,
                                       standard_dg_std=standard_dg_std,
                                       ph=standard_dg_ph,
@@ -185,15 +181,15 @@ def add_gibbs_energy(reaction_id, model_id, standard_dg, standard_dg_std, standa
 
 
 def add_mechanism_references(mechanism_references, enzyme_reaction_model):
-        mech_references = parse_input_list(mechanism_references)
+    mech_references = parse_input_list(mechanism_references)
 
-        for ref_doi in mech_references:
-            ref_db = Reference.query.filter_by(doi=ref_doi).first()
-            if not ref_db:
-                ref_db = Reference(doi=ref_doi)
-                db.session.add(ref_db)
+    for ref_doi in mech_references:
+        ref_db = Reference.query.filter_by(doi=ref_doi).first()
+        if not ref_db:
+            ref_db = Reference(doi=ref_doi)
+            db.session.add(ref_db)
 
-            enzyme_reaction_model.add_mechanism_reference(ref_db)
+        enzyme_reaction_model.add_mechanism_reference(ref_db)
 
 
 def add_references(references):

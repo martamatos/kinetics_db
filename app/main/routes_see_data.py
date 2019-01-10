@@ -1,20 +1,20 @@
-from app.main.forms import EnzymeForm, GeneForm, ModelForm, OrganismForm, ReactionForm, ModifyDataForm
+from flask import Markup
 from flask import render_template, flash, redirect, url_for, request
 from flask_login import login_required
+
 from app import current_app, db
+from app.main import bp
+from app.main.forms import EnzymeForm, GeneForm, ModelForm, OrganismForm, ReactionForm, ModifyDataForm
+from app.main.forms import OrganismForm
 from app.models import Compartment, Enzyme, EnzymeReactionOrganism, EnzymeReactionInhibition, EnzymeReactionActivation, \
     EnzymeReactionEffector, EnzymeReactionMiscInfo, EnzymeOrganism, EnzymeStructure, EvidenceLevel, Gene, \
     GibbsEnergy, Mechanism, Metabolite, Model, Organism, Reaction, ReactionMetabolite, Reference, ModelAssumptions
-from app.main.forms import OrganismForm
-from app.main import bp
-from flask import Markup
-
 
 
 @bp.route('/see_enzyme_list')
 @login_required
 def see_enzyme_list():
-    tab_status = {"enzymes": "active", "metabolites": "#",  "models": "#", "organisms": "#", "reactions": "#",
+    tab_status = {"enzymes": "active", "metabolites": "#", "models": "#", "organisms": "#", "reactions": "#",
                   "enzyme_inhibitors:": "#", "enzyme_activators:": "#", "enzyme_effectors:": "#",
                   "enzyme_misc_info:": "#", "model_assumptions": "#"}
     header = Markup("<th>Name</th> \
@@ -22,7 +22,7 @@ def see_enzyme_list():
                     <th>Isoenzyme</th> \
                     <th>EC number</th>")
 
-    #enzyme_header = Enzyme.__table__.columns.keys()
+    # enzyme_header = Enzyme.__table__.columns.keys()
     page = request.args.get('page', 1, type=int)
     enzymes = Enzyme.query.order_by(Enzyme.isoenzyme.asc()).paginate(
         page, current_app.config['POSTS_PER_PAGE'], False)
@@ -57,7 +57,8 @@ def see_enzyme(isoenzyme):
     enzyme_reaction_organism = EnzymeReactionOrganism.query.filter_by(enzyme_id=enzyme.id)
     enzyme_reaction_organisms_organism_list = [enz_rxn_org.organism_id for enz_rxn_org in enzyme_reaction_organism]
 
-    organism_ids_set = set(enzyme_structures_organism_list + enzyme_organisms_organism_list + enzyme_reaction_organisms_organism_list)
+    organism_ids_set = set(
+        enzyme_structures_organism_list + enzyme_organisms_organism_list + enzyme_reaction_organisms_organism_list)
 
     organisms = [organism.name for organism in Organism.query.filter(Organism.id.in_(organism_ids_set)).all()]
     data.append({'field_name': 'Organisms', 'data': ', '.join(organisms) if organisms else 'NA'})
@@ -72,16 +73,20 @@ def see_enzyme(isoenzyme):
 
     enz_rxn_org_id_list = [enz_rxn_org.id for enz_rxn_org in enzyme_reaction_organism]
 
-    inhibitors = EnzymeReactionInhibition.query.filter(EnzymeReactionInhibition.enz_rxn_org_id.in_(enz_rxn_org_id_list)).all()
+    inhibitors = EnzymeReactionInhibition.query.filter(
+        EnzymeReactionInhibition.enz_rxn_org_id.in_(enz_rxn_org_id_list)).all()
     data_nested.append({'field_name': 'Inhibitors', 'data': inhibitors})
 
-    activators = EnzymeReactionActivation.query.filter(EnzymeReactionActivation.enz_rxn_org_id.in_(enz_rxn_org_id_list)).all()
+    activators = EnzymeReactionActivation.query.filter(
+        EnzymeReactionActivation.enz_rxn_org_id.in_(enz_rxn_org_id_list)).all()
     data_nested.append({'field_name': 'Activators', 'data': activators})
 
-    effectors = EnzymeReactionEffector.query.filter(EnzymeReactionEffector.enz_rxn_org_id.in_(enz_rxn_org_id_list)).all()
+    effectors = EnzymeReactionEffector.query.filter(
+        EnzymeReactionEffector.enz_rxn_org_id.in_(enz_rxn_org_id_list)).all()
     data_nested.append({'field_name': 'Effectors', 'data': effectors})
 
-    misc_infos = EnzymeReactionMiscInfo.query.filter(EnzymeReactionMiscInfo.enz_rxn_org_id.in_(enz_rxn_org_id_list)).all()
+    misc_infos = EnzymeReactionMiscInfo.query.filter(
+        EnzymeReactionMiscInfo.enz_rxn_org_id.in_(enz_rxn_org_id_list)).all()
     data_nested.append({'field_name': 'Misc info', 'data': misc_infos})
 
     # TODO: add encoding genes
@@ -95,14 +100,14 @@ def see_enzyme(isoenzyme):
     if form.validate_on_submit():
         return redirect(url_for('main.modify_enzyme_select_organism', isoenzyme=isoenzyme))
 
-    return render_template("see_data_element.html", title='See enzyme', data_name=isoenzyme,  data_type='enzyme',
+    return render_template("see_data_element.html", title='See enzyme', data_name=isoenzyme, data_type='enzyme',
                            data_list=data, data_list_nested=data_nested, form=form)
 
 
 @bp.route('/see_enzyme_inhibitors_list')
 @login_required
 def see_enzyme_inhibitors_list():
-    tab_status = {"enzymes": "#", "metabolites": "#",  "models": "#", "organisms": "#", "reactions": "#",
+    tab_status = {"enzymes": "#", "metabolites": "#", "models": "#", "organisms": "#", "reactions": "#",
                   "enzyme_inhibitors:": "active", "enzyme_activators:": "#", "enzyme_effectors:": "#",
                   "enzyme_misc_info:": "#", "model_assumptions": "#"}
     header = Markup("<th>ID</th> \
@@ -113,7 +118,7 @@ def see_enzyme_inhibitors_list():
                     <th>Reaction</th> \
                     <th>Organism</th>")
 
-    #enzyme_header = Enzyme.__table__.columns.keys()
+    # enzyme_header = Enzyme.__table__.columns.keys()
     page = request.args.get('page', 1, type=int)
     enzyme_inhibitors = EnzymeReactionInhibition.query.order_by(EnzymeReactionInhibition.id.asc()).paginate(
         page, current_app.config['POSTS_PER_PAGE'], False)
@@ -161,7 +166,7 @@ def see_enzyme_inhibitor(inhibitor_id):
 @bp.route('/see_enzyme_activators_list')
 @login_required
 def see_enzyme_activators_list():
-    tab_status = {"enzymes": "#", "metabolites": "#",  "models": "#", "organisms": "#", "reactions": "#",
+    tab_status = {"enzymes": "#", "metabolites": "#", "models": "#", "organisms": "#", "reactions": "#",
                   "enzyme_inhibitors:": "#", "enzyme_activators:": "active", "enzyme_effectors:": "#",
                   "enzyme_misc_info:": "#", "model_assumptions": "#"}
     header = Markup("<th>ID</th> \
@@ -170,7 +175,7 @@ def see_enzyme_activators_list():
                     <th>Reaction</th> \
                     <th>Organism</th>")
 
-    #enzyme_header = Enzyme.__table__.columns.keys()
+    # enzyme_header = Enzyme.__table__.columns.keys()
     page = request.args.get('page', 1, type=int)
     enzyme_activators = EnzymeReactionActivation.query.order_by(EnzymeReactionActivation.id.asc()).paginate(
         page, current_app.config['POSTS_PER_PAGE'], False)
@@ -216,7 +221,7 @@ def see_enzyme_activator(activator_id):
 @bp.route('/see_enzyme_effectors_list')
 @login_required
 def see_enzyme_effectors_list():
-    tab_status = {"enzymes": "#", "metabolites": "#",  "models": "#", "organisms": "#", "reactions": "#",
+    tab_status = {"enzymes": "#", "metabolites": "#", "models": "#", "organisms": "#", "reactions": "#",
                   "enzyme_inhibitors:": "#", "enzyme_activators:": "#", "enzyme_effectors:": "active",
                   "enzyme_misc_info:": "#", "model_assumptions": "#"}
     header = Markup("<th>ID</th> \
@@ -226,7 +231,7 @@ def see_enzyme_effectors_list():
                     <th>Reaction</th> \
                     <th>Organism</th>")
 
-    #enzyme_header = Enzyme.__table__.columns.keys()
+    # enzyme_header = Enzyme.__table__.columns.keys()
     page = request.args.get('page', 1, type=int)
     enzyme_effector_list = EnzymeReactionEffector.query.order_by(EnzymeReactionEffector.id.asc()).paginate(
         page, current_app.config['POSTS_PER_PAGE'], False)
@@ -276,7 +281,7 @@ def see_enzyme_effector(effector_id):
 @bp.route('/see_enzyme_misc_info_list')
 @login_required
 def see_enzyme_misc_info_list():
-    tab_status = {"enzymes": "#", "metabolites": "#",  "models": "#", "organisms": "#", "reactions": "#",
+    tab_status = {"enzymes": "#", "metabolites": "#", "models": "#", "organisms": "#", "reactions": "#",
                   "enzyme_inhibitors:": "#", "enzyme_activators:": "#", "enzyme_effectors:": "#",
                   "enzyme_misc_info:": "active", "model_assumptions": "#"}
     header = Markup("<th>ID</th> \
@@ -285,7 +290,7 @@ def see_enzyme_misc_info_list():
                     <th>Reaction</th> \
                     <th>Organism</th>")
 
-    #enzyme_header = Enzyme.__table__.columns.keys()
+    # enzyme_header = Enzyme.__table__.columns.keys()
     page = request.args.get('page', 1, type=int)
     enzyme_misc_info = EnzymeReactionMiscInfo.query.order_by(EnzymeReactionMiscInfo.id.asc()).paginate(
         page, current_app.config['POSTS_PER_PAGE'], False)
@@ -331,7 +336,7 @@ def see_enzyme_misc_info(misc_info_id):
 @bp.route('/see_gene_list')
 @login_required
 def see_gene_list():
-    tab_status = {"enzymes": "#", "metabolites": "#",  "models": "active", "organisms": "#", "reactions": "#",
+    tab_status = {"enzymes": "#", "metabolites": "#", "models": "active", "organisms": "#", "reactions": "#",
                   "enzyme_inhibitors:": "#", "enzyme_activators:": "#", "enzyme_effectors:": "#",
                   "enzyme_misc_info:": "#", "model_assumptions": "#"}
     header = ''
@@ -351,7 +356,7 @@ def see_gene_list():
 @bp.route('/see_metabolite_list')
 @login_required
 def see_metabolite_list():
-    tab_status = {"enzymes": "#", "metabolites": "active",  "models": "#", "organisms": "#", "reactions": "#",
+    tab_status = {"enzymes": "#", "metabolites": "active", "models": "#", "organisms": "#", "reactions": "#",
                   "enzyme_inhibitors:": "#", "enzyme_activators:": "#", "enzyme_effectors:": "#",
                   "enzyme_misc_info:": "#", "model_assumptions": "#"}
     header = Markup("<th>GRASP ID</th> \
@@ -384,7 +389,8 @@ def see_metabolite(grasp_id):
     data.append({'field_name': 'GRASP ID', 'data': metabolite.grasp_id})
     data.append({'field_name': 'Bigg ID', 'data': metabolite.bigg_id})
     data.append({'field_name': 'MetanetX ID', 'data': metabolite.metanetx_id})
-    data.append({'field_name': 'Compartment', 'data': ' ,'.join([str(compartment) for compartment in metabolite.compartments])})
+    data.append(
+        {'field_name': 'Compartment', 'data': ' ,'.join([str(compartment) for compartment in metabolite.compartments])})
 
     chebi_list = [str(chebi.chebi_id) for chebi in metabolite.chebis]
     data.append({'field_name': 'ChEBIs', 'data': chebi_list if chebi_list else ''})
@@ -393,21 +399,24 @@ def see_metabolite(grasp_id):
 
     data_nested.append({'field_name': 'Reactions', 'data': [str(rxn_met.reaction) for rxn_met in metabolite.reactions]})
 
+    form = ModifyDataForm()
+    if form.validate_on_submit():
+        return redirect(url_for('main.modify_metabolite', grasp_id=metabolite.grasp_id, title='Modify metabolite'))
 
-    return render_template("see_data_element.html", title='See metabolite', data_name=metabolite,  data_type='metabolite',
+    return render_template("see_data_element.html", title='See metabolite', data_name=metabolite,
+                           data_type='metabolite',
                            data_list=data, data_list_nested=data_nested)
 
 
 @bp.route('/see_model_list')
 @login_required
 def see_model_list():
-    tab_status = {"enzymes": "#", "metabolites": "#",  "models": "active", "organisms": "#", "reactions": "#",
+    tab_status = {"enzymes": "#", "metabolites": "#", "models": "active", "organisms": "#", "reactions": "#",
                   "enzyme_inhibitors:": "#", "enzyme_activators:": "#", "enzyme_effectors:": "#",
                   "enzyme_misc_info:": "#", "model_assumptions": "#"}
     header = Markup("<th>Name</th> \
                     <th>Organism</th> \
                     <th>Strain</th>")
-
 
     page = request.args.get('page', 1, type=int)
     models = Model.query.order_by(Model.name.asc()).paginate(
@@ -437,8 +446,8 @@ def see_model(model_name):
     assumptions = [assumption for assumption in model.model_assumptions]
     data_nested.append({'field_name': 'Assumptions', 'data': [', '.join(assumptions)] if assumptions else ['NA']})
 
-    #reaction_ids = [enz_rxn_org.reaction_id for enz_rxn_org in model.enzyme_reaction_organisms]
-    #reactions = [str(reaction) for reaction in Reaction.query.filter(Reaction.id.in_(reaction_ids))]
+    # reaction_ids = [enz_rxn_org.reaction_id for enz_rxn_org in model.enzyme_reaction_organisms]
+    # reactions = [str(reaction) for reaction in Reaction.query.filter(Reaction.id.in_(reaction_ids))]
 
     if model.enzyme_reaction_organisms:
         reaction_data = []
@@ -460,8 +469,7 @@ def see_model(model_name):
                 if model.has_enzyme_reaction_misc_info(misc_info):
                     reaction_data.append('-> ' + str(misc_info))
 
-
-        #data_nested.append({'field_name': 'Reactions', 'data': model.enzyme_reaction_organisms if model.enzyme_reaction_organisms else ['NA']})
+        # data_nested.append({'field_name': 'Reactions', 'data': model.enzyme_reaction_organisms if model.enzyme_reaction_organisms else ['NA']})
         data_nested.append({'field_name': 'Reactions', 'data': reaction_data})
     else:
         data_nested.append({'field_name': 'Reactions', 'data': ['NA']})
@@ -470,14 +478,14 @@ def see_model(model_name):
     if form.validate_on_submit():
         return redirect(url_for('main.modify_model', model_name=model_name, title='Modify model'))
 
-    return render_template("see_data_element.html", title='See model', data_name=model.name,  data_type='model',
+    return render_template("see_data_element.html", title='See model', data_name=model.name, data_type='model',
                            data_list=data, data_list_nested=data_nested, form=form)
 
 
 @bp.route('/see_model_assumptions_list')
 @login_required
 def see_model_assumptions_list():
-    tab_status = {"enzymes": "#", "metabolites": "#",  "models": "#", "organisms": "#", "reactions": "#",
+    tab_status = {"enzymes": "#", "metabolites": "#", "models": "#", "organisms": "#", "reactions": "#",
                   "enzyme_inhibitors:": "#", "enzyme_activators:": "#", "enzyme_effectors:": "#",
                   "enzyme_misc_info:": "#", "model_assumptions": "active"}
 
@@ -500,7 +508,6 @@ def see_model_assumptions_list():
 @bp.route('/see_model_assumption/<model_assumption_id>', methods=['GET', 'POST'])
 @login_required
 def see_model_assumption(model_assumption_id):
-
     model_assumption = ModelAssumptions.query.filter_by(id=model_assumption_id).first()
 
     data = []
@@ -526,7 +533,7 @@ def see_model_assumption(model_assumption_id):
 @bp.route('/see_organism_list')
 @login_required
 def see_organism_list():
-    tab_status = {"enzymes": "#", "metabolites": "#",  "models": "#", "organisms": "active", "reactions": "#",
+    tab_status = {"enzymes": "#", "metabolites": "#", "models": "#", "organisms": "active", "reactions": "#",
                   "enzyme_inhibitors:": "#", "enzyme_activators:": "#", "enzyme_effectors:": "#",
                   "enzyme_misc_info:": "#", "model_assumptions": "#"}
     header = Markup("<th>Name</th>")
@@ -559,14 +566,14 @@ def see_organism(organism_name):
     if form.validate_on_submit():
         return redirect(url_for('main.modify_organism', organism_name=organism_name))
 
-    return render_template("see_data_element.html", title='See organism', data_name=organism.name,  data_type='organism',
+    return render_template("see_data_element.html", title='See organism', data_name=organism.name, data_type='organism',
                            data_list=data, data_list_nested=data_nested, form=form)
 
 
 @bp.route('/see_reaction_list')
 @login_required
 def see_reaction_list():
-    tab_status = {"enzymes": "#", "metabolites": "#",  "models": "#", "organisms": "#", "reactions": "active",
+    tab_status = {"enzymes": "#", "metabolites": "#", "models": "#", "organisms": "#", "reactions": "active",
                   "enzyme_inhibitors:": "#", "enzyme_activators:": "#", "enzyme_effectors:": "#",
                   "enzyme_misc_info:": "#", "model_assumptions": "#"}
     header = Markup("<th>Name</th> \
@@ -577,7 +584,6 @@ def see_reaction_list():
                     <th>KEGG ID</th> \
                     <th>Compartment</th>")
 
-
     page = request.args.get('page', 1, type=int)
     reactions = Reaction.query.order_by(Reaction.name.asc()).paginate(
         page, current_app.config['POSTS_PER_PAGE'], False)
@@ -586,9 +592,8 @@ def see_reaction_list():
     prev_url = url_for('main.see_reaction_list', page=reactions.prev_num) \
         if reactions.has_prev else None
     return render_template("see_data.html", title='See reactions', data=reactions.items,
-                           data_type='reaction', tab_status=tab_status,  header=header,
+                           data_type='reaction', tab_status=tab_status, header=header,
                            next_url=next_url, prev_url=prev_url)
-
 
 
 @bp.route('/see_reaction/<reaction_acronym>', methods=['GET', 'POST'])
@@ -612,7 +617,8 @@ def see_reaction(reaction_acronym):
 
     # TODO catalyzing genes
 
-    gibbs_energies = [str(gibbs_energy_rxn_model.gibbs_energy) + ' (' + str(gibbs_energy_rxn_model.model.name) + ')' for gibbs_energy_rxn_model in reaction.gibbs_energy_reaction_models]
+    gibbs_energies = [str(gibbs_energy_rxn_model.gibbs_energy) + ' (' + str(gibbs_energy_rxn_model.model.name) + ')' for
+                      gibbs_energy_rxn_model in reaction.gibbs_energy_reaction_models]
     data_nested.append({'field_name': 'Gibbs energies', 'data': gibbs_energies if gibbs_energies else ['NA']})
 
     enz_rxn_org_models = [enz_rxn_org.models for enz_rxn_org in reaction.enzyme_reaction_organisms]
@@ -626,6 +632,6 @@ def see_reaction(reaction_acronym):
     if form.validate_on_submit():
         return redirect(url_for('main.modify_reaction_select_organism', reaction_acronym=reaction_acronym))
 
-
-    return render_template("see_data_element.html", title='See reaction', data_name=reaction.acronym,  data_type='reaction',
+    return render_template("see_data_element.html", title='See reaction', data_name=reaction.acronym,
+                           data_type='reaction',
                            data_list=data, data_list_nested=data_nested, form=form)

@@ -540,6 +540,9 @@ class Metabolite(db.Model):
         return self.metabolite_chebi.filter(
             metabolite_chebi.c.chebi_id == chebi_id.id).count() > 0
 
+    def empty_chebis(self):
+        self.chebis = []
+
 
     def add_reaction(self, reaction):
         if not self.met_involved_in_reaction(reaction):
@@ -565,6 +568,9 @@ class Metabolite(db.Model):
     def met_in_compartment(self, compartment):
         return self.compartments.filter(
             Compartment.id == compartment.id).count() > 0
+
+    def empty_compartments(self):
+        self.compartments = []
 
 
 class ChebiIds(db.Model):

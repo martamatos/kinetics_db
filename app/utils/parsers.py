@@ -64,7 +64,7 @@ class ReactionParser(object):
 
         return coefficients
 
-def parse_input_list(input_list):
+def parse_input_list(input_list, flag=True):
     """
     Given a string with several elements, converts them into a list by splitting the string by ' ', ', ', or ','.
 
@@ -79,7 +79,7 @@ def parse_input_list(input_list):
         parsed_list = input_list.split('; ')
     elif input_list.find(' ') != -1:
         parsed_list = input_list.split(' ')
-    elif input_list.find(',') != -1:
+    elif input_list.find(',') != -1 and flag:
         parsed_list = input_list.split(',')
     elif input_list.find(';') != -1:
         parsed_list = input_list.split(';')

@@ -27,6 +27,27 @@ def add_evidence_levels():
         db.session.add(evidence)
     db.session.commit()
 
+def add_metabolite(client):
+    grasp_id = '2pg'
+    name = '2-phosphoglycerate'
+    bigg_id = '2pg'
+    metanetx_id = 'MNXM23'
+
+    compartments = ['1', '2']
+    chebi_ids = 'CHEBI:86354, CHEBI:8685'
+    inchis = 'InChI=1S/C3H4O3/c1-2(4)3(5)6/h4H,1H2,(H,5,6), InChI=1S/C3H4O4/c1-2(4)3(5)6/h4H,1H2,(H,5,6)'
+
+    response = client.post('/add_metabolite', data=dict(
+                           grasp_id=grasp_id,
+                           name=name,
+                           bigg_id=bigg_id,
+                           metanetx_id=metanetx_id,
+                           compartments=compartments,
+                           chebi_ids=chebi_ids,
+                           inchis=inchis), follow_redirects=True)
+
+    assert response.status_code == 200
+
 
 def add_mechanisms():
     mechanism_list = ['UniUni', 'OrderedBiBi']

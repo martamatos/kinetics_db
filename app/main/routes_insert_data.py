@@ -1,18 +1,18 @@
-from app.main.forms import  EnzymeForm, EnzymeActivationForm, EnzymeEffectorForm, EnzymeInhibitionForm, EnzymeMiscInfoForm, GeneForm, ModelAssumptionsForm, ModelForm, OrganismForm, ReactionForm, ModelFormBase
 from flask import render_template, flash, redirect, url_for
 from flask_login import login_required
-from app import current_app, db
-from app.models import Compartment, Enzyme,EnzymeGeneOrganism,  EnzymeReactionOrganism, EnzymeReactionActivation, \
-    EnzymeReactionEffector, EnzymeReactionInhibition, EnzymeReactionMiscInfo, EnzymeOrganism, EnzymeStructure, \
-    EvidenceLevel, Gene,GibbsEnergy, GibbsEnergyReactionModel, Mechanism, Metabolite, Model, ModelAssumptions, \
-    Organism, Reaction, ReactionMetabolite, Reference
-from app.main.routes_modify_data import modify_model
+
+from app import db
 from app.main import bp
-from app.utils.parsers import ReactionParser, parse_input_list
+from app.main.forms import EnzymeForm, EnzymeActivationForm, EnzymeEffectorForm, EnzymeInhibitionForm, \
+    EnzymeMiscInfoForm, GeneForm, ModelAssumptionsForm, ModelForm, OrganismForm, ReactionForm, ModelFormBase, \
+    MetaboliteForm
 from app.main.utils import add_enzyme_structures, add_enzyme_organism, add_enzyme_genes, add_metabolites_to_reaction, \
     add_gibbs_energy, add_mechanism_references, add_references, check_metabolite
-
-import re
+from app.models import Compartment, Enzyme, EnzymeReactionOrganism, EnzymeReactionActivation, \
+    EnzymeReactionEffector, EnzymeReactionInhibition, EnzymeReactionMiscInfo, EnzymeStructure, \
+    Gene, Metabolite, Model, ModelAssumptions, \
+    Organism, Reaction, ChebiIds
+from app.utils.parsers import parse_input_list
 
 
 @bp.route('/add_enzyme', methods=['GET', 'POST'])
@@ -21,12 +21,14 @@ def add_enzyme():
     form = EnzymeForm()
 
     genes = Gene.query.all()
-    gene_bigg_ids = {'id_value': '#gene_bigg_ids', 'input_data': [{'field1': gene.name} for gene in genes] if genes else []}
+    gene_bigg_ids = {'id_value': '#gene_bigg_ids',
+                     'input_data': [{'field1': gene.name} for gene in genes] if genes else []}
 
     enzyme_structures = EnzymeStructure.query.all()
-    enzyme_structure_strains = set([enzyme_structure.strain for enzyme_structure in enzyme_structures]) if enzyme_structures else []
+    enzyme_structure_strains = set(
+        [enzyme_structure.strain for enzyme_structure in enzyme_structures]) if enzyme_structures else []
     strain = {'id_value': '#strain', 'input_data': [{'field1': strain} for strain in
-              enzyme_structure_strains] if enzyme_structures else []}
+                                                    enzyme_structure_strains] if enzyme_structures else []}
 
     data_list = [gene_bigg_ids, strain]
 
@@ -73,11 +75,11 @@ def add_enzyme():
 @bp.route('/add_enzyme_inhibition', methods=['GET', 'POST'])
 @login_required
 def add_enzyme_inhibition():
-
     form = EnzymeInhibitionForm()
 
     metabolites = Metabolite.query.all()
-    metabolite_list = {'id_value': '#metabolite_list', 'input_data': [{'field1': metabolite.bigg_id} for metabolite in metabolites] if metabolites else []}
+    metabolite_list = {'id_value': '#metabolite_list', 'input_data': [{'field1': metabolite.bigg_id} for metabolite in
+                                                                      metabolites] if metabolites else []}
     data_list = [metabolite_list]
 
     if form.validate_on_submit():
@@ -85,7 +87,6 @@ def add_enzyme_inhibition():
         inhib_met = check_metabolite(form.inhibitor_met.data)
         affected_met = check_metabolite(form.affected_met.data)
         inhibition_evidence_level_id = form.inhibition_evidence_level.data.id if form.inhibition_evidence_level.data else None
-
 
         enz_rxn_org = EnzymeReactionOrganism.query.filter_by(enzyme_id=form.enzyme.data.id,
                                                              reaction_id=form.reaction.data.id,
@@ -121,17 +122,18 @@ def add_enzyme_inhibition():
         flash('Your enzyme inhibition is now live!', 'success')
         return redirect(url_for('main.see_enzyme_inhibitor', inhibitor_id=enz_rxn_inhib.id))
 
-    return render_template('insert_data.html', title='Add enzyme inhibition', form=form, header='Add enzyme inhibition', data_list=data_list)
+    return render_template('insert_data.html', title='Add enzyme inhibition', form=form, header='Add enzyme inhibition',
+                           data_list=data_list)
 
 
 @bp.route('/add_enzyme_activation', methods=['GET', 'POST'])
 @login_required
 def add_enzyme_activation():
-
     form = EnzymeActivationForm()
 
     metabolites = Metabolite.query.all()
-    metabolite_list = {'id_value': '#metabolite_list', 'input_data': [{'field1': metabolite.bigg_id} for metabolite in metabolites] if metabolites else []}
+    metabolite_list = {'id_value': '#metabolite_list', 'input_data': [{'field1': metabolite.bigg_id} for metabolite in
+                                                                      metabolites] if metabolites else []}
     data_list = [metabolite_list]
 
     if form.validate_on_submit():
@@ -139,8 +141,7 @@ def add_enzyme_activation():
         activator_met = check_metabolite(form.activator_met.data)
         activation_evidence_level_id = form.activation_evidence_level.data.id if form.activation_evidence_level.data else None
 
-
-        enz_rxn_org = EnzymeReactionOrganism.query.filter_by(enzyme_id = form.enzyme.data.id,
+        enz_rxn_org = EnzymeReactionOrganism.query.filter_by(enzyme_id=form.enzyme.data.id,
                                                              reaction_id=form.reaction.data.id,
                                                              organism_id=form.organism.data.id).first()
 
@@ -172,17 +173,18 @@ def add_enzyme_activation():
         flash('Your enzyme activation is now live!', 'success')
 
         return redirect(url_for('main.see_enzyme_activator', activator_id=enz_rxn_activation.id))
-    return render_template('insert_data.html', title='Add enzyme activation', form=form, header='Add enzyme activation', data_list=data_list)
+    return render_template('insert_data.html', title='Add enzyme activation', form=form, header='Add enzyme activation',
+                           data_list=data_list)
 
 
 @bp.route('/add_enzyme_effector', methods=['GET', 'POST'])
 @login_required
 def add_enzyme_effector():
-
     form = EnzymeEffectorForm()
 
     metabolites = Metabolite.query.all()
-    metabolite_list = {'id_value': '#metabolite_list', 'input_data': [{'field1': metabolite.bigg_id} for metabolite in metabolites] if metabolites else []}
+    metabolite_list = {'id_value': '#metabolite_list', 'input_data': [{'field1': metabolite.bigg_id} for metabolite in
+                                                                      metabolites] if metabolites else []}
     data_list = [metabolite_list]
 
     if form.validate_on_submit():
@@ -220,13 +222,13 @@ def add_enzyme_effector():
         flash('Your enzyme effector is now live!', 'success')
 
         return redirect(url_for('main.see_enzyme_effector', effector_id=enz_rxn_effector.id))
-    return render_template('insert_data.html', title='Add enzyme effector', form=form, header='Add enzyme effector', data_list=data_list)
+    return render_template('insert_data.html', title='Add enzyme effector', form=form, header='Add enzyme effector',
+                           data_list=data_list)
 
 
 @bp.route('/add_enzyme_misc_info', methods=['GET', 'POST'])
 @login_required
 def add_enzyme_misc_info():
-
     form = EnzymeMiscInfoForm()
 
     if form.validate_on_submit():
@@ -244,10 +246,10 @@ def add_enzyme_misc_info():
             db.session.commit()
 
         enz_rxn_misc_info = EnzymeReactionMiscInfo(enz_rxn_org_id=enz_rxn_org.id,
-                                                     topic=form.topic.data,
-                                                     description=form.description.data,
-                                                     evidence_level_id=evidence_level_id,
-                                                     comments=form.comments.data)
+                                                   topic=form.topic.data,
+                                                   description=form.description.data,
+                                                   evidence_level_id=evidence_level_id,
+                                                   comments=form.comments.data)
         db.session.add(enz_rxn_misc_info)
 
         if form.models.data:
@@ -284,10 +286,42 @@ def add_gene():
     return render_template('insert_data.html', title='Add gene', form=form, header='Add gene')
 
 
+@bp.route('/add_metabolite', methods=['GET', 'POST'])
+@login_required
+def add_metabolite():
+    form = MetaboliteForm()
+
+    if form.validate_on_submit():
+        metabolite = Metabolite(grasp_id=form.grasp_id.data,
+                                name=form.name.data,
+                                bigg_id=form.bigg_id.data,
+                                metanetx_id=form.metanetx_id.data)
+        db.session.add(metabolite)
+
+        for compartment in form.compartments.data:
+            metabolite.add_compartment(compartment)
+
+        chebi_id_list = parse_input_list(form.chebi_ids.data)
+        inchi_list = parse_input_list(form.inchis.data, False)
+        for chebi_id, inchi_id in zip(chebi_id_list, inchi_list):
+            chebi_id_db = ChebiIds(chebi_id=chebi_id,
+                                   inchi=inchi_id)
+
+            db.session.add(chebi_id_db)
+            metabolite.add_chebi_id(chebi_id_db)
+
+        db.session.commit()
+
+        flash('Your metabolite is now live!', 'success')
+
+        return redirect(url_for('main.see_metabolite', grasp_id=form.grasp_id.data))
+
+    return render_template('insert_data.html', title='Add metabolite', form=form, header='Add metabolite')
+
+
 @bp.route('/add_model', methods=['GET', 'POST'])
 @login_required
 def add_model():
-
     text = 'If you want to build a model from an existing one, please select the desired model. Otherwise press "Continue".'
 
     form_base = ModelFormBase()
@@ -299,7 +333,8 @@ def add_model():
 
         else:
             organisms = Organism.query.all()
-            organism_name = {'id_value': '#organism_name', 'input_data': [{'field1': organism.name} for organism in organisms] if organisms else []}
+            organism_name = {'id_value': '#organism_name',
+                             'input_data': [{'field1': organism.name} for organism in organisms] if organisms else []}
             data_list = [organism_name]
 
             form = ModelForm()
@@ -337,7 +372,6 @@ def add_model():
 @bp.route('/add_model_assumption', methods=['GET', 'POST'])
 @login_required
 def add_model_assumption():
-
     form = ModelAssumptionsForm()
 
     if form.validate_on_submit():
@@ -394,7 +428,8 @@ def add_reaction():
     form = ReactionForm()
 
     enzymes = Enzyme.query.all()
-    isoenzyme_list = {'id_value': '#isoenzyme_acronyms', 'input_data': [{'field1': enzyme.isoenzyme} for enzyme in enzymes] if enzymes else []}
+    isoenzyme_list = {'id_value': '#isoenzyme_acronyms',
+                      'input_data': [{'field1': enzyme.isoenzyme} for enzyme in enzymes] if enzymes else []}
     data_list = [isoenzyme_list]
 
     if form.validate_on_submit():
@@ -419,7 +454,7 @@ def add_reaction():
         mech_evidence_level_id = form.mechanism_evidence_level.data.id if form.mechanism_evidence_level.data else ''
 
         for enzyme in form.enzymes.data:
-            enzyme_reaction_organism = EnzymeReactionOrganism(id=EnzymeReactionOrganism.query.count()+1,
+            enzyme_reaction_organism = EnzymeReactionOrganism(id=EnzymeReactionOrganism.query.count() + 1,
                                                               enzyme_id=enzyme.id,
                                                               reaction_id=reaction.id,
                                                               organism_id=form.organism.data.id,
@@ -439,15 +474,16 @@ def add_reaction():
                     enzyme_reaction_organism.add_model(model)
 
                     if form.std_gibbs_energy.data:
-                        add_gibbs_energy(reaction.id, model.id, form.std_gibbs_energy.data, form.std_gibbs_energy_std.data,
-                                          form.std_gibbs_energy_ph.data, form.std_gibbs_energy_ionic_strength.data,
-                                          form.std_gibbs_energy_references.data)
+                        add_gibbs_energy(reaction.id, model.id, form.std_gibbs_energy.data,
+                                         form.std_gibbs_energy_std.data,
+                                         form.std_gibbs_energy_ph.data, form.std_gibbs_energy_ionic_strength.data,
+                                         form.std_gibbs_energy_references.data)
 
         db.session.commit()
-
 
         flash('Your reaction is now live!', 'success')
 
         return redirect(url_for('main.see_reaction_list'))
 
-    return render_template('insert_data.html', title='Add reaction', form=form, header='Add reaction', data_list=data_list)
+    return render_template('insert_data.html', title='Add reaction', form=form, header='Add reaction',
+                           data_list=data_list)

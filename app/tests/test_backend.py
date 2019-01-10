@@ -1,14 +1,11 @@
-from datetime import datetime, timedelta
 import unittest
+from datetime import datetime, timedelta
+
 from app import create_app, db
-from app.main.forms import ModelForm
-from app.main.routes_insert_data import add_model
-from app.models import User, Post, Compartment, Enzyme, EnzymeOrganism, EnzymeStructure, Gene, Metabolite, Model, \
-    Organism, Reaction, ReactionMetabolite, EnzymeGeneOrganism
-from config import Config
-from app.main.utils import add_metabolites_to_reaction, add_enzyme_organism, add_enzyme_structures
+from app.models import User, Post, Enzyme, EnzymeOrganism, EnzymeStructure, Gene, Model, \
+    Organism, EnzymeGeneOrganism
 from app.utils.parsers import parse_input_list
-import re
+from config import Config
 
 
 class TestConfig(Config):
@@ -199,7 +196,6 @@ class EnzymeModelCase(unittest.TestCase):
                                                                       organism_id=organism.id)
                             db.session.add(enzyme_gene_organism)
 
-
         db.session.commit()
 
         self.assertEqual(gene.query.count(), 2)
@@ -218,7 +214,6 @@ class EnzymeModelCase(unittest.TestCase):
         self.assertEqual(EnzymeStructure.query.all()[0].enzyme.name, enzyme_name)
         self.assertEqual(EnzymeStructure.query.all()[1].enzyme.name, enzyme_name)
 
-
         self.assertEqual(EnzymeOrganism.query.all()[0].n_active_sites, enzyme_number_of_active_sites)
         self.assertEqual(EnzymeOrganism.query.all()[1].n_active_sites, enzyme_number_of_active_sites)
         self.assertEqual(EnzymeOrganism.query.all()[0].uniprot_id, 'PW12D')
@@ -229,8 +224,6 @@ class EnzymeModelCase(unittest.TestCase):
         self.assertEqual(EnzymeOrganism.query.all()[1].enzyme.acronym, enzyme_acronym)
         self.assertEqual(EnzymeGeneOrganism.query.all()[0].gene.name, 'b0001')
         self.assertEqual(EnzymeGeneOrganism.query.all()[1].gene.name, 'b003')
-
-
 
 
 class GeneModelCase(unittest.TestCase):

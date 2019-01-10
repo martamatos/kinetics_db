@@ -1,10 +1,13 @@
 from datetime import datetime
-from app.main.forms import EditProfileForm, PostForm
+
 from flask import render_template, flash, redirect, url_for, request
 from flask_login import current_user, login_required
+
 from app import current_app, db
-from app.models import User, Post
 from app.main import bp
+from app.main.forms import EditProfileForm, PostForm
+from app.models import User, Post
+
 
 @bp.before_request
 def before_request():

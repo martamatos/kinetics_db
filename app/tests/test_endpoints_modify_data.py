@@ -1,16 +1,18 @@
+import re
 import unittest
+
 from app import create_app, db
 from app.models import Compartment, Enzyme, EnzymeOrganism, EnzymeReactionOrganism, EnzymeStructure, \
     EvidenceLevel, Gene, GibbsEnergy, GibbsEnergyReactionModel, Mechanism, Metabolite, Model, Organism, Reaction, \
     ReactionMetabolite, Reference, EnzymeGeneOrganism, \
     ReferenceType, EnzymeReactionInhibition, EnzymeReactionActivation, EnzymeReactionEffector, EnzymeReactionMiscInfo, \
     ModelAssumptions
-from config import Config
 from app.utils.parsers import parse_input_list, ReactionParser
 from app.utils.populate_db import add_models, add_mechanisms, add_reaction, add_reference_types, add_enzymes, \
-    add_compartments, add_evidence_levels, add_organisms, add_references, add_activations, add_effectors, add_inhibitions, \
-    add_misc_infos, add_model_assumptions
-import re
+    add_compartments, add_evidence_levels, add_organisms, add_references, add_activations, add_effectors, \
+    add_inhibitions, \
+    add_misc_infos, add_model_assumptions, add_metabolite
+from config import Config
 
 
 class TestConfig(Config):
@@ -38,6 +40,7 @@ def populate_db(test_case, client=None):
         add_effectors(client)
         add_misc_infos(client)
         add_model_assumptions(client)
+        add_metabolite(client)
 
 
 class TestModifyOrganism(unittest.TestCase):
@@ -61,7 +64,7 @@ class TestModifyOrganism(unittest.TestCase):
         organism = Organism.query.filter_by(name=current_organism_name).first()
 
         response = self.client.post('/modify_organism/' + current_organism_name, data=dict(
-                                    name=new_organism_name), follow_redirects=True)
+            name=new_organism_name), follow_redirects=True)
 
         self.assertEqual(response.status_code, 200)
         self.assertTrue(b'<title>\n    See organism - Kinetics DB \n</title>' in response.data)
@@ -76,13 +79,143 @@ class TestModifyOrganism(unittest.TestCase):
         organism = Organism.query.filter_by(name=current_organism_name).first()
 
         response = self.client.post('/modify_organism/' + current_organism_name, data=dict(
-                                    name=new_organism_name), follow_redirects=True)
+            name=new_organism_name), follow_redirects=True)
 
         self.assertEqual(response.status_code, 200)
         self.assertTrue(b'<title>\n    Modify organism - Kinetics DB \n</title>' in response.data)
         self.assertTrue(b'An organism with that name already exists, please use another name' in response.data)
 
         self.assertEqual(organism.name, current_organism_name)
+
+
+class TestModifyMetabolite(unittest.TestCase):
+    def setUp(self):
+        self.app = create_app(TestConfig)
+        self.client = self.app.test_client()
+        self.app_context = self.app.app_context()
+        self.app_context.push()
+        db.create_all()
+        populate_db('metabolite', self.client)
+
+    def tearDown(self):
+        db.session.remove()
+        db.drop_all()
+        self.app_context.pop()
+
+    def test_modify_metabolite_change_nothing(self):
+        grasp_id = '2pg'
+        name = '2-phosphoglycerate'
+        bigg_id = '2pg'
+        metanetx_id = 'MNXM23'
+
+        compartments = ['1', '2']
+        chebi_ids = 'CHEBI:86354, CHEBI:8685'
+        inchis = 'InChI=1S/C3H4O3/c1-2(4)3(5)6/h4H,1H2,(H,5,6), InChI=1S/C3H4O4/c1-2(4)3(5)6/h4H,1H2,(H,5,6)'
+
+        self.assertEqual(Metabolite.query.count(), 7)
+        metabolite = Metabolite.query.filter_by(grasp_id=grasp_id).first()
+
+        response = self.client.post('/modify_metabolite/' + grasp_id, data=dict(
+            grasp_id=grasp_id,
+            name=name,
+            bigg_id=bigg_id,
+            metanetx_id=metanetx_id,
+            compartments=compartments,
+            chebi_ids=chebi_ids,
+            inchis=inchis), follow_redirects=True)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(b'<title>\n    See metabolite - Kinetics DB \n</title>' in response.data)
+        self.assertTrue(b'Your metabolite has been modified' in response.data)
+
+        self.assertEqual(Metabolite.query.count(), 7)
+        self.assertEqual(metabolite.grasp_id, grasp_id)
+        self.assertEqual(metabolite.name, name)
+        self.assertEqual(metabolite.bigg_id, bigg_id)
+        self.assertEqual(metabolite.metanetx_id, metanetx_id)
+        self.assertEqual(metabolite.compartments.count(), 2)
+        self.assertEqual(metabolite.chebis.count(), 2)
+        self.assertEqual(metabolite.chebis[0].chebi_id, 'CHEBI:86354')
+        self.assertEqual(metabolite.chebis[1].chebi_id, 'CHEBI:8685')
+        self.assertEqual(metabolite.chebis[0].inchi, 'InChI=1S/C3H4O3/c1-2(4)3(5)6/h4H,1H2,(H,5,6)')
+        self.assertEqual(metabolite.chebis[1].inchi, 'InChI=1S/C3H4O4/c1-2(4)3(5)6/h4H,1H2,(H,5,6)')
+
+    def test_modify_metabolite_change_all(self):
+        current_grasp_id = '2pg'
+        new_grasp_id = '2pg1'
+        name = '2-phosphoglycerate1'
+        bigg_id = '2pg1'
+        metanetx_id = 'MNXM231'
+
+        compartments = ['1']
+        chebi_ids = 'CHEBI:863541'
+        inchis = 'InChI=1S/C3H4O3/c1-2(4)3(5)6/h4H,1H2,(H,5,6)1'
+
+        self.assertEqual(Metabolite.query.count(), 7)
+        metabolite = Metabolite.query.filter_by(grasp_id=current_grasp_id).first()
+
+        response = self.client.post('/modify_metabolite/' + current_grasp_id, data=dict(
+            grasp_id=new_grasp_id,
+            name=name,
+            bigg_id=bigg_id,
+            metanetx_id=metanetx_id,
+            compartments=compartments,
+            chebi_ids=chebi_ids,
+            inchis=inchis), follow_redirects=True)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(b'<title>\n    See metabolite - Kinetics DB \n</title>' in response.data)
+        self.assertTrue(b'Your metabolite has been modified' in response.data)
+
+        self.assertEqual(Metabolite.query.count(), 7)
+        self.assertEqual(metabolite.grasp_id, new_grasp_id)
+        self.assertEqual(metabolite.name, name)
+        self.assertEqual(metabolite.bigg_id, bigg_id)
+        self.assertEqual(metabolite.metanetx_id, metanetx_id)
+        self.assertEqual(metabolite.compartments.count(), 1)
+        self.assertEqual(metabolite.chebis.count(), 1)
+        self.assertEqual(metabolite.chebis[0].chebi_id, 'CHEBI:863541')
+        self.assertEqual(metabolite.chebis[0].inchi, 'InChI=1S/C3H4O3/c1-2(4)3(5)6/h4H,1H2,(H,5,6)1')
+
+    def test_modify_metabolite_existing_met(self):
+        current_grasp_id = '2pg'
+        new_grasp_id = 'pep'
+        name = '2-phosphoglycerate'
+        bigg_id = '2pg'
+        metanetx_id = 'MNXM23'
+
+        compartments = ['1', '2']
+        chebi_ids = 'CHEBI:86354, CHEBI:8685'
+        inchis = 'InChI=1S/C3H4O3/c1-2(4)3(5)6/h4H,1H2,(H,5,6), InChI=1S/C3H4O4/c1-2(4)3(5)6/h4H,1H2,(H,5,6)'
+
+        self.assertEqual(Metabolite.query.count(), 7)
+        metabolite = Metabolite.query.filter_by(grasp_id=current_grasp_id).first()
+
+        response = self.client.post('/modify_metabolite/' + current_grasp_id, data=dict(
+            grasp_id=new_grasp_id,
+            name=name,
+            bigg_id=bigg_id,
+            metanetx_id=metanetx_id,
+            compartments=compartments,
+            chebi_ids=chebi_ids,
+            inchis=inchis), follow_redirects=True)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(b'<title>\n    Modify metabolite - Kinetics DB \n</title>' in response.data)
+        self.assertTrue(
+            b'The metabolite grasp id you specified already exists. Please choose a different one.' in response.data)
+
+        self.assertEqual(Metabolite.query.count(), 7)
+        self.assertEqual(metabolite.grasp_id, current_grasp_id)
+        self.assertEqual(metabolite.name, name)
+        self.assertEqual(metabolite.bigg_id, bigg_id)
+        self.assertEqual(metabolite.metanetx_id, metanetx_id)
+        self.assertEqual(metabolite.compartments.count(), 2)
+        self.assertEqual(metabolite.chebis.count(), 2)
+        self.assertEqual(metabolite.chebis[0].chebi_id, 'CHEBI:86354')
+        self.assertEqual(metabolite.chebis[1].chebi_id, 'CHEBI:8685')
+        self.assertEqual(metabolite.chebis[0].inchi, 'InChI=1S/C3H4O3/c1-2(4)3(5)6/h4H,1H2,(H,5,6)')
+        self.assertEqual(metabolite.chebis[1].inchi, 'InChI=1S/C3H4O4/c1-2(4)3(5)6/h4H,1H2,(H,5,6)')
 
 
 class TestModifyModel(unittest.TestCase):
@@ -121,16 +254,16 @@ class TestModifyModel(unittest.TestCase):
         self.assertEqual(model.enzyme_reaction_misc_infos.count(), 2)
 
         response = self.client.post('/modify_model/' + current_model_name, data=dict(
-                                    name=new_model_name,
-                                    organism_name=organism_name,
-                                    strain=strain,
-                                    enz_rxn_orgs=enz_rxns_orgs,
-                                    model_inhibitions=model_inhibitions,
-                                    model_activations=model_activations,
-                                    model_effectors=model_effectors,
-                                    model_misc_infos=model_misc_info,
-                                    model_assumptions=model_assumptions,
-                                    comments=comments), follow_redirects=True)
+            name=new_model_name,
+            organism_name=organism_name,
+            strain=strain,
+            enz_rxn_orgs=enz_rxns_orgs,
+            model_inhibitions=model_inhibitions,
+            model_activations=model_activations,
+            model_effectors=model_effectors,
+            model_misc_infos=model_misc_info,
+            model_assumptions=model_assumptions,
+            comments=comments), follow_redirects=True)
 
         self.assertEqual(response.status_code, 200)
         self.assertTrue(b'<title>\n    See model - Kinetics DB \n</title>' in response.data)
@@ -169,16 +302,16 @@ class TestModifyModel(unittest.TestCase):
         self.assertEqual(model.enzyme_reaction_misc_infos.count(), 2)
 
         response = self.client.post('/modify_model/' + current_model_name, data=dict(
-                                    name=new_model_name,
-                                    organism_name=organism_name,
-                                    strain=strain,
-                                    enz_rxn_orgs=enz_rxns_orgs,
-                                    model_inhibitions=model_inhibitions,
-                                    model_activations=model_activations,
-                                    model_effectors=model_effectors,
-                                    model_misc_infos=model_misc_info,
-                                    model_assumptions=model_assumptions,
-                                    comments=comments), follow_redirects=True)
+            name=new_model_name,
+            organism_name=organism_name,
+            strain=strain,
+            enz_rxn_orgs=enz_rxns_orgs,
+            model_inhibitions=model_inhibitions,
+            model_activations=model_activations,
+            model_effectors=model_effectors,
+            model_misc_infos=model_misc_info,
+            model_assumptions=model_assumptions,
+            comments=comments), follow_redirects=True)
 
         self.assertEqual(response.status_code, 200)
         self.assertTrue(b'<title>\n    See model - Kinetics DB \n</title>' in response.data)
@@ -196,7 +329,6 @@ class TestModifyModel(unittest.TestCase):
         self.assertEqual(model.enzyme_reaction_misc_infos.count(), 1)
 
     def test_modify_model_change_nothing(self):
-
         current_model_name = 'E. coli - iteration 1'
         new_model_name = 'E. coli - iteration 1'
 
@@ -218,16 +350,16 @@ class TestModifyModel(unittest.TestCase):
         self.assertEqual(model.enzyme_reaction_misc_infos.count(), 2)
 
         response = self.client.post('/modify_model/' + current_model_name, data=dict(
-                                    name=new_model_name,
-                                    organism_name=organism_name,
-                                    strain=strain,
-                                    enz_rxn_orgs=enz_rxns_orgs,
-                                    model_inhibitions=model_inhibitions,
-                                    model_activations=model_activations,
-                                    model_effectors=model_effectors,
-                                    model_misc_infos=model_misc_info,
-                                    model_assumptions=model_assumptions,
-                                    comments=comments), follow_redirects=True)
+            name=new_model_name,
+            organism_name=organism_name,
+            strain=strain,
+            enz_rxn_orgs=enz_rxns_orgs,
+            model_inhibitions=model_inhibitions,
+            model_activations=model_activations,
+            model_effectors=model_effectors,
+            model_misc_infos=model_misc_info,
+            model_assumptions=model_assumptions,
+            comments=comments), follow_redirects=True)
 
         self.assertEqual(response.status_code, 200)
         self.assertTrue(b'<title>\n    See model - Kinetics DB \n</title>' in response.data)
@@ -266,20 +398,21 @@ class TestModifyModel(unittest.TestCase):
         self.assertEqual(model.enzyme_reaction_misc_infos.count(), 2)
 
         response = self.client.post('/modify_model/' + current_model_name, data=dict(
-                                    name=new_model_name,
-                                    organism_name=organism_name,
-                                    strain=strain,
-                                    enz_rxn_orgs=enz_rxns_orgs,
-                                    model_inhibitions=model_inhibitions,
-                                    model_activations=model_activations,
-                                    model_effectors=model_effectors,
-                                    model_misc_infos=model_misc_info,
-                                    model_assumptions=model_assumptions,
-                                    comments=comments), follow_redirects=True)
+            name=new_model_name,
+            organism_name=organism_name,
+            strain=strain,
+            enz_rxn_orgs=enz_rxns_orgs,
+            model_inhibitions=model_inhibitions,
+            model_activations=model_activations,
+            model_effectors=model_effectors,
+            model_misc_infos=model_misc_info,
+            model_assumptions=model_assumptions,
+            comments=comments), follow_redirects=True)
 
         self.assertEqual(response.status_code, 200)
         self.assertTrue(b'<title>\n    Modify model - Kinetics DB \n</title>' in response.data)
-        self.assertTrue(b'A model with that name already exists, please use either the original name or another one.' in response.data)
+        self.assertTrue(
+            b'A model with that name already exists, please use either the original name or another one.' in response.data)
 
         self.assertEqual(Organism.query.filter_by(name=organism_name).first(), None)
         self.assertEqual(model.name, current_model_name)
@@ -322,13 +455,13 @@ class TestModifyModelAssumption(unittest.TestCase):
         self.assertEqual(ModelAssumptions.query.count(), 2)
 
         response = self.client.post('/modify_model_assumption/' + str(model_assumption_id), data=dict(
-                                    model=model,
-                                    assumption=assumption,
-                                    description=description,
-                                    evidence_level=evidence_level,
-                                    included_in_model=included_in_model,
-                                    references=references,
-                                    comments=comments), follow_redirects=True)
+            model=model,
+            assumption=assumption,
+            description=description,
+            evidence_level=evidence_level,
+            included_in_model=included_in_model,
+            references=references,
+            comments=comments), follow_redirects=True)
 
         self.assertEqual(response.status_code, 200)
         self.assertTrue(b'<title>\n    See model assumption - Kinetics DB \n</title>' in response.data)
@@ -358,13 +491,13 @@ class TestModifyModelAssumption(unittest.TestCase):
         self.assertEqual(ModelAssumptions.query.count(), 2)
 
         response = self.client.post('/modify_model_assumption/' + str(model_assumption_id), data=dict(
-                                    model=model,
-                                    assumption=assumption,
-                                    description=description,
-                                    evidence_level=evidence_level,
-                                    included_in_model=included_in_model,
-                                    references=references,
-                                    comments=comments), follow_redirects=True)
+            model=model,
+            assumption=assumption,
+            description=description,
+            evidence_level=evidence_level,
+            included_in_model=included_in_model,
+            references=references,
+            comments=comments), follow_redirects=True)
 
         self.assertEqual(response.status_code, 200)
         self.assertTrue(b'<title>\n    See model assumption - Kinetics DB \n</title>' in response.data)
@@ -394,13 +527,13 @@ class TestModifyModelAssumption(unittest.TestCase):
         self.assertEqual(ModelAssumptions.query.count(), 2)
 
         response = self.client.post('/modify_model_assumption/' + str(model_assumption_id), data=dict(
-                                    model=model,
-                                    assumption=assumption,
-                                    description=description,
-                                    evidence_level=evidence_level,
-                                    included_in_model=included_in_model,
-                                    references=references,
-                                    comments=comments), follow_redirects=True)
+            model=model,
+            assumption=assumption,
+            description=description,
+            evidence_level=evidence_level,
+            included_in_model=included_in_model,
+            references=references,
+            comments=comments), follow_redirects=True)
 
         self.assertEqual(response.status_code, 200)
         self.assertTrue(b'<title>\n    See model assumption - Kinetics DB \n</title>' in response.data)
@@ -431,7 +564,6 @@ class TestModifyEnzyme(unittest.TestCase):
         self.app_context.pop()
 
     def test_modify_enzyme_change_all(self):
-
         current_isoenzyme = 'PFK1'
         current_organism_name = 'E. coli'
         current_uniprot_id_list = 'PC3W1, P34D'
@@ -471,17 +603,17 @@ class TestModifyEnzyme(unittest.TestCase):
         self.assertEqual(enzyme.enzyme_gene_organisms.count(), 2)
         self.assertEqual(enzyme.enzyme_subunits.count(), 0)
 
-        response = self.client.post('/modify_enzyme/' + current_isoenzyme,   data=dict(
-                                    name=enzyme_name,
-                                    acronym=enzyme_acronym,
-                                    isoenzyme=isoenzyme,
-                                    ec_number=ec_number,
-                                    organism_name=organism_name,
-                                    number_of_active_sites=number_of_active_sites,
-                                    gene_names=gene_names,
-                                    uniprot_id_list=uniprot_id_list,
-                                    pdb_structure_ids=pdb_structure_ids,
-                                    strain=strain), follow_redirects=True, query_string={'data_form': data_form})
+        response = self.client.post('/modify_enzyme/' + current_isoenzyme, data=dict(
+            name=enzyme_name,
+            acronym=enzyme_acronym,
+            isoenzyme=isoenzyme,
+            ec_number=ec_number,
+            organism_name=organism_name,
+            number_of_active_sites=number_of_active_sites,
+            gene_names=gene_names,
+            uniprot_id_list=uniprot_id_list,
+            pdb_structure_ids=pdb_structure_ids,
+            strain=strain), follow_redirects=True, query_string={'data_form': data_form})
 
         self.assertEqual(response.status_code, 200)
         self.assertTrue(b'<title>\n    See enzyme - Kinetics DB \n</title>' in response.data)
@@ -499,7 +631,6 @@ class TestModifyEnzyme(unittest.TestCase):
         self.assertEqual(enzyme.enzyme_subunits.count(), 0)
 
     def test_modify_enzyme_change_nothing(self):
-
         current_isoenzyme = 'PFK1'
         enzyme_name = 'Phosphofructokinase'
         enzyme_acronym = 'PFK'
@@ -532,17 +663,17 @@ class TestModifyEnzyme(unittest.TestCase):
         self.assertEqual(enzyme.enzyme_gene_organisms.count(), 2)
         self.assertEqual(enzyme.enzyme_subunits.count(), 0)
 
-        response = self.client.post('/modify_enzyme/' + current_isoenzyme,   data=dict(
-                                    name=enzyme_name,
-                                    acronym=enzyme_acronym,
-                                    isoenzyme=isoenzyme,
-                                    ec_number=ec_number,
-                                    organism_name=current_organism_name,
-                                    number_of_active_sites=current_number_of_active_sites,
-                                    gene_names=current_gene_names,
-                                    uniprot_id_list=current_uniprot_id_list,
-                                    pdb_structure_ids=current_pdb_structure_ids,
-                                    strain=current_strain), follow_redirects=True, query_string={'data_form': data_form})
+        response = self.client.post('/modify_enzyme/' + current_isoenzyme, data=dict(
+            name=enzyme_name,
+            acronym=enzyme_acronym,
+            isoenzyme=isoenzyme,
+            ec_number=ec_number,
+            organism_name=current_organism_name,
+            number_of_active_sites=current_number_of_active_sites,
+            gene_names=current_gene_names,
+            uniprot_id_list=current_uniprot_id_list,
+            pdb_structure_ids=current_pdb_structure_ids,
+            strain=current_strain), follow_redirects=True, query_string={'data_form': data_form})
 
         self.assertEqual(response.status_code, 200)
         self.assertTrue(b'<title>\n    See enzyme - Kinetics DB \n</title>' in response.data)
@@ -575,7 +706,6 @@ class TestModifyEnzymeInhibitor(unittest.TestCase):
         self.app_context.pop()
 
     def test_modify_enzyme_inhibitor_change_all(self):
-
         inhibitor_id = 1
 
         enzyme = '1'
@@ -585,7 +715,7 @@ class TestModifyEnzymeInhibitor(unittest.TestCase):
         inhibitor_met = 'ble'
         affected_met = 'blu'
         inhibition_type = 'Mixed'
-        inhibition_constant = 1.5*10**-4
+        inhibition_constant = 1.5 * 10 ** -4
 
         evidence_level = '2'
         references = 'https://doi.org/10.1093/bioinformatics/bty9410, https://doi.org/10.1093/bioinformatics/bty943'
@@ -599,18 +729,18 @@ class TestModifyEnzymeInhibitor(unittest.TestCase):
         self.assertEqual(enz_inhib.models.count(), 1)
         self.assertEqual(enz_inhib.references.count(), 2)
 
-        response = self.client.post('/modify_enzyme_inhibitor/' + str(inhibitor_id),   data=dict(
-                                    enzyme=enzyme,
-                                    reaction=reaction,
-                                    organism=organism,
-                                    models=models,
-                                    inhibitor_met=inhibitor_met,
-                                    affected_met=affected_met,
-                                    inhibition_type=inhibition_type,
-                                    inhibition_constant=inhibition_constant,
-                                    inhibition_evidence_level=evidence_level,
-                                    references=references,
-                                    comments=comments), follow_redirects=True)
+        response = self.client.post('/modify_enzyme_inhibitor/' + str(inhibitor_id), data=dict(
+            enzyme=enzyme,
+            reaction=reaction,
+            organism=organism,
+            models=models,
+            inhibitor_met=inhibitor_met,
+            affected_met=affected_met,
+            inhibition_type=inhibition_type,
+            inhibition_constant=inhibition_constant,
+            inhibition_evidence_level=evidence_level,
+            references=references,
+            comments=comments), follow_redirects=True)
 
         self.assertEqual(response.status_code, 200)
         self.assertTrue(b'<title>\n    See enzyme inhibitor - Kinetics DB \n</title>' in response.data)
@@ -631,7 +761,6 @@ class TestModifyEnzymeInhibitor(unittest.TestCase):
         self.assertEqual(enz_inhib.comments, comments)
 
     def test_modify_enzyme_inhibitor_change_all_enzyme(self):
-
         inhibitor_id = 1
 
         enzyme = '2'
@@ -641,7 +770,7 @@ class TestModifyEnzymeInhibitor(unittest.TestCase):
         inhibitor_met = 'ble'
         affected_met = 'blu'
         inhibition_type = 'Mixed'
-        inhibition_constant = 1.5*10**-4
+        inhibition_constant = 1.5 * 10 ** -4
 
         evidence_level = '2'
         references = 'https://doi.org/10.1093/bioinformatics/bty9410, https://doi.org/10.1093/bioinformatics/bty943'
@@ -655,18 +784,18 @@ class TestModifyEnzymeInhibitor(unittest.TestCase):
         self.assertEqual(enz_inhib.models.count(), 1)
         self.assertEqual(enz_inhib.references.count(), 2)
 
-        response = self.client.post('/modify_enzyme_inhibitor/' + str(inhibitor_id),   data=dict(
-                                    enzyme=enzyme,
-                                    reaction=reaction,
-                                    organism=organism,
-                                    models=models,
-                                    inhibitor_met=inhibitor_met,
-                                    affected_met=affected_met,
-                                    inhibition_type=inhibition_type,
-                                    inhibition_constant=inhibition_constant,
-                                    inhibition_evidence_level=evidence_level,
-                                    references=references,
-                                    comments=comments), follow_redirects=True)
+        response = self.client.post('/modify_enzyme_inhibitor/' + str(inhibitor_id), data=dict(
+            enzyme=enzyme,
+            reaction=reaction,
+            organism=organism,
+            models=models,
+            inhibitor_met=inhibitor_met,
+            affected_met=affected_met,
+            inhibition_type=inhibition_type,
+            inhibition_constant=inhibition_constant,
+            inhibition_evidence_level=evidence_level,
+            references=references,
+            comments=comments), follow_redirects=True)
 
         self.assertEqual(response.status_code, 200)
         self.assertTrue(b'<title>\n    See enzyme inhibitor - Kinetics DB \n</title>' in response.data)
@@ -686,7 +815,6 @@ class TestModifyEnzymeInhibitor(unittest.TestCase):
         self.assertEqual(enz_inhib.comments, comments)
 
     def test_modify_enzyme_inhibitor_change_all_organism(self):
-
         inhibitor_id = 1
 
         enzyme = '1'
@@ -696,7 +824,7 @@ class TestModifyEnzymeInhibitor(unittest.TestCase):
         inhibitor_met = 'ble'
         affected_met = 'blu'
         inhibition_type = 'Mixed'
-        inhibition_constant = 1.5*10**-4
+        inhibition_constant = 1.5 * 10 ** -4
 
         evidence_level = '2'
         references = 'https://doi.org/10.1093/bioinformatics/bty9410, https://doi.org/10.1093/bioinformatics/bty943'
@@ -710,18 +838,18 @@ class TestModifyEnzymeInhibitor(unittest.TestCase):
         self.assertEqual(enz_inhib.models.count(), 1)
         self.assertEqual(enz_inhib.references.count(), 2)
 
-        response = self.client.post('/modify_enzyme_inhibitor/' + str(inhibitor_id),   data=dict(
-                                    enzyme=enzyme,
-                                    reaction=reaction,
-                                    organism=organism,
-                                    models=models,
-                                    inhibitor_met=inhibitor_met,
-                                    affected_met=affected_met,
-                                    inhibition_type=inhibition_type,
-                                    inhibition_constant=inhibition_constant,
-                                    inhibition_evidence_level=evidence_level,
-                                    references=references,
-                                    comments=comments), follow_redirects=True)
+        response = self.client.post('/modify_enzyme_inhibitor/' + str(inhibitor_id), data=dict(
+            enzyme=enzyme,
+            reaction=reaction,
+            organism=organism,
+            models=models,
+            inhibitor_met=inhibitor_met,
+            affected_met=affected_met,
+            inhibition_type=inhibition_type,
+            inhibition_constant=inhibition_constant,
+            inhibition_evidence_level=evidence_level,
+            references=references,
+            comments=comments), follow_redirects=True)
 
         self.assertEqual(response.status_code, 200)
         self.assertTrue(b'<title>\n    See enzyme inhibitor - Kinetics DB \n</title>' in response.data)
@@ -741,7 +869,6 @@ class TestModifyEnzymeInhibitor(unittest.TestCase):
         self.assertEqual(enz_inhib.comments, comments)
 
     def test_modify_enzyme_inhibitor_change_all_model(self):
-
         inhibitor_id = 1
 
         enzyme = '1'
@@ -751,7 +878,7 @@ class TestModifyEnzymeInhibitor(unittest.TestCase):
         inhibitor_met = 'ble'
         affected_met = 'blu'
         inhibition_type = 'Mixed'
-        inhibition_constant = 1.5*10**-4
+        inhibition_constant = 1.5 * 10 ** -4
 
         evidence_level = '2'
         references = 'https://doi.org/10.1093/bioinformatics/bty9410, https://doi.org/10.1093/bioinformatics/bty943'
@@ -765,18 +892,18 @@ class TestModifyEnzymeInhibitor(unittest.TestCase):
         self.assertEqual(enz_inhib.models.count(), 1)
         self.assertEqual(enz_inhib.references.count(), 2)
 
-        response = self.client.post('/modify_enzyme_inhibitor/' + str(inhibitor_id),   data=dict(
-                                    enzyme=enzyme,
-                                    reaction=reaction,
-                                    organism=organism,
-                                    models=models,
-                                    inhibitor_met=inhibitor_met,
-                                    affected_met=affected_met,
-                                    inhibition_type=inhibition_type,
-                                    inhibition_constant=inhibition_constant,
-                                    inhibition_evidence_level=evidence_level,
-                                    references=references,
-                                    comments=comments), follow_redirects=True)
+        response = self.client.post('/modify_enzyme_inhibitor/' + str(inhibitor_id), data=dict(
+            enzyme=enzyme,
+            reaction=reaction,
+            organism=organism,
+            models=models,
+            inhibitor_met=inhibitor_met,
+            affected_met=affected_met,
+            inhibition_type=inhibition_type,
+            inhibition_constant=inhibition_constant,
+            inhibition_evidence_level=evidence_level,
+            references=references,
+            comments=comments), follow_redirects=True)
 
         self.assertEqual(response.status_code, 200)
         self.assertTrue(b'<title>\n    See enzyme inhibitor - Kinetics DB \n</title>' in response.data)
@@ -796,7 +923,6 @@ class TestModifyEnzymeInhibitor(unittest.TestCase):
         self.assertEqual(enz_inhib.comments, comments)
 
     def test_modify_enzyme_inhibitor_change_nothing(self):
-
         inhibitor_id = 1
 
         enzyme = '1'
@@ -806,7 +932,7 @@ class TestModifyEnzymeInhibitor(unittest.TestCase):
         inhibitor_met = 'adp'
         affected_met = 'atp'
         inhibition_type = 'Competitive'
-        inhibition_constant = 1.3*10**-4
+        inhibition_constant = 1.3 * 10 ** -4
 
         evidence_level = '1'
         references = 'https://doi.org/10.1093/bioinformatics/bty942, https://doi.org/10.1093/bioinformatics/bty943'
@@ -820,18 +946,18 @@ class TestModifyEnzymeInhibitor(unittest.TestCase):
         self.assertEqual(enz_inhib.models.count(), 1)
         self.assertEqual(enz_inhib.references.count(), 2)
 
-        response = self.client.post('/modify_enzyme_inhibitor/' + str(inhibitor_id),   data=dict(
-                                    enzyme=enzyme,
-                                    reaction=reaction,
-                                    organism=organism,
-                                    models=models,
-                                    inhibitor_met=inhibitor_met,
-                                    affected_met=affected_met,
-                                    inhibition_type=inhibition_type,
-                                    inhibition_constant=inhibition_constant,
-                                    inhibition_evidence_level=evidence_level,
-                                    references=references,
-                                    comments=comments), follow_redirects=True)
+        response = self.client.post('/modify_enzyme_inhibitor/' + str(inhibitor_id), data=dict(
+            enzyme=enzyme,
+            reaction=reaction,
+            organism=organism,
+            models=models,
+            inhibitor_met=inhibitor_met,
+            affected_met=affected_met,
+            inhibition_type=inhibition_type,
+            inhibition_constant=inhibition_constant,
+            inhibition_evidence_level=evidence_level,
+            references=references,
+            comments=comments), follow_redirects=True)
 
         self.assertEqual(response.status_code, 200)
         self.assertTrue(b'<title>\n    See enzyme inhibitor - Kinetics DB \n</title>' in response.data)
@@ -872,7 +998,7 @@ class TestModifyEnzymeActivator(unittest.TestCase):
         organism = '1'
         models = '1'
         activator_met = 'amp'
-        activation_constant = 2.3*10**-4
+        activation_constant = 2.3 * 10 ** -4
 
         evidence_level = '2'
         references = 'https://doi.org/10.1093/bioinformatics/bty9410, https://doi.org/10.1093/bioinformatics/bty943'
@@ -886,16 +1012,16 @@ class TestModifyEnzymeActivator(unittest.TestCase):
         self.assertEqual(enz_activation.models.count(), 1)
         self.assertEqual(enz_activation.references.count(), 2)
 
-        response = self.client.post('/modify_enzyme_activator/' + str(activator_id),   data=dict(
-                                    enzyme=enzyme,
-                                    reaction=reaction,
-                                    organism=organism,
-                                    models=models,
-                                    activator_met=activator_met,
-                                    activation_constant=activation_constant,
-                                    activation_evidence_level=evidence_level,
-                                    references=references,
-                                    comments=comments), follow_redirects=True)
+        response = self.client.post('/modify_enzyme_activator/' + str(activator_id), data=dict(
+            enzyme=enzyme,
+            reaction=reaction,
+            organism=organism,
+            models=models,
+            activator_met=activator_met,
+            activation_constant=activation_constant,
+            activation_evidence_level=evidence_level,
+            references=references,
+            comments=comments), follow_redirects=True)
 
         self.assertEqual(response.status_code, 200)
         self.assertTrue(b'<title>\n    See enzyme activator - Kinetics DB \n</title>' in response.data)
@@ -921,7 +1047,7 @@ class TestModifyEnzymeActivator(unittest.TestCase):
         organism = '1'
         models = '1'
         activator_met = 'amp'
-        activation_constant = 2.3*10**-4
+        activation_constant = 2.3 * 10 ** -4
 
         evidence_level = '2'
         references = 'https://doi.org/10.1093/bioinformatics/bty9410, https://doi.org/10.1093/bioinformatics/bty943'
@@ -935,16 +1061,16 @@ class TestModifyEnzymeActivator(unittest.TestCase):
         self.assertEqual(enz_activation.models.count(), 1)
         self.assertEqual(enz_activation.references.count(), 2)
 
-        response = self.client.post('/modify_enzyme_activator/' + str(activator_id),   data=dict(
-                                    enzyme=enzyme,
-                                    reaction=reaction,
-                                    organism=organism,
-                                    models=models,
-                                    activator_met=activator_met,
-                                    activation_constant=activation_constant,
-                                    activation_evidence_level=evidence_level,
-                                    references=references,
-                                    comments=comments), follow_redirects=True)
+        response = self.client.post('/modify_enzyme_activator/' + str(activator_id), data=dict(
+            enzyme=enzyme,
+            reaction=reaction,
+            organism=organism,
+            models=models,
+            activator_met=activator_met,
+            activation_constant=activation_constant,
+            activation_evidence_level=evidence_level,
+            references=references,
+            comments=comments), follow_redirects=True)
 
         self.assertEqual(response.status_code, 200)
         self.assertTrue(b'<title>\n    See enzyme activator - Kinetics DB \n</title>' in response.data)
@@ -970,7 +1096,7 @@ class TestModifyEnzymeActivator(unittest.TestCase):
         organism = '2'
         models = '1'
         activator_met = 'amp'
-        activation_constant = 2.3*10**-4
+        activation_constant = 2.3 * 10 ** -4
 
         evidence_level = '2'
         references = 'https://doi.org/10.1093/bioinformatics/bty9410, https://doi.org/10.1093/bioinformatics/bty943'
@@ -984,16 +1110,16 @@ class TestModifyEnzymeActivator(unittest.TestCase):
         self.assertEqual(enz_activation.models.count(), 1)
         self.assertEqual(enz_activation.references.count(), 2)
 
-        response = self.client.post('/modify_enzyme_activator/' + str(activator_id),   data=dict(
-                                    enzyme=enzyme,
-                                    reaction=reaction,
-                                    organism=organism,
-                                    models=models,
-                                    activator_met=activator_met,
-                                    activation_constant=activation_constant,
-                                    activation_evidence_level=evidence_level,
-                                    references=references,
-                                    comments=comments), follow_redirects=True)
+        response = self.client.post('/modify_enzyme_activator/' + str(activator_id), data=dict(
+            enzyme=enzyme,
+            reaction=reaction,
+            organism=organism,
+            models=models,
+            activator_met=activator_met,
+            activation_constant=activation_constant,
+            activation_evidence_level=evidence_level,
+            references=references,
+            comments=comments), follow_redirects=True)
 
         self.assertEqual(response.status_code, 200)
         self.assertTrue(b'<title>\n    See enzyme activator - Kinetics DB \n</title>' in response.data)
@@ -1019,7 +1145,7 @@ class TestModifyEnzymeActivator(unittest.TestCase):
         organism = '1'
         models = '2'
         activator_met = 'amp'
-        activation_constant = 2.3*10**-4
+        activation_constant = 2.3 * 10 ** -4
 
         evidence_level = '2'
         references = 'https://doi.org/10.1093/bioinformatics/bty9410, https://doi.org/10.1093/bioinformatics/bty943'
@@ -1033,16 +1159,16 @@ class TestModifyEnzymeActivator(unittest.TestCase):
         self.assertEqual(enz_activation.models.count(), 1)
         self.assertEqual(enz_activation.references.count(), 2)
 
-        response = self.client.post('/modify_enzyme_activator/' + str(activator_id),   data=dict(
-                                    enzyme=enzyme,
-                                    reaction=reaction,
-                                    organism=organism,
-                                    models=models,
-                                    activator_met=activator_met,
-                                    activation_constant=activation_constant,
-                                    activation_evidence_level=evidence_level,
-                                    references=references,
-                                    comments=comments), follow_redirects=True)
+        response = self.client.post('/modify_enzyme_activator/' + str(activator_id), data=dict(
+            enzyme=enzyme,
+            reaction=reaction,
+            organism=organism,
+            models=models,
+            activator_met=activator_met,
+            activation_constant=activation_constant,
+            activation_evidence_level=evidence_level,
+            references=references,
+            comments=comments), follow_redirects=True)
 
         self.assertEqual(response.status_code, 200)
         self.assertTrue(b'<title>\n    See enzyme activator - Kinetics DB \n</title>' in response.data)
@@ -1068,7 +1194,7 @@ class TestModifyEnzymeActivator(unittest.TestCase):
         organism = '1'
         models = '1'
         activator_met = 'adp'
-        activation_constant = 1.3*10**-4
+        activation_constant = 1.3 * 10 ** -4
 
         evidence_level = '1'
         references = 'https://doi.org/10.1093/bioinformatics/bty942, https://doi.org/10.1093/bioinformatics/bty943'
@@ -1082,16 +1208,16 @@ class TestModifyEnzymeActivator(unittest.TestCase):
         self.assertEqual(enz_activation.models.count(), 1)
         self.assertEqual(enz_activation.references.count(), 2)
 
-        response = self.client.post('/modify_enzyme_activator/' + str(activator_id),   data=dict(
-                                    enzyme=enzyme,
-                                    reaction=reaction,
-                                    organism=organism,
-                                    models=models,
-                                    activator_met=activator_met,
-                                    activation_constant=activation_constant,
-                                    activation_evidence_level=evidence_level,
-                                    references=references,
-                                    comments=comments), follow_redirects=True)
+        response = self.client.post('/modify_enzyme_activator/' + str(activator_id), data=dict(
+            enzyme=enzyme,
+            reaction=reaction,
+            organism=organism,
+            models=models,
+            activator_met=activator_met,
+            activation_constant=activation_constant,
+            activation_evidence_level=evidence_level,
+            references=references,
+            comments=comments), follow_redirects=True)
 
         self.assertEqual(response.status_code, 200)
         self.assertTrue(b'<title>\n    See enzyme activator - Kinetics DB \n</title>' in response.data)
@@ -1146,16 +1272,16 @@ class TestModifyEnzymeEffector(unittest.TestCase):
         self.assertEqual(enz_effector.models.count(), 1)
         self.assertEqual(enz_effector.references.count(), 2)
 
-        response = self.client.post('/modify_enzyme_effector/' + str(effector_id),   data=dict(
-                                    enzyme=enzyme,
-                                    reaction=reaction,
-                                    organism=organism,
-                                    models=models,
-                                    effector_met=effector_met,
-                                    effector_type=effector_type,
-                                    effector_evidence_level=evidence_level,
-                                    references=references,
-                                    comments=comments), follow_redirects=True)
+        response = self.client.post('/modify_enzyme_effector/' + str(effector_id), data=dict(
+            enzyme=enzyme,
+            reaction=reaction,
+            organism=organism,
+            models=models,
+            effector_met=effector_met,
+            effector_type=effector_type,
+            effector_evidence_level=evidence_level,
+            references=references,
+            comments=comments), follow_redirects=True)
 
         self.assertEqual(response.status_code, 200)
         self.assertTrue(b'<title>\n    See enzyme effector - Kinetics DB \n</title>' in response.data)
@@ -1195,16 +1321,16 @@ class TestModifyEnzymeEffector(unittest.TestCase):
         self.assertEqual(enz_effector.models.count(), 1)
         self.assertEqual(enz_effector.references.count(), 2)
 
-        response = self.client.post('/modify_enzyme_effector/' + str(effector_id),   data=dict(
-                                    enzyme=enzyme,
-                                    reaction=reaction,
-                                    organism=organism,
-                                    models=models,
-                                    effector_met=effector_met,
-                                    effector_type=effector_type,
-                                    effector_evidence_level=evidence_level,
-                                    references=references,
-                                    comments=comments), follow_redirects=True)
+        response = self.client.post('/modify_enzyme_effector/' + str(effector_id), data=dict(
+            enzyme=enzyme,
+            reaction=reaction,
+            organism=organism,
+            models=models,
+            effector_met=effector_met,
+            effector_type=effector_type,
+            effector_evidence_level=evidence_level,
+            references=references,
+            comments=comments), follow_redirects=True)
 
         self.assertEqual(response.status_code, 200)
         self.assertTrue(b'<title>\n    See enzyme effector - Kinetics DB \n</title>' in response.data)
@@ -1244,16 +1370,16 @@ class TestModifyEnzymeEffector(unittest.TestCase):
         self.assertEqual(enz_effector.models.count(), 1)
         self.assertEqual(enz_effector.references.count(), 2)
 
-        response = self.client.post('/modify_enzyme_effector/' + str(effector_id),   data=dict(
-                                    enzyme=enzyme,
-                                    reaction=reaction,
-                                    organism=organism,
-                                    models=models,
-                                    effector_met=effector_met,
-                                    effector_type=effector_type,
-                                    effector_evidence_level=evidence_level,
-                                    references=references,
-                                    comments=comments), follow_redirects=True)
+        response = self.client.post('/modify_enzyme_effector/' + str(effector_id), data=dict(
+            enzyme=enzyme,
+            reaction=reaction,
+            organism=organism,
+            models=models,
+            effector_met=effector_met,
+            effector_type=effector_type,
+            effector_evidence_level=evidence_level,
+            references=references,
+            comments=comments), follow_redirects=True)
 
         self.assertEqual(response.status_code, 200)
         self.assertTrue(b'<title>\n    See enzyme effector - Kinetics DB \n</title>' in response.data)
@@ -1293,16 +1419,16 @@ class TestModifyEnzymeEffector(unittest.TestCase):
         self.assertEqual(enz_effector.models.count(), 1)
         self.assertEqual(enz_effector.references.count(), 2)
 
-        response = self.client.post('/modify_enzyme_effector/' + str(effector_id),   data=dict(
-                                    enzyme=enzyme,
-                                    reaction=reaction,
-                                    organism=organism,
-                                    models=models,
-                                    effector_met=effector_met,
-                                    effector_type=effector_type,
-                                    effector_evidence_level=evidence_level,
-                                    references=references,
-                                    comments=comments), follow_redirects=True)
+        response = self.client.post('/modify_enzyme_effector/' + str(effector_id), data=dict(
+            enzyme=enzyme,
+            reaction=reaction,
+            organism=organism,
+            models=models,
+            effector_met=effector_met,
+            effector_type=effector_type,
+            effector_evidence_level=evidence_level,
+            references=references,
+            comments=comments), follow_redirects=True)
 
         self.assertEqual(response.status_code, 200)
         self.assertTrue(b'<title>\n    See enzyme effector - Kinetics DB \n</title>' in response.data)
@@ -1342,16 +1468,16 @@ class TestModifyEnzymeEffector(unittest.TestCase):
         self.assertEqual(enz_effector.models.count(), 1)
         self.assertEqual(enz_effector.references.count(), 2)
 
-        response = self.client.post('/modify_enzyme_effector/' + str(effector_id),   data=dict(
-                                    enzyme=enzyme,
-                                    reaction=reaction,
-                                    organism=organism,
-                                    models=models,
-                                    effector_met=effector_met,
-                                    effector_type=effector_type,
-                                    effector_evidence_level=evidence_level,
-                                    references=references,
-                                    comments=comments), follow_redirects=True)
+        response = self.client.post('/modify_enzyme_effector/' + str(effector_id), data=dict(
+            enzyme=enzyme,
+            reaction=reaction,
+            organism=organism,
+            models=models,
+            effector_met=effector_met,
+            effector_type=effector_type,
+            effector_evidence_level=evidence_level,
+            references=references,
+            comments=comments), follow_redirects=True)
 
         self.assertEqual(response.status_code, 200)
         self.assertTrue(b'<title>\n    See enzyme effector - Kinetics DB \n</title>' in response.data)
@@ -1406,16 +1532,16 @@ class TestModifyEnzymeMiscInfo(unittest.TestCase):
         self.assertEqual(enz_misc_info.models.count(), 1)
         self.assertEqual(enz_misc_info.references.count(), 2)
 
-        response = self.client.post('/modify_enzyme_misc_info/' + str(misc_info_id),   data=dict(
-                                    enzyme=enzyme,
-                                    reaction=reaction,
-                                    organism=organism,
-                                    models=models,
-                                    topic=topic,
-                                    description=description,
-                                    evidence_level=evidence_level,
-                                    references=references,
-                                    comments=comments), follow_redirects=True)
+        response = self.client.post('/modify_enzyme_misc_info/' + str(misc_info_id), data=dict(
+            enzyme=enzyme,
+            reaction=reaction,
+            organism=organism,
+            models=models,
+            topic=topic,
+            description=description,
+            evidence_level=evidence_level,
+            references=references,
+            comments=comments), follow_redirects=True)
 
         self.assertEqual(response.status_code, 200)
         self.assertTrue(b'<title>\n    See enzyme misc info - Kinetics DB \n</title>' in response.data)
@@ -1453,16 +1579,16 @@ class TestModifyEnzymeMiscInfo(unittest.TestCase):
         self.assertEqual(enz_misc_info.models.count(), 1)
         self.assertEqual(enz_misc_info.references.count(), 2)
 
-        response = self.client.post('/modify_enzyme_misc_info/' + str(misc_info_id),   data=dict(
-                                    enzyme=enzyme,
-                                    reaction=reaction,
-                                    organism=organism,
-                                    models=models,
-                                    topic=topic,
-                                    description=description,
-                                    evidence_level=evidence_level,
-                                    references=references,
-                                    comments=comments), follow_redirects=True)
+        response = self.client.post('/modify_enzyme_misc_info/' + str(misc_info_id), data=dict(
+            enzyme=enzyme,
+            reaction=reaction,
+            organism=organism,
+            models=models,
+            topic=topic,
+            description=description,
+            evidence_level=evidence_level,
+            references=references,
+            comments=comments), follow_redirects=True)
 
         self.assertEqual(response.status_code, 200)
         self.assertTrue(b'<title>\n    See enzyme misc info - Kinetics DB \n</title>' in response.data)
@@ -1500,16 +1626,16 @@ class TestModifyEnzymeMiscInfo(unittest.TestCase):
         self.assertEqual(enz_misc_info.models.count(), 1)
         self.assertEqual(enz_misc_info.references.count(), 2)
 
-        response = self.client.post('/modify_enzyme_misc_info/' + str(misc_info_id),   data=dict(
-                                    enzyme=enzyme,
-                                    reaction=reaction,
-                                    organism=organism,
-                                    models=models,
-                                    topic=topic,
-                                    description=description,
-                                    evidence_level=evidence_level,
-                                    references=references,
-                                    comments=comments), follow_redirects=True)
+        response = self.client.post('/modify_enzyme_misc_info/' + str(misc_info_id), data=dict(
+            enzyme=enzyme,
+            reaction=reaction,
+            organism=organism,
+            models=models,
+            topic=topic,
+            description=description,
+            evidence_level=evidence_level,
+            references=references,
+            comments=comments), follow_redirects=True)
 
         self.assertEqual(response.status_code, 200)
         self.assertTrue(b'<title>\n    See enzyme misc info - Kinetics DB \n</title>' in response.data)
@@ -1547,16 +1673,16 @@ class TestModifyEnzymeMiscInfo(unittest.TestCase):
         self.assertEqual(enz_misc_info.models.count(), 1)
         self.assertEqual(enz_misc_info.references.count(), 2)
 
-        response = self.client.post('/modify_enzyme_misc_info/' + str(misc_info_id),   data=dict(
-                                    enzyme=enzyme,
-                                    reaction=reaction,
-                                    organism=organism,
-                                    models=models,
-                                    topic=topic,
-                                    description=description,
-                                    evidence_level=evidence_level,
-                                    references=references,
-                                    comments=comments), follow_redirects=True)
+        response = self.client.post('/modify_enzyme_misc_info/' + str(misc_info_id), data=dict(
+            enzyme=enzyme,
+            reaction=reaction,
+            organism=organism,
+            models=models,
+            topic=topic,
+            description=description,
+            evidence_level=evidence_level,
+            references=references,
+            comments=comments), follow_redirects=True)
 
         self.assertEqual(response.status_code, 200)
         self.assertTrue(b'<title>\n    See enzyme misc info - Kinetics DB \n</title>' in response.data)
@@ -1594,16 +1720,16 @@ class TestModifyEnzymeMiscInfo(unittest.TestCase):
         self.assertEqual(enz_misc_info.models.count(), 1)
         self.assertEqual(enz_misc_info.references.count(), 2)
 
-        response = self.client.post('/modify_enzyme_misc_info/' + str(misc_info_id),   data=dict(
-                                    enzyme=enzyme,
-                                    reaction=reaction,
-                                    organism=organism,
-                                    models=models,
-                                    topic=topic,
-                                    description=description,
-                                    evidence_level=evidence_level,
-                                    references=references,
-                                    comments=comments), follow_redirects=True)
+        response = self.client.post('/modify_enzyme_misc_info/' + str(misc_info_id), data=dict(
+            enzyme=enzyme,
+            reaction=reaction,
+            organism=organism,
+            models=models,
+            topic=topic,
+            description=description,
+            evidence_level=evidence_level,
+            references=references,
+            comments=comments), follow_redirects=True)
 
         self.assertEqual(response.status_code, 200)
         self.assertTrue(b'<title>\n    See enzyme misc info - Kinetics DB \n</title>' in response.data)
@@ -1635,7 +1761,6 @@ class TestModifyReaction(unittest.TestCase):
         self.app_context.pop()
 
     def test_modify_reaction_change_nothing(self):
-
         reaction_name = 'phosphofructokinase'
         reaction_acronym = 'PFK'
         reaction_grasp_id = 'PFK1'
@@ -1692,28 +1817,28 @@ class TestModifyReaction(unittest.TestCase):
         self.assertEqual(reaction.gibbs_energy_reaction_models.count(), 2)
 
         response = self.client.post('/modify_reaction/' + reaction_acronym, data=dict(
-                                    name=reaction_name,
-                                    acronym=reaction_acronym,
-                                    grasp_id=reaction_grasp_id,
-                                    reaction_string=reaction_string,
-                                    bigg_id=bigg_id,
-                                    kegg_id=kegg_id,
-                                    metanetx_id=metanetx_id,
-                                    compartment=compartment,
-                                    organism='1',
-                                    models='1',
-                                    enzymes=enzymes,
-                                    mechanism=mechanism,
-                                    mechanism_references=mechanism_references,
-                                    mechanism_evidence_level=mechanism_evidence_level,
-                                    subs_binding_order=subs_binding_order,
-                                    prod_release_order=prod_release_order,
-                                    std_gibbs_energy=std_gibbs_energy,
-                                    std_gibbs_energy_std=std_gibbs_energy_std,
-                                    std_gibbs_energy_ph=std_gibbs_energy_ph,
-                                    std_gibbs_energy_ionic_strength=std_gibbs_energy_ionic_strength,
-                                    std_gibbs_energy_references=std_gibbs_energy_references,
-                                    comments=comments), follow_redirects=True, query_string={'data_form': data_form})
+            name=reaction_name,
+            acronym=reaction_acronym,
+            grasp_id=reaction_grasp_id,
+            reaction_string=reaction_string,
+            bigg_id=bigg_id,
+            kegg_id=kegg_id,
+            metanetx_id=metanetx_id,
+            compartment=compartment,
+            organism='1',
+            models='1',
+            enzymes=enzymes,
+            mechanism=mechanism,
+            mechanism_references=mechanism_references,
+            mechanism_evidence_level=mechanism_evidence_level,
+            subs_binding_order=subs_binding_order,
+            prod_release_order=prod_release_order,
+            std_gibbs_energy=std_gibbs_energy,
+            std_gibbs_energy_std=std_gibbs_energy_std,
+            std_gibbs_energy_ph=std_gibbs_energy_ph,
+            std_gibbs_energy_ionic_strength=std_gibbs_energy_ionic_strength,
+            std_gibbs_energy_references=std_gibbs_energy_references,
+            comments=comments), follow_redirects=True, query_string={'data_form': data_form})
 
         self.assertEqual(response.status_code, 200)
         self.assertTrue(b'<title>\n    See reaction - Kinetics DB \n</title>' in response.data)
@@ -1735,7 +1860,6 @@ class TestModifyReaction(unittest.TestCase):
         self.assertEqual(GibbsEnergy.query.filter_by(id=gibbs_energy_id).first().standard_dg, std_gibbs_energy)
 
     def test_modify_reaction_change_all(self):
-
         reaction_name = 'phosphofructokinase'
         reaction_acronym = 'PFK'
         reaction_grasp_id = 'PFK1'
@@ -1799,7 +1923,6 @@ class TestModifyReaction(unittest.TestCase):
         self.assertEqual(reaction.enzyme_reaction_organisms.all()[1].organism_id, 1)
         self.assertEqual(reaction.enzyme_reaction_organisms.all()[1].enzyme_id, 2)
 
-
         reaction_name = 'phosphofructokinase'
         reaction_acronym = 'PFK'
         reaction_grasp_id = 'PFK1'
@@ -1829,28 +1952,28 @@ class TestModifyReaction(unittest.TestCase):
         comments = ''
 
         response = self.client.post('/modify_reaction/' + reaction_acronym, data=dict(
-                                    name=reaction_name,
-                                    acronym=reaction_acronym,
-                                    grasp_id=reaction_grasp_id,
-                                    reaction_string=reaction_string,
-                                    bigg_id=bigg_id,
-                                    kegg_id=kegg_id,
-                                    metanetx_id=metanetx_id,
-                                    compartment=compartment,
-                                    organism=organism,
-                                    models=models,
-                                    enzymes=enzymes,
-                                    mechanism=mechanism,
-                                    mechanism_references=mechanism_references,
-                                    mechanism_evidence_level=mechanism_evidence_level,
-                                    subs_binding_order=subs_binding_order,
-                                    prod_release_order=prod_release_order,
-                                    std_gibbs_energy=std_gibbs_energy,
-                                    std_gibbs_energy_std=std_gibbs_energy_std,
-                                    std_gibbs_energy_ph=std_gibbs_energy_ph,
-                                    std_gibbs_energy_ionic_strength=std_gibbs_energy_ionic_strength,
-                                    std_gibbs_energy_references=std_gibbs_energy_references,
-                                    comments=comments), follow_redirects=True, query_string={'data_form': data_form})
+            name=reaction_name,
+            acronym=reaction_acronym,
+            grasp_id=reaction_grasp_id,
+            reaction_string=reaction_string,
+            bigg_id=bigg_id,
+            kegg_id=kegg_id,
+            metanetx_id=metanetx_id,
+            compartment=compartment,
+            organism=organism,
+            models=models,
+            enzymes=enzymes,
+            mechanism=mechanism,
+            mechanism_references=mechanism_references,
+            mechanism_evidence_level=mechanism_evidence_level,
+            subs_binding_order=subs_binding_order,
+            prod_release_order=prod_release_order,
+            std_gibbs_energy=std_gibbs_energy,
+            std_gibbs_energy_std=std_gibbs_energy_std,
+            std_gibbs_energy_ph=std_gibbs_energy_ph,
+            std_gibbs_energy_ionic_strength=std_gibbs_energy_ionic_strength,
+            std_gibbs_energy_references=std_gibbs_energy_references,
+            comments=comments), follow_redirects=True, query_string={'data_form': data_form})
 
         self.assertEqual(response.status_code, 200)
         self.assertTrue(b'<title>\n    See reaction - Kinetics DB \n</title>' in response.data)
@@ -1891,7 +2014,6 @@ class TestModifyReaction(unittest.TestCase):
                          'https://doi.org/10.1093/bioinformatics/bty9410')
 
     def test_modify_reaction_change_all_organism(self):
-
         reaction_name = 'phosphofructokinase'
         reaction_acronym = 'PFK'
         reaction_grasp_id = 'PFK1'
@@ -1947,7 +2069,6 @@ class TestModifyReaction(unittest.TestCase):
         self.assertEqual(reaction.metabolites.count(), 4)
         self.assertEqual(reaction.gibbs_energy_reaction_models.count(), 2)
 
-
         reaction_name = 'phosphofructokinase'
         reaction_acronym = 'PFK'
         reaction_grasp_id = 'PFK1'
@@ -1977,28 +2098,28 @@ class TestModifyReaction(unittest.TestCase):
         comments = ''
 
         response = self.client.post('/modify_reaction/' + reaction_acronym, data=dict(
-                                    name=reaction_name,
-                                    acronym=reaction_acronym,
-                                    grasp_id=reaction_grasp_id,
-                                    reaction_string=reaction_string,
-                                    bigg_id=bigg_id,
-                                    kegg_id=kegg_id,
-                                    metanetx_id=metanetx_id,
-                                    compartment=compartment,
-                                    organism=organism,
-                                    models=models,
-                                    enzymes=enzymes,
-                                    mechanism=mechanism,
-                                    mechanism_references=mechanism_references,
-                                    mechanism_evidence_level=mechanism_evidence_level,
-                                    subs_binding_order=subs_binding_order,
-                                    prod_release_order=prod_release_order,
-                                    std_gibbs_energy=std_gibbs_energy,
-                                    std_gibbs_energy_std=std_gibbs_energy_std,
-                                    std_gibbs_energy_ph=std_gibbs_energy_ph,
-                                    std_gibbs_energy_ionic_strength=std_gibbs_energy_ionic_strength,
-                                    std_gibbs_energy_references=std_gibbs_energy_references,
-                                    comments=comments), follow_redirects=True, query_string={'data_form': data_form})
+            name=reaction_name,
+            acronym=reaction_acronym,
+            grasp_id=reaction_grasp_id,
+            reaction_string=reaction_string,
+            bigg_id=bigg_id,
+            kegg_id=kegg_id,
+            metanetx_id=metanetx_id,
+            compartment=compartment,
+            organism=organism,
+            models=models,
+            enzymes=enzymes,
+            mechanism=mechanism,
+            mechanism_references=mechanism_references,
+            mechanism_evidence_level=mechanism_evidence_level,
+            subs_binding_order=subs_binding_order,
+            prod_release_order=prod_release_order,
+            std_gibbs_energy=std_gibbs_energy,
+            std_gibbs_energy_std=std_gibbs_energy_std,
+            std_gibbs_energy_ph=std_gibbs_energy_ph,
+            std_gibbs_energy_ionic_strength=std_gibbs_energy_ionic_strength,
+            std_gibbs_energy_references=std_gibbs_energy_references,
+            comments=comments), follow_redirects=True, query_string={'data_form': data_form})
 
         self.assertEqual(response.status_code, 200)
         self.assertTrue(b'<title>\n    See reaction - Kinetics DB \n</title>' in response.data)
