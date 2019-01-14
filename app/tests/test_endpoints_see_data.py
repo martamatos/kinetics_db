@@ -177,6 +177,28 @@ class TestSeeEnzymeMiscInfo(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
 
 
+class TestSeeMechanism(unittest.TestCase):
+    def setUp(self):
+        self.app = create_app(TestConfig)
+        self.client = self.app.test_client()
+        self.app_context = self.app.app_context()
+        self.app_context.push()
+        db.create_all()
+
+        populate_db('see_metabolite', self.client)
+
+    def tearDown(self):
+        db.session.remove()
+        db.drop_all()
+        self.app_context.pop()
+
+    def test_see_mechanim_list(self):
+        response = self.client.get('/see_mechanism_list', follow_redirects=True)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(b'<title>\n    See mechanisms - Kinetics DB \n</title>' in response.data)
+
+
 class TestSeeMetabolite(unittest.TestCase):
     def setUp(self):
         self.app = create_app(TestConfig)

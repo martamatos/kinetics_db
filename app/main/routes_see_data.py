@@ -16,7 +16,7 @@ from app.models import Compartment, Enzyme, EnzymeReactionOrganism, EnzymeReacti
 def see_enzyme_list():
     tab_status = {"enzymes": "active", "metabolites": "#", "models": "#", "organisms": "#", "reactions": "#",
                   "enzyme_inhibitors:": "#", "enzyme_activators:": "#", "enzyme_effectors:": "#",
-                  "enzyme_misc_info:": "#", "model_assumptions": "#"}
+                  "enzyme_misc_info:": "#", "model_assumptions": "#", "mechanisms": "#"}
     header = Markup("<th>Name</th> \
                     <th>Acronym</th> \
                     <th>Isoenzyme</th> \
@@ -109,7 +109,7 @@ def see_enzyme(isoenzyme):
 def see_enzyme_inhibitors_list():
     tab_status = {"enzymes": "#", "metabolites": "#", "models": "#", "organisms": "#", "reactions": "#",
                   "enzyme_inhibitors:": "active", "enzyme_activators:": "#", "enzyme_effectors:": "#",
-                  "enzyme_misc_info:": "#", "model_assumptions": "#"}
+                  "enzyme_misc_info:": "#", "model_assumptions": "#", "mechanisms": "#"}
     header = Markup("<th>ID</th> \
                     <th>Inhibitor</th> \
                     <th>Inhibition type</th> \
@@ -168,7 +168,7 @@ def see_enzyme_inhibitor(inhibitor_id):
 def see_enzyme_activators_list():
     tab_status = {"enzymes": "#", "metabolites": "#", "models": "#", "organisms": "#", "reactions": "#",
                   "enzyme_inhibitors:": "#", "enzyme_activators:": "active", "enzyme_effectors:": "#",
-                  "enzyme_misc_info:": "#", "model_assumptions": "#"}
+                  "enzyme_misc_info:": "#", "model_assumptions": "#", "mechanisms": "#"}
     header = Markup("<th>ID</th> \
                     <th>Activator</th> \
                     <th>Enzyme</th> \
@@ -223,7 +223,7 @@ def see_enzyme_activator(activator_id):
 def see_enzyme_effectors_list():
     tab_status = {"enzymes": "#", "metabolites": "#", "models": "#", "organisms": "#", "reactions": "#",
                   "enzyme_inhibitors:": "#", "enzyme_activators:": "#", "enzyme_effectors:": "active",
-                  "enzyme_misc_info:": "#", "model_assumptions": "#"}
+                  "enzyme_misc_info:": "#", "model_assumptions": "#", "mechanisms": "#"}
     header = Markup("<th>ID</th> \
                     <th>Effector</th> \
                     <th>Type</th> \
@@ -283,7 +283,7 @@ def see_enzyme_effector(effector_id):
 def see_enzyme_misc_info_list():
     tab_status = {"enzymes": "#", "metabolites": "#", "models": "#", "organisms": "#", "reactions": "#",
                   "enzyme_inhibitors:": "#", "enzyme_activators:": "#", "enzyme_effectors:": "#",
-                  "enzyme_misc_info:": "active", "model_assumptions": "#"}
+                  "enzyme_misc_info:": "active", "model_assumptions": "#", "mechanisms": "#"}
     header = Markup("<th>ID</th> \
                     <th>Topic</th> \
                     <th>Enzyme</th> \
@@ -338,7 +338,7 @@ def see_enzyme_misc_info(misc_info_id):
 def see_gene_list():
     tab_status = {"enzymes": "#", "metabolites": "#", "models": "active", "organisms": "#", "reactions": "#",
                   "enzyme_inhibitors:": "#", "enzyme_activators:": "#", "enzyme_effectors:": "#",
-                  "enzyme_misc_info:": "#", "model_assumptions": "#"}
+                  "enzyme_misc_info:": "#", "model_assumptions": "#", "mechanisms": "#"}
     header = ''
 
     page = request.args.get('page', 1, type=int)
@@ -353,12 +353,34 @@ def see_gene_list():
                            next_url=next_url, prev_url=prev_url)
 
 
+@bp.route('/see_mechanism_list')
+@login_required
+def see_mechanism_list():
+    tab_status = {"enzymes": "#", "metabolites": "#", "models": "#", "organisms": "#", "reactions": "#",
+                  "enzyme_inhibitors:": "#", "enzyme_activators:": "#", "enzyme_effectors:": "#",
+                  "enzyme_misc_info:": "#", "model_assumptions": "#", "mechanisms": "active"}
+    header = Markup("<th>ID</th> \
+                    <th>Name</th> \
+                    <th>Image</th>")
+
+    page = request.args.get('page', 1, type=int)
+    mechanisms = Mechanism.query.order_by(Mechanism.id.asc()).paginate(
+        page, current_app.config['POSTS_PER_PAGE'], False)
+    next_url = url_for('main.see_mechanism_list', page=mechanisms.next_num) \
+        if mechanisms.has_next else None
+    prev_url = url_for('main.see_mechanism_list', page=mechanisms.prev_num) \
+        if mechanisms.has_prev else None
+    return render_template("see_data.html", title='See mechanisms', data=mechanisms.items,
+                           data_type='mechanism', tab_status=tab_status, header=header,
+                           next_url=next_url, prev_url=prev_url)
+
+
 @bp.route('/see_metabolite_list')
 @login_required
 def see_metabolite_list():
     tab_status = {"enzymes": "#", "metabolites": "active", "models": "#", "organisms": "#", "reactions": "#",
                   "enzyme_inhibitors:": "#", "enzyme_activators:": "#", "enzyme_effectors:": "#",
-                  "enzyme_misc_info:": "#", "model_assumptions": "#"}
+                  "enzyme_misc_info:": "#", "model_assumptions": "#", "mechanisms": "#"}
     header = Markup("<th>GRASP ID</th> \
                     <th>Name</th> \
                     <th>Bigg ID</th> \
@@ -413,7 +435,7 @@ def see_metabolite(grasp_id):
 def see_model_list():
     tab_status = {"enzymes": "#", "metabolites": "#", "models": "active", "organisms": "#", "reactions": "#",
                   "enzyme_inhibitors:": "#", "enzyme_activators:": "#", "enzyme_effectors:": "#",
-                  "enzyme_misc_info:": "#", "model_assumptions": "#"}
+                  "enzyme_misc_info:": "#", "model_assumptions": "#", "mechanisms": "#"}
     header = Markup("<th>Name</th> \
                     <th>Organism</th> \
                     <th>Strain</th>")
@@ -488,7 +510,7 @@ def see_model(model_name):
 def see_model_assumptions_list():
     tab_status = {"enzymes": "#", "metabolites": "#", "models": "#", "organisms": "#", "reactions": "#",
                   "enzyme_inhibitors:": "#", "enzyme_activators:": "#", "enzyme_effectors:": "#",
-                  "enzyme_misc_info:": "#", "model_assumptions": "active"}
+                  "enzyme_misc_info:": "#", "model_assumptions": "active", "mechanisms": "#"}
 
     header = Markup("<th>ID</th> \
                     <th>Assumption</th> \
@@ -536,7 +558,7 @@ def see_model_assumption(model_assumption_id):
 def see_organism_list():
     tab_status = {"enzymes": "#", "metabolites": "#", "models": "#", "organisms": "active", "reactions": "#",
                   "enzyme_inhibitors:": "#", "enzyme_activators:": "#", "enzyme_effectors:": "#",
-                  "enzyme_misc_info:": "#", "model_assumptions": "#"}
+                  "enzyme_misc_info:": "#", "model_assumptions": "#", "mechanisms": "#"}
     header = Markup("<th>Name</th>")
 
     page = request.args.get('page', 1, type=int)
@@ -576,7 +598,7 @@ def see_organism(organism_name):
 def see_reaction_list():
     tab_status = {"enzymes": "#", "metabolites": "#", "models": "#", "organisms": "#", "reactions": "active",
                   "enzyme_inhibitors:": "#", "enzyme_activators:": "#", "enzyme_effectors:": "#",
-                  "enzyme_misc_info:": "#", "model_assumptions": "#"}
+                  "enzyme_misc_info:": "#", "model_assumptions": "#", "mechanisms": "#"}
     header = Markup("<th>Name</th> \
                     <th>Acronym</th> \
                     <th>Reaction</th> \

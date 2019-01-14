@@ -373,8 +373,8 @@ def load_mechanisms():
 
                       ('Other', '')]
 
-    for mech_name in mechanism_list:
-        mechanism = Mechanism(name=mech_name)
+    for mech_name, image_name in mechanism_list:
+        mechanism = Mechanism(name=mech_name, image_name=image_name)
         db.session.add(mechanism)
     db.session.commit()
 

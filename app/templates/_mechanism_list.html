@@ -1,0 +1,14 @@
+<td>
+    {{ data_point.id }}
+</td>
+
+<td>
+    {{ data_point.name }}
+</td>
+
+{% if data_point.image_name %}
+<td>
+     <img src="static/mechanism_images/{{ data_point.image_name }}.png" alt="{{ data_point.image_name }}">
+</td>
+
+{% endif %}
