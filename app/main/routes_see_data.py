@@ -404,7 +404,7 @@ def see_metabolite(grasp_id):
         return redirect(url_for('main.modify_metabolite', grasp_id=metabolite.grasp_id, title='Modify metabolite'))
 
     return render_template("see_data_element.html", title='See metabolite', data_name=metabolite,
-                           data_type='metabolite',
+                           data_type='metabolite', form=form,
                            data_list=data, data_list_nested=data_nested)
 
 
