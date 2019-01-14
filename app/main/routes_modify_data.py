@@ -542,7 +542,9 @@ def modify_metabolite(grasp_id):
     metabolite = Metabolite.query.filter_by(grasp_id=grasp_id).first()
 
     chebi_id_list = [chebi.chebi_id for chebi in metabolite.chebis]
+    chebi_id_list = chebi_id_list if chebi_id_list else ''
     inchi_list = [chebi.inchi for chebi in metabolite.chebis]
+    inchi_list = inchi_list if inchi_list else ''
 
     data_form = dict(grasp_id=metabolite.grasp_id,
                      name=metabolite.name,
