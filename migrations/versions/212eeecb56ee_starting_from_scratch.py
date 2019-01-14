@@ -1,8 +1,8 @@
-"""starting from scratch after setting up load_initial_data
+"""starting from scratch
 
-Revision ID: f39fa0a543cb
+Revision ID: 212eeecb56ee
 Revises: 
-Create Date: 2018-12-16 12:43:25.544088
+Create Date: 2019-01-14 16:23:08.000740
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = 'f39fa0a543cb'
+revision = '212eeecb56ee'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -45,7 +45,7 @@ def upgrade():
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
     sa.Column('name', sa.String(), nullable=True),
     sa.Column('acronym', sa.String(), nullable=True),
-    sa.Column('isoenzyme', sa.String(), nullable=True),
+    sa.Column('isoenzyme', sa.String(), nullable=False),
     sa.Column('ec_number', sa.String(), nullable=True),
     sa.Column('timestamp', sa.DateTime(), nullable=True),
     sa.PrimaryKeyConstraint('id'),
@@ -54,8 +54,7 @@ def upgrade():
     op.create_index(op.f('ix_enzyme_timestamp'), 'enzyme', ['timestamp'], unique=False)
     op.create_table('evidence_level',
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
-    sa.Column('name', sa.String(), nullable=True),
-    sa.Column('description', sa.Text(), nullable=True),
+    sa.Column('description', sa.String(), nullable=False),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_table('gene',
@@ -76,7 +75,8 @@ def upgrade():
     )
     op.create_table('mechanism',
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
-    sa.Column('name', sa.String(), nullable=True),
+    sa.Column('name', sa.String(), nullable=False),
+    sa.Column('image_name', sa.String(), nullable=True),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_table('metabolite',
@@ -132,9 +132,9 @@ def upgrade():
     )
     op.create_table('enzyme_organism',
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
-    sa.Column('enzyme_id', sa.Integer(), nullable=True),
-    sa.Column('organism_id', sa.Integer(), nullable=True),
-    sa.Column('uniprot_id', sa.String(), nullable=True),
+    sa.Column('enzyme_id', sa.Integer(), nullable=False),
+    sa.Column('organism_id', sa.Integer(), nullable=False),
+    sa.Column('uniprot_id', sa.String(), nullable=False),
     sa.Column('n_active_sites', sa.Integer(), nullable=True),
     sa.ForeignKeyConstraint(['enzyme_id'], ['enzyme.id'], ),
     sa.ForeignKeyConstraint(['organism_id'], ['organism.id'], ),
@@ -143,8 +143,8 @@ def upgrade():
     )
     op.create_table('enzyme_structure',
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
-    sa.Column('enzyme_id', sa.Integer(), nullable=True),
-    sa.Column('organism_id', sa.Integer(), nullable=True),
+    sa.Column('enzyme_id', sa.Integer(), nullable=False),
+    sa.Column('organism_id', sa.Integer(), nullable=False),
     sa.Column('pdb_id', sa.String(), nullable=True),
     sa.Column('strain', sa.String(), nullable=True),
     sa.ForeignKeyConstraint(['enzyme_id'], ['enzyme.id'], ),
@@ -218,10 +218,10 @@ def upgrade():
     )
     op.create_index(op.f('ix_reference_timestamp'), 'reference', ['timestamp'], unique=False)
     op.create_table('enzyme_reaction_organism',
-    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
-    sa.Column('enzyme_id', sa.Integer(), nullable=True),
-    sa.Column('reaction_id', sa.Integer(), nullable=True),
-    sa.Column('organism_id', sa.Integer(), nullable=True),
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('enzyme_id', sa.Integer(), nullable=False),
+    sa.Column('reaction_id', sa.Integer(), nullable=False),
+    sa.Column('organism_id', sa.Integer(), nullable=False),
     sa.Column('mechanism_id', sa.Integer(), nullable=True),
     sa.Column('mech_evidence_level_id', sa.Integer(), nullable=True),
     sa.Column('grasp_id', sa.String(), nullable=True),
@@ -233,13 +233,14 @@ def upgrade():
     sa.ForeignKeyConstraint(['mechanism_id'], ['mechanism.id'], ),
     sa.ForeignKeyConstraint(['organism_id'], ['organism.id'], ),
     sa.ForeignKeyConstraint(['reaction_id'], ['reaction.id'], ),
-    sa.PrimaryKeyConstraint('id')
+    sa.PrimaryKeyConstraint('enzyme_id', 'reaction_id', 'organism_id'),
+    sa.UniqueConstraint('id')
     )
     op.create_table('gibbs_energy_reaction_model',
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
-    sa.Column('gibbs_energy_id', sa.Integer(), nullable=True),
-    sa.Column('model_id', sa.Integer(), nullable=True),
-    sa.Column('reaction_id', sa.Integer(), nullable=True),
+    sa.Column('gibbs_energy_id', sa.Integer(), nullable=False),
+    sa.Column('model_id', sa.Integer(), nullable=False),
+    sa.Column('reaction_id', sa.Integer(), nullable=False),
     sa.ForeignKeyConstraint(['gibbs_energy_id'], ['gibbs_energy.id'], ),
     sa.ForeignKeyConstraint(['model_id'], ['model.id'], ),
     sa.ForeignKeyConstraint(['reaction_id'], ['reaction.id'], ),

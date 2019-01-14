@@ -93,7 +93,8 @@ def add_enzyme_inhibition():
                                                              organism_id=form.organism.data.id).first()
 
         if not enz_rxn_org:
-            enz_rxn_org = EnzymeReactionOrganism(enzyme_id=form.enzyme.data.id,
+            enz_rxn_org = EnzymeReactionOrganism(id=EnzymeReactionOrganism.query.count()+1,
+                                                 enzyme_id=form.enzyme.data.id,
                                                  reaction_id=form.reaction.data.id,
                                                  organism_id=form.organism.data.id)
             db.session.add(enz_rxn_org)
@@ -146,7 +147,8 @@ def add_enzyme_activation():
                                                              organism_id=form.organism.data.id).first()
 
         if not enz_rxn_org:
-            enz_rxn_org = EnzymeReactionOrganism(enzyme_id=form.enzyme.data.id,
+            enz_rxn_org = EnzymeReactionOrganism(id=EnzymeReactionOrganism.query.count()+1,
+                                                 enzyme_id=form.enzyme.data.id,
                                                  reaction_id=form.reaction.data.id,
                                                  organism_id=form.organism.data.id)
             db.session.add(enz_rxn_org)
@@ -158,6 +160,7 @@ def add_enzyme_activation():
                                                       evidence_level_id=activation_evidence_level_id,
                                                       comments=form.comments.data)
         db.session.add(enz_rxn_activation)
+        db.session.commit()
 
         if form.models.data:
             for model in form.models.data:
@@ -196,7 +199,8 @@ def add_enzyme_effector():
                                                              organism_id=form.organism.data.id).first()
 
         if not enz_rxn_org:
-            enz_rxn_org = EnzymeReactionOrganism(enzyme_id=form.enzyme.data.id,
+            enz_rxn_org = EnzymeReactionOrganism(id=EnzymeReactionOrganism.query.count()+1,
+                                                 enzyme_id=form.enzyme.data.id,
                                                  reaction_id=form.reaction.data.id,
                                                  organism_id=form.organism.data.id)
             db.session.add(enz_rxn_org)
@@ -239,7 +243,8 @@ def add_enzyme_misc_info():
                                                              reaction_id=form.reaction.data.id,
                                                              organism_id=form.organism.data.id).first()
         if not enz_rxn_org:
-            enz_rxn_org = EnzymeReactionOrganism(enzyme_id=form.enzyme.data.id,
+            enz_rxn_org = EnzymeReactionOrganism(id=EnzymeReactionOrganism.query.count()+1,
+                                                 enzyme_id=form.enzyme.data.id,
                                                  reaction_id=form.reaction.data.id,
                                                  organism_id=form.organism.data.id)
             db.session.add(enz_rxn_org)

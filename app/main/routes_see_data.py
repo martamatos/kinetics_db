@@ -443,7 +443,8 @@ def see_model(model_name):
     data.append({'field_name': 'Strain', 'data': model.strain})
     data.append({'field_name': 'Comments', 'data': model.comments})
 
-    assumptions = [assumption for assumption in model.model_assumptions]
+    assumptions = [str(assumption) for assumption in model.model_assumptions]
+    print(assumptions)
     data_nested.append({'field_name': 'Assumptions', 'data': [', '.join(assumptions)] if assumptions else ['NA']})
 
     # reaction_ids = [enz_rxn_org.reaction_id for enz_rxn_org in model.enzyme_reaction_organisms]
@@ -515,7 +516,7 @@ def see_model_assumption(model_assumption_id):
 
     data.append({'field_name': 'Assumption', 'data': model_assumption.assumption})
     data.append({'field_name': 'Description', 'data': model_assumption.description})
-    data.append({'field_name': 'Evidence level', 'data': model_assumption.evidence.name})
+    data.append({'field_name': 'Evidence level', 'data': model_assumption.evidence})
     data.append({'field_name': 'Included in model', 'data': model_assumption.included_in_model})
     data.append({'field_name': 'Comments', 'data': model_assumption.comments})
 

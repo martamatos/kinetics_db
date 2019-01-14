@@ -126,7 +126,7 @@ class TestLoadOrganisms(unittest.TestCase):
 
     def test_load_organisms(self):
         load_organisms()
-        self.assertEqual(Organism.query.count(), 2)
+        self.assertEqual(Organism.query.count(), 3)
 
 
 class TestLoadReactions(unittest.TestCase):

@@ -1550,22 +1550,15 @@ class TestAddModel(unittest.TestCase):
 
         self.assertEqual(EnzymeReactionOrganism.query.count(), 2)
 
-        print(enz_rxn_orgs)
-        print('ssss---')
         response = self.client.post('/add_model', data=dict(
             name=model_name,
             organism_name=organism_name,
             strain=strain,
             comments=comments), follow_redirects=True)
 
-        print(response.data)
         self.assertEqual(response.status_code, 200)
         self.assertTrue(b'<title>\n    See models - Kinetics DB \n</title>' in response.data)
         self.assertTrue(b'Your model is now live!' in response.data)
-
-        print(Model().query.all()[0].enzyme_reaction_organisms.count())
-        print(Model().query.all()[1].enzyme_reaction_organisms.count())
-        print(Model().query.all()[2].enzyme_reaction_organisms.count())
 
         self.assertEqual(Model().query.all()[2].name, model_name)
         self.assertEqual(Model().query.all()[2].strain, strain)

@@ -4,6 +4,9 @@
 <td>
     {{ data_point.assumption }}
 </td>
+
+{% if data_point.model %}
 <td>
     {{ data_point.model.name }}
 </td>
+{% endif %}

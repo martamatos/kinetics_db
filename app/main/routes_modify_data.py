@@ -759,7 +759,7 @@ def modify_reaction(reaction_acronym):
     if enzyme_rxn_org.mechanism:
         data_form['mechanism'] = enzyme_rxn_org.mechanism.name
         data_form['mechanism_references'] = mech_references
-        data_form['mechanism_evidence_level'] = enzyme_rxn_org.mech_evidence.name
+        data_form['mechanism_evidence_level'] = enzyme_rxn_org.mech_evidence
         data_form['subs_binding_order'] = enzyme_rxn_org.subs_binding_order
         data_form['prod_release_order'] = enzyme_rxn_org.prod_release_order
 

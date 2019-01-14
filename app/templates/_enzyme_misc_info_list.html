@@ -4,6 +4,8 @@
 <td>
     {{ data_point.topic }}
 </td>
+
+{% if data_point.enzyme_reaction_organism %}
 <td>
     {{ data_point.enzyme_reaction_organism.enzyme }}
 </td>
@@ -13,3 +15,4 @@
 <td>
     {{ data_point.enzyme_reaction_organism.organism }}
 </td>
+{% endif %}

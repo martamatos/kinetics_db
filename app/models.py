@@ -956,7 +956,8 @@ class EnzymeStructure(db.Model):
 class Mechanism(db.Model):
     __tablename__ = 'mechanism'
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    name = db.Column(db.String)
+    name = db.Column(db.String,  nullable=False)
+    image_name = db.Column(db.String)
     enzyme_reaction_organisms = db.relationship('EnzymeReactionOrganism', back_populates='mechanism', lazy='dynamic')
 
     def __repr__(self):
@@ -990,8 +991,8 @@ class EnzymeOrganism(db.Model):
 class EvidenceLevel(db.Model):
     __tablename__ = 'evidence_level'
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    name = db.Column(db.String)
-    description = db.Column(db.Text)
+    description = db.Column(db.String, nullable=False)
+
     enzyme_reaction_inhibitors = db.relationship('EnzymeReactionInhibition', back_populates='evidence', lazy='dynamic')
     enzyme_reaction_activators = db.relationship('EnzymeReactionActivation', back_populates='evidence', lazy='dynamic')
     enzyme_reaction_effectors = db.relationship('EnzymeReactionEffector', back_populates='evidence', lazy='dynamic')
@@ -1000,7 +1001,7 @@ class EvidenceLevel(db.Model):
     enz_mechanisms = db.relationship('EnzymeReactionOrganism', back_populates='mech_evidence', lazy='dynamic')
 
     def __repr__(self):
-        return str(self.name)
+        return ''.join([str(self.id), ': ', str(self.description)])
 
     def add_enzyme_reaction_inhibitor(self, enzyme_reaction_inhibitor):
         if not self.is_evidence_for_inhib(enzyme_reaction_inhibitor):
@@ -1082,7 +1083,7 @@ class EvidenceLevel(db.Model):
 
 class EnzymeReactionOrganism(db.Model):
     __tablename__ = 'enzyme_reaction_organism'
-    id = db.Column(db.Integer, nullable=False)
+    id = db.Column(db.Integer, nullable=False, unique=True)
     enzyme_id = db.Column(db.Integer, db.ForeignKey(Enzyme.id), primary_key=True)
     reaction_id = db.Column(db.Integer, db.ForeignKey(Reaction.id), primary_key=True)
     organism_id = db.Column(db.Integer, db.ForeignKey(Organism.id), primary_key=True)
@@ -1226,16 +1227,21 @@ class EnzymeReactionInhibition(db.Model):
         primaryjoin=(enzyme_reaction_inhibition_model.c.inhibition_id == id),
         back_populates='enzyme_reaction_inhibitions', lazy='dynamic')
 
-
     def __repr__(self):
-        return ''.join(['Inhibitor: ', str(self.inhibitor_met), ', Affected metabolite: ', str(self.affected_met),
-                        ', Inhibition type: ', str(self.inhibition_type),  ', Inhibition constant: ', str(round(self.inhibition_constant, 6)),
-                        ', Evidence level: ', str(self.evidence)])
+        if self.inhibitor_met:
+            return ''.join(['Inhibitor: ', str(self.inhibitor_met), ', Affected metabolite: ', str(self.affected_met),
+                            ', Inhibition type: ', str(self.inhibition_type),  ', Inhibition constant: ', str(round(self.inhibition_constant, 6)),
+                            ', Evidence level: ', str(self.evidence)])
+        else:
+            return ''
 
     def __str__(self):
-        return ''.join(['Inhibitor: ', str(self.inhibitor_met), ', Affected metabolite: ', str(self.affected_met),
-                        ', Inhibition type: ', str(self.inhibition_type),  ', Inhibition constant: ', str(round(self.inhibition_constant, 6)),
-                        ', Evidence level: ', str(self.evidence)])
+        if self.inhibitor_met:
+            return ''.join(['Inhibitor: ', str(self.inhibitor_met), ', Affected metabolite: ', str(self.affected_met),
+                            ', Inhibition type: ', str(self.inhibition_type),  ', Inhibition constant: ', str(round(self.inhibition_constant, 6)),
+                            ', Evidence level: ', str(self.evidence)])
+        else:
+            return ''
 
 
     def add_reference(self, reference):
@@ -1289,12 +1295,18 @@ class EnzymeReactionActivation(db.Model):
         back_populates='enzyme_reaction_activations', lazy='dynamic')
 
     def __repr__(self):
-        return ''.join(['Activator: ', str(self.activator_met),  ', Activation constant: ', str(round(self.activation_constant, 6)),
-                        ', Evidence level: ', str(self.evidence)])
+        if self.activator_met:
+            return ''.join(['Activator: ', str(self.activator_met),  ', Activation constant: ', str(round(self.activation_constant, 6)),
+                            ', Evidence level: ', str(self.evidence)])
+        else:
+            return ''
 
     def __str__(self):
-        return ''.join(['Activator: ', str(self.activator_met),  ', Activation constant: ', str(round(self.activation_constant, 6)),
-                        ', Evidence level: ', str(self.evidence)])
+        if self.activator_met:
+            return ''.join(['Activator: ', str(self.activator_met),  ', Activation constant: ', str(round(self.activation_constant, 6)),
+                            ', Evidence level: ', str(self.evidence)])
+        else:
+            return ''
 
 
     def add_reference(self, reference):
@@ -1349,12 +1361,18 @@ class EnzymeReactionEffector(db.Model):
 
 
     def __repr__(self):
-        return ''.join(['Effector: ', str(self.effector_met),  ', Effector type: ', str(self.effector_type),
-                        ', Evidence level: ', str(self.evidence)])
+        if self.effector_met:
+            return ''.join(['Effector: ', str(self.effector_met),  ', Effector type: ', str(self.effector_type),
+                            ', Evidence level: ', str(self.evidence)])
+        else:
+            return ''
 
     def __str__(self):
-        return ''.join(['Effector: ', str(self.effector_met),  ', Effector type: ', str(self.effector_type),
-                        ', Evidence level: ', str(self.evidence)])
+        if self.effector_met:
+            return ''.join(['Effector: ', str(self.effector_met),  ', Effector type: ', str(self.effector_type),
+                            ', Evidence level: ', str(self.evidence)])
+        else:
+            return ''
 
     def add_reference(self, reference):
         if not self.has_reference(reference):
@@ -1465,6 +1483,12 @@ class ModelAssumptions(db.Model):
         'Reference', secondary=reference_model_assumptions,
         primaryjoin=(reference_model_assumptions.c.model_assumptions_id == id),
         back_populates='model_assumptions', lazy='dynamic')
+
+    def __repr__(self):
+        return str(self.assumption)
+
+    def __str__(self):
+        return str(self.assumption)
 
     def add_reference(self, reference):
         if not self.has_reference(reference):

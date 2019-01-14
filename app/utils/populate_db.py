@@ -1,5 +1,7 @@
 from app import create_app, db
-from app.models import Compartment, Enzyme, EvidenceLevel, Mechanism, Metabolite, Model, Organism, Reaction, Reference, ReferenceType, EnzymeReactionOrganism
+from app.models import Compartment, Enzyme, EvidenceLevel, Mechanism, Metabolite, Model, Organism, Reaction, Reference, \
+    ReferenceType, EnzymeReactionOrganism, EnzymeReactionActivation, EnzymeReactionEffector, EnzymeReactionMiscInfo, \
+    EnzymeReactionInhibition, ModelAssumptions
 from app.utils.parsers import ReactionParser
 import re
 from config import Config
@@ -17,15 +19,16 @@ def add_compartments():
 
 
 def add_evidence_levels():
-    evidence_list = [('Literature 1', 'Got it from papers for the given organism'),
-                     ('Literature 2', 'Got it from papers of other organisms'),
-                     ('Predicted', 'Predicted by some algorithm'),
-                     ('Educated guess', '')]
+    evidence_list = [('Got it from papers for the given organism'),
+                     ('Got it from papers of other organisms'),
+                     ('Predicted by some algorithm'),
+                     ('Educated guess')]
 
-    for name, description in evidence_list:
-        evidence = EvidenceLevel(name=name, description=description)
+    for description in evidence_list:
+        evidence = EvidenceLevel(description=description)
         db.session.add(evidence)
     db.session.commit()
+
 
 def add_metabolite(client):
     grasp_id = '2pg'
@@ -427,3 +430,47 @@ def add_model_assumptions(client):
 
     assert response.status_code == 200
 
+
+def load_empty_entries():
+    enz_rxn_inhib = EnzymeReactionInhibition(comments='')
+    db.session.add(enz_rxn_inhib)
+
+    enz_rxn_activation = EnzymeReactionActivation(comments='')
+    db.session.add(enz_rxn_activation)
+
+    enz_rxn_effector = EnzymeReactionEffector(comments='')
+    db.session.add(enz_rxn_effector)
+
+    enz_rxn_misc_info = EnzymeReactionMiscInfo(topic='',
+                                               description='',
+                                               comments='')
+    db.session.add(enz_rxn_misc_info)
+
+    model_assumption = ModelAssumptions(assumption='',
+                                        description='',
+                                        comments='')
+    db.session.add(model_assumption)
+
+    db.session.commit()
+
+
+class LoadDataConfig(Config):
+    LOGIN_DISABLED = True
+    WTF_CSRF_ENABLED = False
+
+
+def main():
+    app = create_app(LoadDataConfig)
+    app_context = app.app_context()
+    app_context.push()
+    client = app.test_client()
+
+    #add_models()
+    #add_references()
+    #add_activations(client)
+    add_inhibitions(client)
+    add_effectors(client)
+    add_misc_infos(client)
+    add_model_assumptions(client)
+
+#main()

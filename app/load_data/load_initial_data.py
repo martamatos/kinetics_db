@@ -13,7 +13,8 @@ from app.load_data import COMPARTMENT_DATA_FILE, ECOLI_CORE_MODEL, METABOLITE_DA
     REACTION_EC_DATA_FILE, ENZYME_GENES_DATA_FILE
 from app.load_data.load_sbml_models import load_sbml_model, Flavor
 from app.models import Compartment, Enzyme, EnzymeGeneOrganism, Gene, Metabolite, Organism, Reaction, ReferenceType, \
-    EnzymeReactionOrganism
+    EnzymeReactionOrganism, EvidenceLevel, Model, Mechanism, EnzymeReactionInhibition, EnzymeReactionActivation, \
+    EnzymeReactionMiscInfo, EnzymeReactionEffector, ModelAssumptions
 from app.utils.misc import clear_data
 from config import Config
 
@@ -200,7 +201,7 @@ def load_organisms():
 
     :return: None
     """
-    organism_list = ['E. coli', 'S. cerevisiae']
+    organism_list = ['', 'E. coli', 'S. cerevisiae']
 
     for name in organism_list:
         organism = Organism(name=name)
@@ -308,7 +309,100 @@ def load_reference_types():
     db.session.commit()
 
 
-# TODO add evidence levels and mechanisms, add empty field to all tables
+def load_evidence_levels():
+    """
+    Adds evidence levels to the database.
+
+    :return: None
+    """
+    evidence_list = ['Solid, clear evidence found in one or more papers for this organism.',
+                     'Evidence found in papers but for other organisms',
+                     'Evidence found in papers for this organism but not very clear or conflicting.',
+                     'Prediction by a method/algorithm.',
+                     'Educated guess',
+                     'No evidence.']
+
+    for evidence_description in evidence_list:
+        evidence_db = EvidenceLevel(description=evidence_description)
+        db.session.add(evidence_db)
+
+    db.session.commit()
+
+
+def load_empty_model():
+    """
+    Adds empty model.
+
+    :return: None
+    """
+
+    model = Model(name='')
+    db.session.add(model)
+    db.session.commit()
+
+
+def load_mechanisms():
+    """
+    Adds the most common mechanisms (from Cleland's paper) to the mechanism table.
+
+    :return: None
+    """
+
+    mechanism_list = [('Uni Uni', ''),
+
+                      ('Ordered Bi Bi', 'Ordered_Bi_Bi'),
+                      ('Ordered Uni Bi', 'Ordered_Uni_Bi'),
+                      ('Ordered Bi Uni', ''),
+                      ('Ordered Ter Bi', 'Ordered_Ter_Bi'),
+                      ('Ordered Ter Ter', 'Ordered_Ter_Ter'),
+
+                      ('Random Bi Bi', 'Random_Bi_Bi'),
+                      ('Random Uni Bi', 'Random_Uni_Bi'),
+                      ('Random Bi Uni', ''),
+                      ('Random Ter Bi', ''),
+                      ('Random Ter Ter', ''),
+
+                      ('Ping Pong Bi Bi', 'PingPong_Bi_Bi'),
+                      ('Ping Pong Bi Uni Uni Uni', 'PingPong_Bi_Uni_Uni_Uni'),
+                      ('Ping Pong Uni Uni Bi Uni', 'PingPong_Uni_Uni_Bi_Uni'),
+                      ('Ping Pong Bi Uni Uni Bi', 'PingPong_Bi_Uni_Uni_Bi'),
+                      ('Ping Pong Bi Bi Uni Uni', 'PingPong_Bi_Bi_Uni_Uni'),
+                      ('Ping Pong Uni Bi Bi Uni', 'PingPong_Uni_Bi_Bi_Uni'),
+                      ('Ping Pong Uni Uni Bi Bi', 'PingPong_Uni_Uni_Bi_Bi'),
+                      ('Ping Pong Hexa-Uni', 'PingPong_Hexa_Uni'),
+
+                      ('Other', '')]
+
+    for mech_name in mechanism_list:
+        mechanism = Mechanism(name=mech_name)
+        db.session.add(mechanism)
+    db.session.commit()
+
+
+def load_empty_entries():
+    enz_rxn_inhib = EnzymeReactionInhibition(comments='')
+    db.session.add(enz_rxn_inhib)
+
+    enz_rxn_activation = EnzymeReactionActivation(comments='')
+    db.session.add(enz_rxn_activation)
+
+    enz_rxn_effector = EnzymeReactionEffector(comments='')
+    db.session.add(enz_rxn_effector)
+
+    enz_rxn_misc_info = EnzymeReactionMiscInfo(topic='',
+                                               description='',
+                                               comments='')
+    db.session.add(enz_rxn_misc_info)
+
+    model_assumption = ModelAssumptions(assumption='',
+                                        description='',
+                                        comments='')
+    db.session.add(model_assumption)
+
+    db.session.commit()
+
+
+# TODO add mechanisms, add empty field to all tables
 
 
 class LoadDataConfig(Config):
@@ -321,7 +415,7 @@ def main():
     app_context = app.app_context()
     app_context.push()
 
-    clear_data(db)
+    #clear_data(db)
 
     load_organisms()
 
@@ -335,3 +429,12 @@ def main():
     load_reference_types()
 
     load_enzyme_reaction_relation()
+
+    load_evidence_levels()
+
+    load_mechanisms()
+
+    load_empty_entries()
+
+#main()
+
