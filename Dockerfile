@@ -1,25 +1,26 @@
 FROM python:3.7-alpine
 
-RUN adduser -D microblog
+RUN adduser -D kinetics_db
 
-WORKDIR /home/mrama/kineticsDB/microblog
+WORKDIR /home/mrama/kineticsDB/kinetics_db
 COPY requirements.txt requirements.txt
 
 RUN apk update && \
- apk add --virtual .build-deps gcc musl-dev postgresql-dev libffi-dev 
+ apk add --virtual .build-deps gcc g++ musl-dev postgresql-dev libffi-dev 
 
 RUN pip install -r requirements.txt
 RUN pip install gunicorn
 
 COPY app app
 COPY migrations migrations
-COPY microblog.py config.py boot.sh ./
+COPY data data
+COPY kinetics_db.py config.py boot.sh ./
 RUN chmod +x boot.sh
 
-ENV FLASK_APP microblog.py
+ENV FLASK_APP kinetics_db.py
 
-RUN chown -R microblog:microblog ./
-USER microblog
+RUN chown -R kinetics_db:kinetics_db ./
+USER kinetics_db
 
 EXPOSE 5000
 ENTRYPOINT ["sh", "./boot.sh"]

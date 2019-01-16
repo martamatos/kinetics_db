@@ -1,0 +1,25 @@
+version: '3'
+
+services:
+
+  kinetics_db:
+    image: kinetics_db:15Jan2019
+    ports:
+     - "5000:5000"
+    env_file: ./kinetics_db/.env
+    depends_on:
+     - postgres
+    networks: 
+     default:
+    command: ./boot.sh
+
+  postgres:
+    image: postgres:latest
+    env_file: .env_postgres
+    ports:
+      - "5432:5432"
+    networks: 
+      - default
+    volumes:
+      - ./pgdata:/var/lib/postgresql/data
+
