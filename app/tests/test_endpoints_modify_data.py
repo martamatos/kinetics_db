@@ -596,7 +596,7 @@ class TestModifyEnzyme(unittest.TestCase):
                          strain=current_strain,
                          gene_names=current_gene_names)
 
-        self.assertEqual(Enzyme.query.count(), 2)
+        self.assertEqual(Enzyme.query.count(), 3)
         self.assertEqual(enzyme.enzyme_structures.count(), 2)
         self.assertEqual(enzyme.enzyme_organisms.count(), 2)
         self.assertEqual(enzyme.enzyme_reaction_organisms.count(), 1)
@@ -619,7 +619,7 @@ class TestModifyEnzyme(unittest.TestCase):
         self.assertTrue(b'<title>\n    See enzyme - Kinetics DB \n</title>' in response.data)
         self.assertTrue(b'Your enzyme has been modified' in response.data)
 
-        self.assertEqual(Enzyme.query.count(), 2)
+        self.assertEqual(Enzyme.query.count(), 3)
         self.assertEqual(enzyme.name, enzyme_name)
         self.assertEqual(enzyme.acronym, enzyme_acronym)
         self.assertEqual(enzyme.isoenzyme, isoenzyme)
@@ -656,7 +656,7 @@ class TestModifyEnzyme(unittest.TestCase):
                          strain=current_strain,
                          gene_names=current_gene_names)
 
-        self.assertEqual(Enzyme.query.count(), 2)
+        self.assertEqual(Enzyme.query.count(), 3)
         self.assertEqual(enzyme.enzyme_structures.count(), 2)
         self.assertEqual(enzyme.enzyme_organisms.count(), 2)
         self.assertEqual(enzyme.enzyme_reaction_organisms.count(), 1)
@@ -679,7 +679,7 @@ class TestModifyEnzyme(unittest.TestCase):
         self.assertTrue(b'<title>\n    See enzyme - Kinetics DB \n</title>' in response.data)
         self.assertTrue(b'Your enzyme has been modified' in response.data)
 
-        self.assertEqual(Enzyme.query.count(), 2)
+        self.assertEqual(Enzyme.query.count(), 3)
         self.assertEqual(enzyme.name, enzyme_name)
         self.assertEqual(enzyme.acronym, enzyme_acronym)
         self.assertEqual(enzyme.isoenzyme, isoenzyme)

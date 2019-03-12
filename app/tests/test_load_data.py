@@ -32,9 +32,9 @@ class TestLoadCompartments(unittest.TestCase):
         load_compartments()
 
         for compartment in Compartment.query.all():
-            print(compartment)
+            print(compartment.name, compartment.bigg_id)
 
-        self.assertEqual(Compartment.query.count(), 15)
+        self.assertEqual(Compartment.query.count(), 16)
 
 
 class TestLoadEnzymes(unittest.TestCase):
@@ -58,7 +58,7 @@ class TestLoadEnzymes(unittest.TestCase):
 
         succoas_complex = Enzyme.query.filter_by(isoenzyme='SUCOAS_complex').first()
         self.assertEqual(succoas_complex.enzyme_subunits.count(), 2)
-        self.assertEqual(Enzyme.query.count(), 30)
+        self.assertEqual(Enzyme.query.count(), 31)
 
 
 class TestLoadGenes(unittest.TestCase):
