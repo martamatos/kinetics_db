@@ -38,6 +38,12 @@ def load_compartments():
 
         db.session.add(compartment)
 
+    compartment = Compartment(name='imaginary',
+                              bigg_id='z',
+                              metanetx_id='')
+
+    db.session.add(compartment)
+
     db.session.commit()
 
 
@@ -64,6 +70,13 @@ def load_enzymes():
     if sucoas_complex and sucoas_a and sucoas_b:
         sucoas_complex.add_subunit(sucoas_a)
         sucoas_complex.add_subunit(sucoas_b)
+
+    ex_enzyme = ('Fake enzyme for exchange reactions', 'EX_enz', 'EX_enz', None)
+    enzyme = Enzyme(name=ex_enzyme[0],
+                    acronym=ex_enzyme[1],
+                    isoenzyme=ex_enzyme[2])
+
+    db.session.add(enzyme)
 
     db.session.commit()
 
@@ -281,9 +294,7 @@ def load_enzyme_reaction_relation():
         if data_df.loc[row, 'isoenzyme'] != 'SUCOASa' and data_df.loc[row, 'isoenzyme'] != 'SUCOASb':
             enzyme = Enzyme.query.filter_by(isoenzyme=data_df.loc[row, 'isoenzyme']).first()
             reaction = Reaction.query.filter_by(acronym=data_df.loc[row, 'reaction_acronym']).first()
-            print(enzyme)
-            print(reaction)
-            print('----')
+
             enzyme_reaction_organism = EnzymeReactionOrganism(id=id,
                                                               enzyme_id=enzyme.id,
                                                               reaction_id=reaction.id,
@@ -348,28 +359,28 @@ def load_mechanisms():
     :return: None
     """
 
-    mechanism_list = [('Uni Uni', ''),
+    mechanism_list = [('UniUni', ''),
 
-                      ('Ordered Bi Bi', 'Ordered_Bi_Bi'),
-                      ('Ordered Uni Bi', 'Ordered_Uni_Bi'),
-                      ('Ordered Bi Uni', ''),
-                      ('Ordered Ter Bi', 'Ordered_Ter_Bi'),
-                      ('Ordered Ter Ter', 'Ordered_Ter_Ter'),
+                      ('OrderedBiBi', 'Ordered_Bi_Bi'),
+                      ('OrderedUniBi', 'Ordered_Uni_Bi'),
+                      ('OrderedBiUni', ''),
+                      ('OrderedTerBi', 'Ordered_Ter_Bi'),
+                      ('OrderedTerTer', 'Ordered_Ter_Ter'),
 
-                      ('Random Bi Bi', 'Random_Bi_Bi'),
-                      ('Random Uni Bi', 'Random_Uni_Bi'),
-                      ('Random Bi Uni', ''),
-                      ('Random Ter Bi', ''),
-                      ('Random Ter Ter', ''),
+                      ('RandomBiBi', 'Random_Bi_Bi'),
+                      ('RandomUniBi', 'Random_Uni_Bi'),
+                      ('RandomBiUni', ''),
+                      ('RandomTerBi', ''),
+                      ('RandomTerTer', ''),
 
-                      ('Ping Pong Bi Bi', 'PingPong_Bi_Bi'),
-                      ('Ping Pong Bi Uni Uni Uni', 'PingPong_Bi_Uni_Uni_Uni'),
-                      ('Ping Pong Uni Uni Bi Uni', 'PingPong_Uni_Uni_Bi_Uni'),
-                      ('Ping Pong Bi Uni Uni Bi', 'PingPong_Bi_Uni_Uni_Bi'),
-                      ('Ping Pong Bi Bi Uni Uni', 'PingPong_Bi_Bi_Uni_Uni'),
-                      ('Ping Pong Uni Bi Bi Uni', 'PingPong_Uni_Bi_Bi_Uni'),
-                      ('Ping Pong Uni Uni Bi Bi', 'PingPong_Uni_Uni_Bi_Bi'),
-                      ('Ping Pong Hexa-Uni', 'PingPong_Hexa_Uni'),
+                      ('PingPongBiBi', 'PingPong_Bi_Bi'),
+                      ('PingPongBiUniUniUni', 'PingPong_Bi_Uni_Uni_Uni'),
+                      ('PingPongUniUniBiUni', 'PingPong_Uni_Uni_Bi_Uni'),
+                      ('PingPongBiUniUniBi', 'PingPong_Bi_Uni_Uni_Bi'),
+                      ('PingPongBiBiUniUni', 'PingPong_Bi_Bi_Uni_Uni'),
+                      ('PingPongUniBiBiUni', 'PingPong_Uni_Bi_Bi_Uni'),
+                      ('PingPongUniUniBiBi', 'PingPong_Uni_Uni_Bi_Bi'),
+                      ('PingPongHexaUni', 'PingPong_Hexa_Uni'),
 
                       ('Other', '')]
 
@@ -410,20 +421,52 @@ class LoadDataConfig(Config):
     WTF_CSRF_ENABLED = False
 
 
+def main2():
+    app = create_app(LoadDataConfig)
+    app_context = app.app_context()
+    app_context.push()
+
+    clear_data(db)
+
+    load_organisms()
+
+    load_compartments()
+    """
+    load_metabolites()
+    load_reactions()
+    """
+    load_enzymes()
+    """
+    load_genes()
+    """
+    load_reference_types()
+    """
+    load_enzyme_reaction_relation()
+    """
+    load_evidence_levels()
+
+    load_mechanisms()
+    """
+    load_empty_entries()"""
+
 def main():
     app = create_app(LoadDataConfig)
     app_context = app.app_context()
     app_context.push()
 
+    db.drop_all()
     #clear_data(db)
+    db.create_all()
 
     load_organisms()
 
     load_compartments()
+
     load_metabolites()
     load_reactions()
 
     load_enzymes()
+
     load_genes()
 
     load_reference_types()
@@ -436,5 +479,5 @@ def main():
 
     load_empty_entries()
 
-#main()
+main()
 
