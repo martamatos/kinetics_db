@@ -1,17 +1,24 @@
+import os
+
+from flask import current_app
 from flask import render_template, flash, redirect, url_for
 from flask_login import login_required
+from werkzeug.utils import secure_filename
 
 from app import db
+from app.load_data.import_grasp_model import get_model_name, get_model_stoichiometry, get_model_enzymes, get_model_subunits, \
+    get_model_mechanisms, get_model_inhibitors, get_model_activators, get_model_effectors, get_model_gibbs_energies
 from app.main import bp
 from app.main.forms import EnzymeForm, EnzymeActivationForm, EnzymeEffectorForm, EnzymeInhibitionForm, \
     EnzymeMiscInfoForm, GeneForm, ModelAssumptionsForm, ModelForm, OrganismForm, ReactionForm, ModelFormBase, \
-    MetaboliteForm
+    MetaboliteForm, UploadModelForm
 from app.main.utils import add_enzyme_structures, add_enzyme_organism, add_enzyme_genes, add_metabolites_to_reaction, \
-    add_gibbs_energy, add_mechanism_references, add_references, check_metabolite
+    add_gibbs_energy, add_references, check_metabolite, set_binding_release_order, \
+    add_enzyme_organism_subunits_only, add_effector
 from app.models import Compartment, Enzyme, EnzymeReactionOrganism, EnzymeReactionActivation, \
     EnzymeReactionEffector, EnzymeReactionInhibition, EnzymeReactionMiscInfo, EnzymeStructure, \
-    Gene, Metabolite, Model, ModelAssumptions, \
-    Organism, Reaction, ChebiIds
+    Gene, Metabolite, Model, ModelAssumptions, Mechanism, GibbsEnergy, \
+    Organism, Reaction, ChebiIds, GibbsEnergyReactionModel
 from app.utils.parsers import parse_input_list
 
 
@@ -114,9 +121,9 @@ def add_enzyme_inhibition():
                 enz_rxn_inhib.add_model(model)
 
         if form.references.data:
-            ref_db_list = add_references(form.references.data)
-            for ref_db in ref_db_list:
-                enz_rxn_inhib.add_reference(ref_db)
+            add_references(form.references.data, enz_rxn_inhib)
+            #for ref_db in ref_db_list:
+            #    enz_rxn_inhib.add_reference(ref_db)
 
         db.session.commit()
 
@@ -167,9 +174,9 @@ def add_enzyme_activation():
                 enz_rxn_activation.add_model(model)
 
         if form.references.data:
-            ref_db_list = add_references(form.references.data)
-            for ref_db in ref_db_list:
-                enz_rxn_activation.add_reference(ref_db)
+            add_references(form.references.data, enz_rxn_activation)
+            #for ref_db in ref_db_list:
+            #    enz_rxn_activation.add_reference(ref_db)
 
         db.session.commit()
 
@@ -218,9 +225,9 @@ def add_enzyme_effector():
                 enz_rxn_effector.add_model(model)
 
         if form.references.data:
-            ref_db_list = add_references(form.references.data)
-            for ref_db in ref_db_list:
-                enz_rxn_effector.add_reference(ref_db)
+            add_references(form.references.data, enz_rxn_effector)
+            #for ref_db in ref_db_list:
+            #    enz_rxn_effector.add_reference(ref_db)
 
         db.session.commit()
         flash('Your enzyme effector is now live!', 'success')
@@ -262,9 +269,9 @@ def add_enzyme_misc_info():
                 enz_rxn_misc_info.add_model(model)
 
         if form.references.data:
-            ref_db_list = add_references(form.references.data)
-            for ref_db in ref_db_list:
-                enz_rxn_misc_info.add_reference(ref_db)
+            add_references(form.references.data, enz_rxn_misc_info)
+            #for ref_db in ref_db_list:
+            #    enz_rxn_misc_info.add_reference(ref_db)
 
         db.session.commit()
 
@@ -393,9 +400,9 @@ def add_model_assumption():
         db.session.add(model_assumption)
 
         if form.references.data:
-            ref_db_list = add_references(form.references.data)
-            for ref_db in ref_db_list:
-                model_assumption.add_reference(ref_db)
+            add_references(form.references.data, model_assumption)
+            #for ref_db in ref_db_list:
+            #    model_assumption.add_reference(ref_db)
 
         db.session.commit()
 
@@ -439,24 +446,24 @@ def add_reaction():
 
     if form.validate_on_submit():
 
-        compartment_name = form.compartment.data.name if form.compartment.data else ''
+        compartment = form.compartment.data if form.compartment.data else None
         reaction = Reaction(name=form.name.data,
                             acronym=form.acronym.data,
                             metanetx_id=form.metanetx_id.data,
                             bigg_id=form.bigg_id.data,
                             kegg_id=form.kegg_id.data,
-                            compartment_name=compartment_name)
+                            compartment=compartment)
 
         db.session.add(reaction)
 
         add_metabolites_to_reaction(reaction, form.reaction_string.data)
 
-        if compartment_name:
-            compartment = Compartment.query.filter_by(name=compartment_name).first()
+        if compartment:
+            compartment = Compartment.query.filter_by(name=compartment.name).first()
             compartment.add_reaction(reaction)
 
-        mechanism_id = form.mechanism.data.id if form.mechanism.data else ''
-        mech_evidence_level_id = form.mechanism_evidence_level.data.id if form.mechanism_evidence_level.data else ''
+        mechanism_id = form.mechanism.data.id if form.mechanism.data else None
+        mech_evidence_level_id = form.mechanism_evidence_level.data.id if form.mechanism_evidence_level.data else None
 
         for enzyme in form.enzymes.data:
             enzyme_reaction_organism = EnzymeReactionOrganism(id=EnzymeReactionOrganism.query.count() + 1,
@@ -472,7 +479,7 @@ def add_reaction():
             db.session.add(enzyme_reaction_organism)
 
             if form.mechanism_references.data:
-                add_mechanism_references(form.mechanism_references.data, enzyme_reaction_organism)
+                add_references(form.mechanism_references.data, enzyme_reaction_organism, mechanism_ref=True)
 
             if form.models.data:
                 for model in form.models.data:
