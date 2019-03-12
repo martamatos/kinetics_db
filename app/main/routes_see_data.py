@@ -92,7 +92,7 @@ def see_enzyme(isoenzyme):
     # TODO: add encoding genes
 
     uniprot_ids = [enz_org.uniprot_id for enz_org in enzyme_organism]
-    data.append({'field_name': 'Uniprot IDs', 'data': ', '.join(uniprot_ids) if uniprot_ids else 'NA'})
+    data.append({'field_name': 'Uniprot IDs', 'data': ', '.join(uniprot_ids) if uniprot_ids and uniprot_ids[0] is not None else 'NA'})
     pdb_ids = [structure.pdb_id for structure in enzyme_structures]
     data.append({'field_name': 'PDB IDs', 'data': ', '.join(pdb_ids) if pdb_ids else 'NA'})
 
@@ -119,6 +119,7 @@ def see_enzyme_inhibitors_list():
                     <th>Organism</th>")
 
     # enzyme_header = Enzyme.__table__.columns.keys()
+
     page = request.args.get('page', 1, type=int)
     enzyme_inhibitors = EnzymeReactionInhibition.query.order_by(EnzymeReactionInhibition.id.asc()).paginate(
         page, current_app.config['POSTS_PER_PAGE'], False)
@@ -143,9 +144,9 @@ def see_enzyme_inhibitor(inhibitor_id):
     data.append({'field_name': 'Reaction', 'data': enz_inhib.enzyme_reaction_organism.reaction})
     data.append({'field_name': 'Organism', 'data': enz_inhib.enzyme_reaction_organism.organism})
     data.append({'field_name': 'Inhibiting metabolite', 'data': enz_inhib.inhibitor_met.name})
-    data.append({'field_name': 'Inhibition type', 'data': enz_inhib.inhibition_type})
-    data.append({'field_name': 'Affected metabolite', 'data': enz_inhib.affected_met.name})
-    data.append({'field_name': 'Inhibition constant', 'data': enz_inhib.inhibition_constant})
+    data.append({'field_name': 'Inhibition type', 'data': enz_inhib.inhibition_type if enz_inhib.inhibition_type else 'NA'})
+    data.append({'field_name': 'Affected metabolite', 'data': enz_inhib.affected_met.name if enz_inhib.affected_met else 'NA'})
+    data.append({'field_name': 'Inhibition constant', 'data': enz_inhib.inhibition_constant if enz_inhib.inhibition_constant else 'NA'})
     data.append({'field_name': 'Evidence level', 'data': enz_inhib.evidence})
     data.append({'field_name': 'Comments', 'data': enz_inhib.comments})
 
@@ -466,7 +467,6 @@ def see_model(model_name):
     data.append({'field_name': 'Comments', 'data': model.comments})
 
     assumptions = [str(assumption) for assumption in model.model_assumptions]
-    print(assumptions)
     data_nested.append({'field_name': 'Assumptions', 'data': [', '.join(assumptions)] if assumptions else ['NA']})
 
     # reaction_ids = [enz_rxn_org.reaction_id for enz_rxn_org in model.enzyme_reaction_organisms]
