@@ -212,9 +212,9 @@ def modify_enzyme_inhibitor(inhibitor_id):
         if form.references.data:
             enz_inhibitor.empty_references()
 
-            ref_db_list = add_references(form.references.data)
-            for ref_db in ref_db_list:
-                enz_inhibitor.add_reference(ref_db)
+            add_references(form.references.data, enz_inhibitor)
+            #for ref_db in ref_db_list:
+            #    enz_inhibitor.add_reference(ref_db)
         db.session.commit()
 
         flash('Your enzyme inhibition has been modified.', 'success')
@@ -292,9 +292,9 @@ def modify_enzyme_activator(activator_id):
         if form.references.data:
             enz_activator.empty_references()
 
-            ref_db_list = add_references(form.references.data)
-            for ref_db in ref_db_list:
-                enz_activator.add_reference(ref_db)
+            add_references(form.references.data, enz_activator)
+            #for ref_db in ref_db_list:
+            #    enz_activator.add_reference(ref_db)
         db.session.commit()
 
         flash('Your enzyme activation has been modified.', 'success')
@@ -374,9 +374,9 @@ def modify_enzyme_effector(effector_id):
         if form.references.data:
             enz_effector.empty_references()
 
-            ref_db_list = add_references(form.references.data)
-            for ref_db in ref_db_list:
-                enz_effector.add_reference(ref_db)
+            add_references(form.references.data, enz_effector)
+            #for ref_db in ref_db_list:
+            #    enz_effector.add_reference(ref_db)
 
         db.session.commit()
         flash('Your enzyme effector has been modified.', 'success')
@@ -448,9 +448,9 @@ def modify_enzyme_misc_info(misc_info_id):
         if form.references.data:
             enz_misc_info.empty_references()
 
-            ref_db_list = add_references(form.references.data)
-            for ref_db in ref_db_list:
-                enz_misc_info.add_reference(ref_db)
+            add_references(form.references.data, enz_misc_info)
+            #for ref_db in ref_db_list:
+            #    enz_misc_info.add_reference(ref_db)
 
         db.session.commit()
         flash('Your enzyme misc info has been modified.', 'success')
@@ -613,9 +613,9 @@ def modify_model_assumption(model_assumption_id):
         if form.references.data:
             model_assumption.empty_references()
 
-            ref_db_list = add_references(form.references.data)
-            for ref_db in ref_db_list:
-                model_assumption.add_reference(ref_db)
+            add_references(form.references.data, model_assumption)
+            #for ref_db in ref_db_list:
+            #    model_assumption.add_reference(ref_db)
 
         db.session.commit()
         flash('Your model assumption has been modified.', 'success')
@@ -828,7 +828,7 @@ def modify_reaction(reaction_acronym):
 
         if form.mechanism_references.data:
             enzyme_rxn_org.empty_mechanism_references()
-            add_mechanism_references(form.mechanism_references.data, enzyme_rxn_org)
+            add_references(form.mechanism_references.data, enzyme_rxn_org, mechanism_ref=True)
 
         if form.models.data:
             for model in form.models.data:
