@@ -9,7 +9,7 @@ from config import Config
 
 def add_compartments():
 
-    compartment_list = [('Cytosol', 'c'), ('Mitochondria', 'm')]
+    compartment_list = [('Cytosol', 'c'), ('Mitochondria', 'm'), ('Imaginary', 'v'), ('Extracellular', 'e')]
 
     for name, acronym in compartment_list:
         compartment = Compartment(name=name, bigg_id=acronym)
@@ -115,7 +115,8 @@ def add_enzymes(client):
 
     assert response.status_code == 200
 
-    enzyme_list = [('Phosphofructokinase', 'PFK', 'PFK2', '1.2.3.33')]
+    enzyme_list = [('Phosphofructokinase', 'PFK', 'PFK2', '1.2.3.33'),
+                   ('Fake enzyme for exchange reactions', 'EX_enz', 'EX_enz', None)]
 
     for name, acronym, isoenzyme, ec_number in enzyme_list:
         enzyme = Enzyme(name=name, acronym=acronym, isoenzyme=isoenzyme, ec_number=ec_number)
@@ -147,7 +148,7 @@ def add_reaction(client):
     compartment = '1'
     organism = '1'
     models = ['1', '2']
-    enzymes = ['1','2']
+    enzymes = ['1', '2']
     mechanism = '1'
     mechanism_references = 'https://doi.org/10.1093/bioinformatics/bty942, https://doi.org/10.1093/bioinformatics/bty943'
     mechanism_evidence_level = '1'
@@ -159,6 +160,7 @@ def add_reaction(client):
     std_gibbs_energy_ionic_strength = 0.2
     std_gibbs_energy_references = 'equilibrator'
     comments = ''
+
 
     response = client.post('/add_reaction', data=dict(
                                 name=reaction_name,
