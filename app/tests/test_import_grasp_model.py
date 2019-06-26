@@ -14,7 +14,7 @@ from config import Config
 
 class TestConfig(Config):
     TESTING = True
-    SQLALCHEMY_DATABASE_URI = 'sqlite://'
+    POSTGRES_DB = 'kinetics_db_test'
     LOGIN_DISABLED = True
     WTF_CSRF_ENABLED = False
     UPLOAD_FOLDER = '../../uploaded_models'
