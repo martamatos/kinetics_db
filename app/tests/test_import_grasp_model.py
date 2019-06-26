@@ -1,3 +1,4 @@
+import os
 import unittest
 
 import pandas as pd
@@ -64,7 +65,7 @@ class TestImportModel(unittest.TestCase):
 
         populate_db('import_model', self.client)
 
-        self.file_name = 'HMP1489_r1_t0.xlsx'
+        self.file_path = os.path.join('test_files', 'test_import_grasp_model', 'HMP1489_r1_t0.xlsx')
 
     def tearDown(self):
         db.session.remove()
@@ -74,7 +75,7 @@ class TestImportModel(unittest.TestCase):
     def test_get_model_name(self):
         true_model_name = 'HMP1489_r1_t0'
         sheet_name = 'general'
-        model_name = get_model_name(self.file_name, sheet_name)
+        model_name = get_model_name(self.file_path, sheet_name)
 
         self.assertEqual(model_name, true_model_name)
 
@@ -91,7 +92,7 @@ class TestImportModel(unittest.TestCase):
                             '1 trp_c <-> 1 trp_e', '1 meltn_c <-> 1 meltn_e', '1 nactryptm_c <-> 1 nactryptm_e']
 
         sheet_name = 'stoic'
-        mets, rxns, rxn_strings = get_model_stoichiometry(self.file_name, sheet_name)
+        mets, rxns, rxn_strings = get_model_stoichiometry(self.file_path, sheet_name)
 
         self.assertEqual(list(rxns), true_rxns)
         self.assertEqual(list(mets), true_mets)
@@ -108,8 +109,8 @@ class TestImportModel(unittest.TestCase):
                              'strain': ''}, {'reaction_id': 'ASMT', 'enzyme_name': 'acetylserotonin methyltransferase',
                              'enzyme_acronym': 'ASMT', 'isoenzyme': 'ASMT', 'ec_number': '2.1.1.4', 'uniprot_ids': '',
                              'pdb_ids': '', 'strain': ''}, {'reaction_id': 'DDC_tryptm',
-                             'enzyme_name': 'L-tryptophan decarboxylase', 'enzyme_acronym': 'DDC_tryptm',
-                             'isoenzyme': 'DDC_tryptm', 'ec_number': '4.1.1.105', 'uniprot_ids': '', 'pdb_ids': '',
+                             'enzyme_name': 'L-tryptophan decarboxylase', 'enzyme_acronym': 'DDC',
+                             'isoenzyme': 'DDC', 'ec_number': '4.1.1.105', 'uniprot_ids': '', 'pdb_ids': '',
                              'strain': ''}, {'reaction_id': 'AANAT_tryptm',
                             'enzyme_name': 'aralkylamine N-acetyltransferase', 'enzyme_acronym': 'AANAT',
                             'isoenzyme': 'AANAT', 'ec_number': '2.3.1.87', 'uniprot_ids': '', 'pdb_ids': '',
@@ -123,47 +124,44 @@ class TestImportModel(unittest.TestCase):
                              'isoenzyme': '', 'ec_number': '', 'uniprot_ids': '', 'pdb_ids': '', 'strain': ''}]
 
         sheet_name = 'enzyme_reaction'
-        enzyme_list = get_model_enzymes(self.file_name, sheet_name)
+        enzyme_list = get_model_enzymes(self.file_path, sheet_name)
 
-        true_res = pd.DataFrame.from_dict(true_enzyme_list)
-        res = pd.DataFrame.from_dict(enzyme_list)
-
-
-        self.assertTrue(res.equals(true_res))
-        #self.assertDictEqual(enzyme_list, true_enzyme_list)
+        self.assertListEqual(enzyme_list, true_enzyme_list)
 
     def test_get_model_subunits(self):
         true_subunit_dict = {'TPH': 4, 'DDC': 2, 'AANAT': 1, 'ASMT': 2, 'DDC_tryptm': 2, 'AANAT_tryptm': 1,
                              'IN_trp': 1, 'EX_trp': 1, 'EX_meltn': 1, 'EX_nactryptm': 1}
 
         sheet_name = 'kinetics1'
-        subunit_dict = get_model_subunits(self.file_name, sheet_name)
+        subunit_dict = get_model_subunits(self.file_path, sheet_name)
 
         self.assertDictEqual(subunit_dict, true_subunit_dict)
 
     def test_get_model_mechanisms(self):
 
         true_mechanisms_dict = {'TPH': ('substrateInhibOrderedBiBi',
-                                ['pterin1_c', 'trp_c', 'trp_c', 'fivehtp_c', 'pterin2_c'],
+                                ['pterin1_c', 'trp_c'], ['fivehtp_c', 'pterin2_c'],
                                 'https://doi.org/10.1093/bioinformatics/bty943 ref_a ref_b'),
-                                'DDC': ('UniUniPromiscuous', ['fivehtp_c', 'trp_c', 'srtn_c', 'tryptm_c'],
+                                'DDC': ('UniUniPromiscuous', ['fivehtp_c', 'trp_c'], ['srtn_c', 'tryptm_c'],
                                 'https://doi.org/10.1093/bioinformatics/bty943'),
                                 'AANAT': ('OrderedBiBiCompInhibPromiscuousIndep',
-                                ['accoa_c', 'srtn_c', 'accoa_c', 'tryptm_c', 'meltn_c', 'nactsertn_c', 'nactryptm_c', 'coa_c', 'coa_c'],
-                                ''), 'ASMT': ('randomBiBiCompInhib', [], 'https://doi.org/10.1093/bioinformatics/bty943'),
-                                'DDC_tryptm': ('UniUniPromiscuous', ['fivehtp_c', 'trp_c', 'srtn_c', 'tryptm_c'],
+                                ['accoa_c', 'srtn_c', 'accoa_c', 'tryptm_c'], ['nactsertn_c', 'nactryptm_c', 'coa_c', 'coa_c'],
+                                ''), 'ASMT': ('randomBiBiCompInhib', [], [], 'https://doi.org/10.1093/bioinformatics/bty943'),
+                                'DDC_tryptm': ('UniUniPromiscuous', ['fivehtp_c', 'trp_c'], ['srtn_c', 'tryptm_c'],
                                 'https://doi.org/10.1093/bioinformatics/bty943'),
                                 'AANAT_tryptm': ('OrderedBiBiCompInhibPromiscuousIndep',
-                                ['accoa_c', 'srtn_c', 'accoa_c', 'tryptm_c', 'meltn_c', 'nactsertn_c', 'nactryptm_c', 'coa_c', 'coa_c'],
+                                ['accoa_c', 'srtn_c', 'accoa_c', 'tryptm_c'], ['nactsertn_c', 'nactryptm_c', 'coa_c', 'coa_c'],
                                 'https://doi.org/10.1093/bioinformatics/bty943'),
-                                'IN_trp': ('massAction', [], 'https://doi.org/10.1093/bioinformatics/bty943'),
-                                'EX_trp': ('massAction', [],
+                                'IN_trp': ('massAction', [], [], 'https://doi.org/10.1093/bioinformatics/bty943'),
+                                'EX_trp': ('massAction', [], [],
                                            'https://doi.org/10.1093/bioinformatics/bty942 https://doi.org/10.1093/bioinformatics/bty943'),
-                                'EX_meltn': ('massAction', [], 'https://doi.org/10.1093/bioinformatics/bty943'),
-                                'EX_nactryptm': ('massAction', [], 'https://doi.org/10.1093/bioinformatics/bty943')}
+                                'EX_meltn': ('massAction', [], [], 'https://doi.org/10.1093/bioinformatics/bty943'),
+                                'EX_nactryptm': ('massAction', [], [], 'https://doi.org/10.1093/bioinformatics/bty943')}
 
         sheet_name = 'kinetics1'
-        mechanisms_dict = get_model_mechanisms(self.file_name, sheet_name)
+        mechanisms_dict = get_model_mechanisms(self.file_path, sheet_name)
+        print(mechanisms_dict)
+        print(true_mechanisms_dict)
 
         self.assertDictEqual(mechanisms_dict, true_mechanisms_dict)
 
@@ -176,7 +174,7 @@ class TestImportModel(unittest.TestCase):
                                 'IN_trp': ([], []), 'EX_trp': ([], []), 'EX_meltn': ([], []), 'EX_nactryptm': ([], [])}
 
         sheet_name = 'kinetics1'
-        inhibitors_dict = get_model_inhibitors(self.file_name, sheet_name)
+        inhibitors_dict = get_model_inhibitors(self.file_path, sheet_name)
 
         self.assertDictEqual(inhibitors_dict, true_inhibitors_dict)
 
@@ -188,7 +186,7 @@ class TestImportModel(unittest.TestCase):
                                 'EX_meltn': ([], []), 'EX_nactryptm': ([], [])}
 
         sheet_name = 'kinetics1'
-        activators_dict = get_model_activators(self.file_name, sheet_name)
+        activators_dict = get_model_activators(self.file_path, sheet_name)
 
         self.assertDictEqual(activators_dict, true_activators_dict)
 
@@ -206,7 +204,7 @@ class TestImportModel(unittest.TestCase):
                                    'EX_meltn': ([], []), 'EX_nactryptm': ([], [])}
 
         sheet_name = 'kinetics1'
-        neg_effectors_dict, pos_effectors_dic = get_model_effectors(self.file_name, sheet_name)
+        neg_effectors_dict, pos_effectors_dic = get_model_effectors(self.file_path, sheet_name)
 
         self.assertDictEqual(neg_effectors_dict, true_neg_effectors_dict)
         self.assertDictEqual(pos_effectors_dic, true_pos_effectors_dict)
@@ -219,7 +217,7 @@ class TestImportModel(unittest.TestCase):
                                     'EX_meltn': (-2.5, 7.5, ''), 'EX_nactryptm': (-12.5, 17.5, '')}
 
         sheet_name = 'thermoRxns'
-        gibbs_energies_dict = get_model_gibbs_energies(self.file_name, sheet_name)
+        gibbs_energies_dict = get_model_gibbs_energies(self.file_path, sheet_name)
 
         true_res = pd.DataFrame.from_dict(true_gibbs_energies_dict)
         res = pd.DataFrame.from_dict(gibbs_energies_dict)
@@ -230,7 +228,7 @@ class TestImportModel(unittest.TestCase):
         true_res = [['pterin1_c', 'trp_c'], ['fivehtp_c', 'pterin2_c']]
 
         sheet_name = 'kinetics1'
-        mechanisms_dict = get_model_mechanisms(self.file_name, sheet_name)
+        mechanisms_dict = get_model_mechanisms(self.file_path, sheet_name)
         rxn = 'TPH'
         rxn_string = '1 pterin1_c + trp_c <-> 1 pterin2_c + fivehtp_c '
 

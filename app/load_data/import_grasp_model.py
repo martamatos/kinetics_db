@@ -102,12 +102,13 @@ def get_model_mechanisms(file_path, sheet_name):
     :return: mechanisms_dict
     """
     data_df = pd.read_excel(file_path, sheet_name=sheet_name, index_col=None, header=0)
-    data_df['mechanisms_refs'] = data_df['mechanisms_refs'].fillna('')
+    data_df['mechanism_refs'] = data_df['mechanism_refs'].fillna('')
 
     model_mechanisms = data_df['kinetic mechanism'].values
-    model_mechanisms_order = [mech_order.split(' ') if isinstance(mech_order, str) else [] for mech_order in data_df['order'].values]
+    substrate_order = [mech_order.split(' ') if isinstance(mech_order, str) else [] for mech_order in data_df['substrate order'].values]
+    product_order = [mech_order.split(' ') if isinstance(mech_order, str) else [] for mech_order in data_df['product order'].values]
     #model_mechanisms_refs = [mech_refs.split(' ') if isinstance(mech_refs, str) else [] for mech_refs in data_df['mechanisms_refs'].values]
-    mechanisms_dict = dict([(rxn_id, mechs_and_ref) for rxn_id, mechs_and_ref in zip(data_df['reaction ID'].values, zip(model_mechanisms, model_mechanisms_order, data_df['mechanisms_refs'].values))])
+    mechanisms_dict = dict([(rxn_id, mechs_and_ref) for rxn_id, mechs_and_ref in zip(data_df['reaction ID'].values, zip(model_mechanisms, substrate_order, product_order, data_df['mechanism_refs'].values))])
 
     return mechanisms_dict
 
@@ -168,11 +169,11 @@ def get_model_effectors(file_path, sheet_name):
     data_df = pd.read_excel(file_path, sheet_name=sheet_name, index_col=None, header=0)
 
     model_neg_effectors = [neg_effectors_list.split(' ') if isinstance(neg_effectors_list, str) else [] for neg_effectors_list in data_df['negative effectors'].values]
-    model_neg_eff_refs = [neg_eff_refs.split(';') if isinstance(neg_eff_refs, str) else [] for neg_eff_refs in data_df['negative effectors_refs'].values]
+    model_neg_eff_refs = [neg_eff_refs.split(';') if isinstance(neg_eff_refs, str) else [] for neg_eff_refs in data_df['negative_effectors_refs'].values]
     neg_effectors_dict = dict([(rxn_id, neg_eff_and_ref) for rxn_id, neg_eff_and_ref in zip(data_df['reaction ID'].values, zip(model_neg_effectors, model_neg_eff_refs))])
 
     model_pos_effectors = [pos_effectors_list.split(' ') if isinstance(pos_effectors_list, str) else [] for pos_effectors_list in data_df['positive effectors'].values]
-    model_pos_eff_refs = [pos_eff_refs.split(';') if isinstance(pos_eff_refs, str) else [] for pos_eff_refs in data_df['positive effectors_refs'].values]
+    model_pos_eff_refs = [pos_eff_refs.split(';') if isinstance(pos_eff_refs, str) else [] for pos_eff_refs in data_df['positive_effectors_refs'].values]
     pos_effectors_dict = dict([(rxn_id, pos_eff_and_ref) for rxn_id, pos_eff_and_ref in zip(data_df['reaction ID'].values, zip(model_pos_effectors, model_pos_eff_refs))])
 
     return neg_effectors_dict, pos_effectors_dict
