@@ -17,7 +17,8 @@ from config import Config
 
 class TestConfig(Config):
     TESTING = True
-    SQLALCHEMY_DATABASE_URI = 'sqlite://'
+    #SQLALCHEMY_DATABASE_URI = 'sqlite://'
+    POSTGRES_DB = 'kinetics_db_test'
     LOGIN_DISABLED = True
     WTF_CSRF_ENABLED = False
 
@@ -715,7 +716,7 @@ class TestModifyEnzymeInhibitor(unittest.TestCase):
         inhibitor_met = 'ble'
         affected_met = 'blu'
         inhibition_type = 'Mixed'
-        inhibition_constant = 1.5 * 10 ** -4
+        inhibition_constant = round(1.5 * 10 ** -4, 6)
 
         evidence_level = '2'
         references = 'https://doi.org/10.1093/bioinformatics/bty9410, https://doi.org/10.1093/bioinformatics/bty943'
@@ -770,7 +771,7 @@ class TestModifyEnzymeInhibitor(unittest.TestCase):
         inhibitor_met = 'ble'
         affected_met = 'blu'
         inhibition_type = 'Mixed'
-        inhibition_constant = 1.5 * 10 ** -4
+        inhibition_constant = round(1.5 * 10 ** -4, 6)
 
         evidence_level = '2'
         references = 'https://doi.org/10.1093/bioinformatics/bty9410, https://doi.org/10.1093/bioinformatics/bty943'
@@ -824,7 +825,7 @@ class TestModifyEnzymeInhibitor(unittest.TestCase):
         inhibitor_met = 'ble'
         affected_met = 'blu'
         inhibition_type = 'Mixed'
-        inhibition_constant = 1.5 * 10 ** -4
+        inhibition_constant = round(1.5 * 10 ** -4, 6)
 
         evidence_level = '2'
         references = 'https://doi.org/10.1093/bioinformatics/bty9410, https://doi.org/10.1093/bioinformatics/bty943'
@@ -878,7 +879,7 @@ class TestModifyEnzymeInhibitor(unittest.TestCase):
         inhibitor_met = 'ble'
         affected_met = 'blu'
         inhibition_type = 'Mixed'
-        inhibition_constant = 1.5 * 10 ** -4
+        inhibition_constant = round(1.5 * 10 ** -4, 6)
 
         evidence_level = '2'
         references = 'https://doi.org/10.1093/bioinformatics/bty9410, https://doi.org/10.1093/bioinformatics/bty943'
@@ -932,7 +933,7 @@ class TestModifyEnzymeInhibitor(unittest.TestCase):
         inhibitor_met = 'adp'
         affected_met = 'atp'
         inhibition_type = 'Competitive'
-        inhibition_constant = 1.3 * 10 ** -4
+        inhibition_constant = round(1.3 * 10 ** -4, 6)
 
         evidence_level = '1'
         references = 'https://doi.org/10.1093/bioinformatics/bty942, https://doi.org/10.1093/bioinformatics/bty943'
@@ -998,7 +999,7 @@ class TestModifyEnzymeActivator(unittest.TestCase):
         organism = '1'
         models = '1'
         activator_met = 'amp'
-        activation_constant = 2.3 * 10 ** -4
+        activation_constant = round(2.3 * 10 ** -4, 6)
 
         evidence_level = '2'
         references = 'https://doi.org/10.1093/bioinformatics/bty9410, https://doi.org/10.1093/bioinformatics/bty943'
@@ -1047,7 +1048,7 @@ class TestModifyEnzymeActivator(unittest.TestCase):
         organism = '1'
         models = '1'
         activator_met = 'amp'
-        activation_constant = 2.3 * 10 ** -4
+        activation_constant = round(2.3 * 10 ** -4, 6)
 
         evidence_level = '2'
         references = 'https://doi.org/10.1093/bioinformatics/bty9410, https://doi.org/10.1093/bioinformatics/bty943'
@@ -1096,7 +1097,7 @@ class TestModifyEnzymeActivator(unittest.TestCase):
         organism = '2'
         models = '1'
         activator_met = 'amp'
-        activation_constant = 2.3 * 10 ** -4
+        activation_constant = round(2.3 * 10 ** -4, 6)
 
         evidence_level = '2'
         references = 'https://doi.org/10.1093/bioinformatics/bty9410, https://doi.org/10.1093/bioinformatics/bty943'
@@ -1145,7 +1146,7 @@ class TestModifyEnzymeActivator(unittest.TestCase):
         organism = '1'
         models = '2'
         activator_met = 'amp'
-        activation_constant = 2.3 * 10 ** -4
+        activation_constant = round(2.3 * 10 ** -4, 6)
 
         evidence_level = '2'
         references = 'https://doi.org/10.1093/bioinformatics/bty9410, https://doi.org/10.1093/bioinformatics/bty943'
@@ -1194,7 +1195,7 @@ class TestModifyEnzymeActivator(unittest.TestCase):
         organism = '1'
         models = '1'
         activator_met = 'adp'
-        activation_constant = 1.3 * 10 ** -4
+        activation_constant = round(1.3 * 10 ** -4, 6)
 
         evidence_level = '1'
         references = 'https://doi.org/10.1093/bioinformatics/bty942, https://doi.org/10.1093/bioinformatics/bty943'
