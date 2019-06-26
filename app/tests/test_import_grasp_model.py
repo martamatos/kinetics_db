@@ -160,18 +160,17 @@ class TestImportModel(unittest.TestCase):
 
         sheet_name = 'kinetics1'
         mechanisms_dict = get_model_mechanisms(self.file_path, sheet_name)
-        print(mechanisms_dict)
-        print(true_mechanisms_dict)
 
         self.assertDictEqual(mechanisms_dict, true_mechanisms_dict)
 
     def test_get_model_inhibitors(self):
-        true_inhibitors_dict = {'TPH': (['trp_c'], ['https://doi.org/10.1093/bioinformatics/bty942 https://doi.org/10.1093/bioinformatics/bty943']),
-                                'DDC': ([], []), 'AANAT': (['bli_c'], ['https://doi.org/10.1093/bioinformatics/bty943']),
-                                'ASMT': (['srtn_c', 'met_b'], ['https://doi.org/10.1093/bioinformatics/bty943 ref1', ' ref2']),
-                                'DDC_tryptm': ([], []),
-                                'AANAT_tryptm': (['meltn_c', 'bla_x'], ['https://doi.org/10.1093/bioinformatics/bty943 ', '']),
-                                'IN_trp': ([], []), 'EX_trp': ([], []), 'EX_meltn': ([], []), 'EX_nactryptm': ([], [])}
+        true_inhibitors_dict = {'TPH': (['trp_c'], ['doi doi'],
+                                ['https://doi.org/10.1093/bioinformatics/bty942 https://doi.org/10.1093/bioinformatics/bty943']),
+                                'DDC': ([], [], []), 'AANAT': (['bli_c'], ['doi'], ['https://doi.org/10.1093/bioinformatics/bty943']),
+                                'ASMT': (['srtn_c', 'met_b'], ['doi link', ' link'], ['https://doi.org/10.1093/bioinformatics/bty943 ref1', ' ref2']),
+                                'DDC_tryptm': ([], [], []),
+                                'AANAT_tryptm': (['meltn_c', 'bla_x'], ['doi'], ['https://doi.org/10.1093/bioinformatics/bty943 ', '']),
+                                'IN_trp': ([], [], []), 'EX_trp': ([], [], []), 'EX_meltn': ([], [], []), 'EX_nactryptm': ([], [], [])}
 
         sheet_name = 'kinetics1'
         inhibitors_dict = get_model_inhibitors(self.file_path, sheet_name)
@@ -179,11 +178,11 @@ class TestImportModel(unittest.TestCase):
         self.assertDictEqual(inhibitors_dict, true_inhibitors_dict)
 
     def test_get_model_activators(self):
-        true_activators_dict = {'TPH': ([], []), 'DDC': (['met_c', 'met_b'], ['ref_a ref_b', ' ref_c']),
-                                'AANAT': ([], []), 'ASMT': ([], []),
-                                'DDC_tryptm': (['ble_c'], ['https://doi.org/10.1093/bioinformatics/bty943']),
-                                'AANAT_tryptm': ([], []), 'IN_trp': ([], []), 'EX_trp': ([], []),
-                                'EX_meltn': ([], []), 'EX_nactryptm': ([], [])}
+        true_activators_dict = {'TPH': ([], [], []), 'DDC': (['met_c', 'met_b'], ['link link', ' pmid'],
+                                ['ref_a ref_b', ' ref_c']), 'AANAT': ([], [], []), 'ASMT': ([], [], []),
+                                'DDC_tryptm': (['ble_c'], ['doi'], ['https://doi.org/10.1093/bioinformatics/bty943']),
+                                'AANAT_tryptm': ([], [], []), 'IN_trp': ([], [], []), 'EX_trp': ([], [], []),
+                                'EX_meltn': ([], [], []), 'EX_nactryptm': ([], [], [])}
 
         sheet_name = 'kinetics1'
         activators_dict = get_model_activators(self.file_path, sheet_name)
@@ -191,23 +190,27 @@ class TestImportModel(unittest.TestCase):
         self.assertDictEqual(activators_dict, true_activators_dict)
 
     def test_get_model_effectors(self):
-        true_neg_effectors_dict = {'TPH': ([], []),
-                                   'DDC': (['a_c', 'b_c'], ['https://doi.org/10.1093/bioinformatics/bty943 ref_a ref_b', 'ref_bla']),
-                                   'AANAT': ([], []), 'ASMT': ([], []), 'DDC_tryptm': ([], []),
-                                   'AANAT_tryptm': (['met_c', 'met_a'], ['ref_a ref_b', '']), 'IN_trp': ([], []),
-                                   'EX_trp': ([], []), 'EX_meltn': ([], []), 'EX_nactryptm': ([], [])}
-        true_pos_effectors_dict = {'TPH': ([], []),
-                                   'DDC': (['p_c', 'q_c'], ['https://doi.org/10.1093/bioinformatics/bty943', '']),
-                                   'AANAT': ([], []), 'ASMT': ([], []),
-                                   'DDC_tryptm': (['ble_c'], ['https://doi.org/10.1093/bioinformatics/bty943']),
-                                   'AANAT_tryptm': ([], []), 'IN_trp': ([], []), 'EX_trp': ([], []),
-                                   'EX_meltn': ([], []), 'EX_nactryptm': ([], [])}
+        true_neg_effectors_dict = {'TPH': ([], [], []),
+                                   'DDC': (['a_c', 'b_c'], ['doi pmid pmid', ' link'],
+                                    ['https://doi.org/10.1093/bioinformatics/bty943 ref_a ref_b', 'ref_bla']),
+                                   'AANAT': ([], [], []), 'ASMT': ([], [], []), 'DDC_tryptm': ([], [], []),
+                                   'AANAT_tryptm': (['met_c', 'met_a'], ['doi doi'], ['ref_a ref_b', '']),
+                                   'IN_trp': ([], [], []), 'EX_trp': ([], [], []), 'EX_meltn': ([], [], []),
+                                   'EX_nactryptm': ([], [], [])}
+        true_pos_effectors_dict = {'TPH': ([], [], []),
+                                   'DDC': (['p_c', 'q_c'], ['doi'],
+                                    ['https://doi.org/10.1093/bioinformatics/bty943', '']),
+                                   'AANAT': ([], [], []), 'ASMT': ([], [], []),
+                                   'DDC_tryptm': (['ble_c'], ['doi'],
+                                    ['https://doi.org/10.1093/bioinformatics/bty943']),
+                                   'AANAT_tryptm': ([], [], []), 'IN_trp': ([], [], []), 'EX_trp': ([], [], []),
+                                   'EX_meltn': ([], [], []), 'EX_nactryptm': ([], [], [])}
 
         sheet_name = 'kinetics1'
-        neg_effectors_dict, pos_effectors_dic = get_model_effectors(self.file_path, sheet_name)
+        neg_effectors_dict, pos_effectors_dict = get_model_effectors(self.file_path, sheet_name)
 
         self.assertDictEqual(neg_effectors_dict, true_neg_effectors_dict)
-        self.assertDictEqual(pos_effectors_dic, true_pos_effectors_dict)
+        self.assertDictEqual(pos_effectors_dict, true_pos_effectors_dict)
 
     def test_get_model_gibbs_energies(self):
         true_gibbs_energies_dict = {'TPH': (-50.0, 10.0, ''), 'DDC': (-26.1, 11.1, ''),
@@ -223,7 +226,7 @@ class TestImportModel(unittest.TestCase):
         res = pd.DataFrame.from_dict(gibbs_energies_dict)
 
         self.assertTrue(res.equals(true_res))
-
+    """
     def test_get_binding_order(self):
         true_res = [['pterin1_c', 'trp_c'], ['fivehtp_c', 'pterin2_c']]
 
@@ -239,3 +242,5 @@ class TestImportModel(unittest.TestCase):
         binding_order, release_order = set_binding_release_order(rxn, rxn_string, enz_rxn_org, mechanisms_dict)
 
         self.assertEqual([binding_order, release_order], true_res)
+    """
+

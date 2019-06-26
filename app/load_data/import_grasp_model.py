@@ -127,8 +127,9 @@ def get_model_inhibitors(file_path, sheet_name):
     data_df = pd.read_excel(file_path, sheet_name=sheet_name, index_col=None, header=0)
 
     model_inhibitors = [inhib_list.split(' ') if isinstance(inhib_list, str) else [] for inhib_list in data_df['inhibitors'].values]
+    model_inhibitors_refs_type = [inhib_refs_type.split(';') if isinstance(inhib_refs_type, str) else [] for inhib_refs_type in data_df['inhibitors_refs_type'].values]
     model_inhibitors_refs = [inhib_refs.split(';') if isinstance(inhib_refs, str) else [] for inhib_refs in data_df['inhibitors_refs'].values]
-    inhibitors_dict = dict([(rxn_id, inhib_and_ref) for rxn_id, inhib_and_ref in zip(data_df['reaction ID'].values, zip(model_inhibitors, model_inhibitors_refs))])
+    inhibitors_dict = dict([(rxn_id, inhib_and_ref) for rxn_id, inhib_and_ref in zip(data_df['reaction ID'].values, zip(model_inhibitors, model_inhibitors_refs_type, model_inhibitors_refs))])
 
     return inhibitors_dict
 
@@ -147,8 +148,9 @@ def get_model_activators(file_path, sheet_name):
     data_df = pd.read_excel(file_path, sheet_name=sheet_name, index_col=None, header=0)
 
     model_activators = [activ_list.split(' ') if isinstance(activ_list, str) else [] for activ_list in data_df['activators'].values]
+    model_activators_refs_type = [activ_refs_type.split(';') if isinstance(activ_refs_type, str) else [] for activ_refs_type in data_df['activators_refs_type'].values]
     model_activators_refs = [activ_refs.split(';') if isinstance(activ_refs, str) else [] for activ_refs in data_df['activators_refs'].values]
-    activators_dict = dict([(rxn_id, activ_and_ref) for rxn_id, activ_and_ref in zip(data_df['reaction ID'].values, zip(model_activators, model_activators_refs))])
+    activators_dict = dict([(rxn_id, activ_and_ref) for rxn_id, activ_and_ref in zip(data_df['reaction ID'].values, zip(model_activators, model_activators_refs_type, model_activators_refs))])
 
     return activators_dict
 
@@ -169,12 +171,14 @@ def get_model_effectors(file_path, sheet_name):
     data_df = pd.read_excel(file_path, sheet_name=sheet_name, index_col=None, header=0)
 
     model_neg_effectors = [neg_effectors_list.split(' ') if isinstance(neg_effectors_list, str) else [] for neg_effectors_list in data_df['negative effectors'].values]
+    model_neg_eff_refs_type = [neg_eff_refs_type.split(';') if isinstance(neg_eff_refs_type, str) else [] for neg_eff_refs_type in data_df['negative_effectors_refs_type'].values]
     model_neg_eff_refs = [neg_eff_refs.split(';') if isinstance(neg_eff_refs, str) else [] for neg_eff_refs in data_df['negative_effectors_refs'].values]
-    neg_effectors_dict = dict([(rxn_id, neg_eff_and_ref) for rxn_id, neg_eff_and_ref in zip(data_df['reaction ID'].values, zip(model_neg_effectors, model_neg_eff_refs))])
+    neg_effectors_dict = dict([(rxn_id, neg_eff_and_ref) for rxn_id, neg_eff_and_ref in zip(data_df['reaction ID'].values, zip(model_neg_effectors, model_neg_eff_refs_type, model_neg_eff_refs))])
 
     model_pos_effectors = [pos_effectors_list.split(' ') if isinstance(pos_effectors_list, str) else [] for pos_effectors_list in data_df['positive effectors'].values]
+    model_pos_eff_refs_type = [pos_eff_refs_type.split(';') if isinstance(pos_eff_refs_type, str) else [] for pos_eff_refs_type in data_df['positive_effectors_refs_type'].values]
     model_pos_eff_refs = [pos_eff_refs.split(';') if isinstance(pos_eff_refs, str) else [] for pos_eff_refs in data_df['positive_effectors_refs'].values]
-    pos_effectors_dict = dict([(rxn_id, pos_eff_and_ref) for rxn_id, pos_eff_and_ref in zip(data_df['reaction ID'].values, zip(model_pos_effectors, model_pos_eff_refs))])
+    pos_effectors_dict = dict([(rxn_id, pos_eff_and_ref) for rxn_id, pos_eff_and_ref in zip(data_df['reaction ID'].values, zip(model_pos_effectors, model_pos_eff_refs_type, model_pos_eff_refs))])
 
     return neg_effectors_dict, pos_effectors_dict
 
