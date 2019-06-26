@@ -53,7 +53,7 @@ def add_metabolite(client):
 
 
 def add_mechanisms():
-    mechanism_list = ['UniUni', 'OrderedBiBi', 'randomBibi', 'massAction', 'fixedExchange', 'freeExchange', 'Diffusion']
+    mechanism_list = ['uniUni', 'orderedBiBi', 'randomBibi', 'massAction', 'fixedExchange', 'freeExchange', 'diffusion']
 
     for name in mechanism_list:
         mechanism = Mechanism(name=name)
