@@ -53,7 +53,7 @@ def add_metabolite(client):
 
 
 def add_mechanisms():
-    mechanism_list = ['UniUni', 'OrderedBiBi']
+    mechanism_list = ['UniUni', 'OrderedBiBi', 'randomBibi', 'massAction', 'fixedExchange', 'freeExchange', 'Diffusion']
 
     for name in mechanism_list:
         mechanism = Mechanism(name=name)
@@ -123,6 +123,15 @@ def add_enzymes(client):
         db.session.add(enzyme)
     db.session.commit()
 
+
+def add_ex_enzyme():
+
+    enzyme_list = [('Fake enzyme for exchange reactions', 'EX_enz', 'EX_enz', None)]
+
+    for name, acronym, isoenzyme, ec_number in enzyme_list:
+        enzyme = Enzyme(name=name, acronym=acronym, isoenzyme=isoenzyme, ec_number=ec_number)
+        db.session.add(enzyme)
+    db.session.commit()
 
 
 # only for development

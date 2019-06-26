@@ -288,8 +288,8 @@ def set_binding_release_order(rxn, rxn_string, enz_rxn_org, mechanisms_dict):
 
     binding_ind.sort()
     release_ind.sort()
-    binding_order = [mechanisms_dict[rxn][1][ind] for ind in binding_ind]
-    release_order = [mechanisms_dict[rxn][1][ind] for ind in release_ind]
+    binding_order = ' '.join([mechanisms_dict[rxn][1][ind] for ind in binding_ind])
+    release_order = ' '.join([mechanisms_dict[rxn][1][ind] for ind in release_ind])
 
     enz_rxn_org.subs_binding_order = binding_order
     enz_rxn_org.prod_release_order = release_order

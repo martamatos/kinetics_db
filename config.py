@@ -24,5 +24,6 @@ class Config(object):
     POSTS_PER_PAGE = 25
 
     UPLOAD_FOLDER = './uploaded_models'
+    DOWNLOAD_FOLDER = './app/static/models'
 
 

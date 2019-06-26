@@ -1,4 +1,4 @@
-FROM python:3.7-alpine
+FROM python:3.6-alpine3.6
 
 RUN adduser -D kinetics_db
 

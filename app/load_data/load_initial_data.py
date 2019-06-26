@@ -382,7 +382,11 @@ def load_mechanisms():
                       ('PingPongUniUniBiBi', 'PingPong_Uni_Uni_Bi_Bi'),
                       ('PingPongHexaUni', 'PingPong_Hexa_Uni'),
 
-                      ('Other', '')]
+                      ('Other', ''),
+                      ('massAction', ''),
+                      ('fixedExchange', ''),
+                      ('freeExchange', ''),
+                      ('Diffusion', '')]
 
     for mech_name, image_name in mechanism_list:
         mechanism = Mechanism(name=mech_name, image_name=image_name)

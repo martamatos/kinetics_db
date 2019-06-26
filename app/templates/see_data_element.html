@@ -29,10 +29,16 @@
   </ul>
 </div>
 
+{% if data_type  == "model" %}
+    <a href="{{ url_for('main.download_model', model_name=data_name) }}" class="btn btn-default" type="button" >Download model</a>
+    <br>
+{% endif %}
 
 {% if form %}
     <br>
-    {{ wtf.quick_form(form) }}
+        {{ wtf.quick_form(form) }}
+    <br>
+    <br>
 {% endif %}
 
 {% endblock %}

@@ -53,6 +53,7 @@ def create_app(config_class=Config):
     app.register_blueprint(main_np)
 
     app.upload_path = app.config['UPLOAD_FOLDER']
+    app.download_path = app.config['DOWNLOAD_FOLDER']
 
     if not app.debug and not app.testing:
 
