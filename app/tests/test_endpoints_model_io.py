@@ -60,8 +60,10 @@ class TestUploadModel(unittest.TestCase):
 
         populate_db('upload_model', self.client)
 
-        self.file_name = 'HMP1489_r1_t0.xlsx'
-        self.file = FileStorage(open(self.file_name, 'rb'))
+        this_dir, this_filename = os.path.split(__file__)
+        self.test_folder = os.path.join(this_dir, 'test_files', 'test_import_grasp_model')
+        self.model_file = os.path.join(self.test_folder, 'HMP1489_r1_t0.xlsx')
+        self.model_file = FileStorage(open(self.model_file, 'rb'))
 
     def tearDown(self):
         db.session.remove()
@@ -73,7 +75,7 @@ class TestUploadModel(unittest.TestCase):
         organism = '1'
         response = self.client.post('/upload_model', data=dict(
                                     organism=organism,
-                                    model=self.file), follow_redirects=True)
+                                    model=self.model_file), follow_redirects=True)
         self.assertEqual(response.status_code, 200)
         self.assertTrue(b'<title>\n    See models - Kinetics DB \n</title>' in response.data)
         self.assertTrue(b'Your model is now live!' in response.data)
@@ -94,7 +96,7 @@ class TestUploadModel(unittest.TestCase):
         self.assertEqual(EnzymeReactionEffector.query.count(), 6)
         self.assertEqual(EnzymeOrganism.query.count(), 5)
         self.assertEqual(EnzymeStructure.query.count(), 2)
-        self.assertEqual(Reference.query.count(), 10)
+        self.assertEqual(Reference.query.count(), 12)
 
         subunit_list = [1, 4, 2, 1, 2, 2]
         uniprot_id_list =['3CV8K', 'H12KP']
@@ -125,15 +127,6 @@ class TestUploadModel(unittest.TestCase):
             self.assertEqual(enz_rxn_org.mechanism.name.lower(), mechanism_list[i][1].lower())
 
 
-
-
-
-
-
-
-
-
-
 class TestDownloadModel(unittest.TestCase):
     def setUp(self):
         self.app = create_app(TestConfig)
@@ -144,8 +137,10 @@ class TestDownloadModel(unittest.TestCase):
         db.create_all()
         populate_db('upload_model', self.client)
 
-        self.file_name = 'HMP1489_r1_t0.xlsx'
-        self.file = FileStorage(open(self.file_name, 'rb'))
+        this_dir, this_filename = os.path.split(__file__)
+        self.test_folder = os.path.join(this_dir, 'test_files', 'test_import_grasp_model')
+        self.model_file = os.path.join(self.test_folder, 'HMP1489_r1_t0.xlsx')
+        self.model_file = FileStorage(open(self.model_file, 'rb'))
 
     def tearDown(self):
         db.session.remove()
@@ -157,7 +152,7 @@ class TestDownloadModel(unittest.TestCase):
         organism = '1'
         response = self.client.post('/upload_model', data=dict(
                                     organism=organism,
-                                    model=self.file), follow_redirects=True)
+                                    model=self.model_file), follow_redirects=True)
 
         self.assertEqual(response.status_code, 200)
         self.assertTrue(b'<title>\n    See models - Kinetics DB \n</title>' in response.data)
@@ -168,8 +163,6 @@ class TestDownloadModel(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertTrue(os.path.isfile(os.path.join(self.app.download_path, model_name + '.xlsx')))
-
-
 
 
 if __name__ == '__main__':

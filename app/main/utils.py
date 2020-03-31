@@ -231,7 +231,10 @@ def add_references(references, obj, mechanism_ref=False):
     :return: None
     """
 
-    reference_list = parse_input_list(references)
+    if type(references) is not list:
+        reference_list = parse_input_list(references)
+    else:
+        reference_list = references
 
     for reference in reference_list:
         ref_db = Reference.query.filter_by(doi=reference).first()
@@ -284,12 +287,12 @@ def set_binding_release_order(rxn, rxn_string, enz_rxn_org, mechanisms_dict):
         if coeff < 0:
             binding_ind.append(mechanisms_dict[rxn][1].index(met))
         else:
-            release_ind.append(mechanisms_dict[rxn][1].index(met))
+            release_ind.append(mechanisms_dict[rxn][2].index(met))
 
     binding_ind.sort()
     release_ind.sort()
     binding_order = ' '.join([mechanisms_dict[rxn][1][ind] for ind in binding_ind])
-    release_order = ' '.join([mechanisms_dict[rxn][1][ind] for ind in release_ind])
+    release_order = ' '.join([mechanisms_dict[rxn][2][ind] for ind in release_ind])
 
     enz_rxn_org.subs_binding_order = binding_order
     enz_rxn_org.prod_release_order = release_order
@@ -320,5 +323,13 @@ def add_effector(effector_dic, rxn, effector_type, model, enz_rxn_org):
         enz_effector_db.add_model(model)
         enz_rxn_org.add_enzyme_reaction_effector(enz_effector_db)
 
-        if effector_dic[rxn][1] and effector_dic[rxn][1][effector_i]:
-            add_references(effector_dic[rxn][1][effector_i], enz_effector_db)
+        if effector_dic[rxn][1]:
+            try:
+                if len(effector_dic[rxn][1]) > 1:
+                    add_references(effector_dic[rxn][1][effector_i], enz_effector_db)
+                else:
+                    add_references(effector_dic[rxn][1][0], enz_effector_db)
+            except IndexError:
+                print(f'Number of references is wrong for effector {effector} from reaction {rxn}. '
+                      f'These references won\'t be added.'
+                      f'There should be either a single reference for all effectors, or one for each.')

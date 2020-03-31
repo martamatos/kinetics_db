@@ -102,8 +102,16 @@ def _add_inhibitors(rxn, enz_rxn_org, model, inhibitors_dict):
         enz_inhib_db.add_model(model)
         enz_rxn_org.add_enzyme_reaction_inhibition(enz_inhib_db)
 
-        if inhibitors_dict[rxn][1] and inhibitors_dict[rxn][1][inhib_met_i]:
-            add_references(inhibitors_dict[rxn][1][inhib_met_i], enz_inhib_db)
+        if inhibitors_dict[rxn][1]:
+            try:
+                if len(inhibitors_dict[rxn][1]) > 1:
+                    add_references(inhibitors_dict[rxn][1][inhib_met_i], enz_inhib_db)
+                else:
+                    add_references(inhibitors_dict[rxn][1][0], enz_inhib_db)
+            except IndexError:
+                print(f'Number of references is wrong for inhibitor {inhib_met} from reaction {rxn}. '
+                      f'These references won\'t be added.'
+                      f'There should be either a single reference for all inhibitors, or one for each.')
 
 
 def _add_activators(rxn, enz_rxn_org, model, activators_dict):
@@ -122,6 +130,16 @@ def _add_activators(rxn, enz_rxn_org, model, activators_dict):
 
         if activators_dict[rxn][1] and activators_dict[rxn][1][activ_met_i]:
             add_references(activators_dict[rxn][1][activ_met_i], enz_activ_db)
+        if activators_dict[rxn][1]:
+            try:
+                if len(activators_dict[rxn][1]) > 1:
+                    add_references(activators_dict[rxn][1][activ_met_i], enz_activ_db)
+                else:
+                    add_references(activators_dict[rxn][1][0], enz_activ_db)
+            except IndexError:
+                print(f'Number of references is wrong for inhibitor {activ_met} from reaction {rxn}. '
+                      f'These references won\'t be added.'
+                      f'There should be either a single reference for all inhibitors, or one for each.')
 
 
 def _add_gibbs_energies(rxn, reaction_db, model, gibbs_energies_dict):
