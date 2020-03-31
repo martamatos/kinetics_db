@@ -420,5 +420,7 @@ def download_model(model_name):
         kinetics_df.to_excel(writer, sheet_name='kinetics1', index=None)
         enzyme_reaction_df.to_excel(writer, sheet_name='enzyme_reaction', index=None)
 
-    return redirect(url_for('static', filename=os.path.join(current_app.download_path, model_name + '.xlsx')))
+    #return redirect(url_for('static', filename=os.path.join(current_app.download_path, model_name + '.xlsx')))
+    return render_template('download_model.html', title='Download model', header='Download model',
+                           model_path=os.path.join('models', model_name + '.xlsx'))
 

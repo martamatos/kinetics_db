@@ -23,7 +23,7 @@ class Config(object):
     ADMINS = ['your-email@example.com']
     POSTS_PER_PAGE = 25
 
-    UPLOAD_FOLDER = './uploaded_models'
+    UPLOAD_FOLDER = './app/static/models'
     DOWNLOAD_FOLDER = './app/static/models'
 
 

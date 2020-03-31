@@ -20,7 +20,7 @@ class TestConfig(Config):
     POSTGRES_DB = 'kinetics_db_test'
     LOGIN_DISABLED = True
     WTF_CSRF_ENABLED = False
-    UPLOAD_FOLDER = '../../uploaded_models'
+    UPLOAD_FOLDER = '../static/models'
     DOWNLOAD_FOLDER = '../static/models'
 
 
