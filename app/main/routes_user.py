@@ -20,6 +20,14 @@ def before_request():
 @bp.route('/index', methods=['GET', 'POST'])
 @login_required
 def index():
+    """
+    Starting page.
+
+    It shows a form to do a post as well as posts from other users.
+
+    Returns:
+        render_template to index
+    """
     form = PostForm()
     if form.validate_on_submit():
         post = Post(body=form.post.data, author=current_user)
@@ -42,6 +50,15 @@ def index():
 @bp.route('/user/<username>')
 @login_required
 def user(username):
+    """
+    This is the selected user's page, shows all the user's posts
+
+    Args:
+        username: username for the selected user's page.
+
+    Returns:
+        render_template to user
+    """
     user = User.query.filter_by(username=username).first_or_404()
     page = request.args.get('page', 1, type=int)
     posts = user.posts.order_by(Post.timestamp.desc()).paginate(
@@ -57,6 +74,13 @@ def user(username):
 @bp.route('/edit_profile', methods=['GET', 'POST'])
 @login_required
 def edit_profile():
+    """
+    Page where the user can edit their page.
+
+    Returns:
+        url_for to main.edit_profile after form_validation
+        render_template to edit_profile before form validation
+    """
     form = EditProfileForm(current_user.username)
     if form.validate_on_submit():
         current_user.username = form.username.data
@@ -74,6 +98,16 @@ def edit_profile():
 @bp.route('/follow/<username>')
 @login_required
 def follow(username):
+    """
+    Page where you end up after clicking on follow for a given user with username.
+
+    Args:
+        username: name of the user you want to follow
+
+    Returns:
+        redirect to main.user
+    """
+
     user = User.query.filter_by(username=username).first()
     if user is None:
         flash('User {} not found.'.format(username))
@@ -90,6 +124,16 @@ def follow(username):
 @bp.route('/unfollow/<username>')
 @login_required
 def unfollow(username):
+    """
+    Page where you end up after clicking on unfollow for a given user with username.
+
+    Args:
+        username: name of the user you want to unfollow
+
+    Returns:
+        redirect to main.user
+    """
+
     user = User.query.filter_by(username=username).first()
     if user is None:
         flash('User {} not found.'.format(username))
@@ -106,6 +150,16 @@ def unfollow(username):
 @bp.route('/explore')
 @login_required
 def explore():
+    """
+    Page where you end up after clicking on explore, where you see all the posts.
+
+    Args:
+        username: name of the user you want to follow
+
+    Returns:
+        redirect to index
+    """
+
     page = request.args.get('page', 1, type=int)
     posts = Post.query.order_by(Post.timestamp.desc()).paginate(
         page, current_app.config['POSTS_PER_PAGE'], False)
