@@ -4,6 +4,10 @@ from collections import OrderedDict
 
 
 class ReactionParser(object):
+    """
+    ReactionParser class, whose goal is to parse a reaction string in the format: A_c + B_c <-> P_c
+
+    """
 
     def __init__(self):
         id_re = '[a-zA-Z]\w*'
@@ -25,6 +29,17 @@ class ReactionParser(object):
         self.regex_reaction = compile(reaction)
 
     def parse_reaction(self, reaction_str):
+        """
+        Given a reaction string in the form A_c + B_c <-> P_c, parses it to retrieve its reversibility (True or False)
+        and stoichiometry in the form of a dictionary {metabolite_id : stoichoimetric_coefficient}.
+
+        Args:
+            reaction_str: a reaction string in the form A_c + B_c <-> P_c
+
+        Returns:
+            reaction reverisibility (True or False), and stoichiometry dictionary
+        """
+
         match = self.regex_reaction.match(reaction_str)
 
         if not match:
@@ -51,8 +66,19 @@ class ReactionParser(object):
 
             return reversible, stoichiometry
 
-
     def parse_coefficients(self, expression, sense):
+        """
+        Parses the stoichiometric coefficients from expression.
+        Expression has the form  2.0 metabolite_id.
+
+        Args:
+            expression: metabolite with respective stoichiometric coefficient, "2.0 metabolite_id"
+            sense: whether the metabolite is consumed (-1) or produced (1)
+
+        Returns:
+            The stoichiometric coefficients
+        """
+
         coefficients = []
         terms = expression.split('+')
 
@@ -64,13 +90,19 @@ class ReactionParser(object):
 
         return coefficients
 
+
 def parse_input_list(input_list, flag=True):
     """
     Given a string with several elements, converts them into a list by splitting the string by ' ', ', ', or ','.
 
-    :param input_list: a string with multiple elements separated by a space, a comma or a comma+space
-    :return: list with the elements from the input.
+    Args:
+        input_list: a string with multiple elements separated by a space, a comma or a comma+space
+        flag:
+
+    Returns:
+        list with the elements from the input.
     """
+
     input_list = input_list.strip()
 
     if input_list.find(', ') != -1:
