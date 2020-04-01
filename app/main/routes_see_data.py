@@ -14,6 +14,17 @@ from app.models import Compartment, Enzyme, EnzymeReactionOrganism, EnzymeReacti
 @bp.route('/see_enzyme_list')
 @login_required
 def see_enzyme_list():
+    """
+    Get's the data about all enzymes to put on a table:
+     - name
+     - acronym
+     - isoenzyme
+     - EC number
+
+    Returns:
+        render_template to see_data with tab_status set to enzymes.
+    """
+
     tab_status = {"enzymes": "active", "metabolites": "#", "models": "#", "organisms": "#", "reactions": "#",
                   "enzyme_inhibitors:": "#", "enzyme_activators:": "#", "enzyme_effectors:": "#",
                   "enzyme_misc_info:": "#", "model_assumptions": "#", "mechanisms": "#"}
@@ -38,6 +49,26 @@ def see_enzyme_list():
 @bp.route('/see_enzyme/<isoenzyme>', methods=['GET', 'POST'])
 @login_required
 def see_enzyme(isoenzyme):
+    """
+    Get's the data about the specified isoenzyme to be rendered in the front end:
+     - enzyme attributes
+     - organisms the enzyme is associated to
+     - models the enzyme is associated to
+     - the reactions catalyzed by the enzyme
+     - inhibitors
+     - activators
+     - effectors
+     - misc info
+     - pdb ids (through EnzymeStructure)
+     - uniprot ids (through EnzymeReactionOrganism)
+
+    It also renders a "Modify" button which will redirect the user to  modify_enzyme_select_organism
+
+    Returns:
+        url_for modify_enzyme_select_organism if user clicks on "Modify"
+        render_template to see_data with data_type set to enzymes.
+    """
+
     enzyme = Enzyme.query.filter_by(isoenzyme=isoenzyme).first()
 
     data = []
@@ -107,6 +138,20 @@ def see_enzyme(isoenzyme):
 @bp.route('/see_enzyme_inhibitors_list')
 @login_required
 def see_enzyme_inhibitors_list():
+    """
+    Get's the data about all enzyme inhibitors in the DB to put on a table:
+     - ID
+     - inhibitor
+     - inhibition type
+     - affected metabolite
+     - enzyme
+     - reaction
+     - organism
+
+    Returns:
+        render_template to see_data with tab_status set to enzyme_inhibitors.
+    """
+
     tab_status = {"enzymes": "#", "metabolites": "#", "models": "#", "organisms": "#", "reactions": "#",
                   "enzyme_inhibitors:": "active", "enzyme_activators:": "#", "enzyme_effectors:": "#",
                   "enzyme_misc_info:": "#", "model_assumptions": "#", "mechanisms": "#"}
@@ -135,6 +180,27 @@ def see_enzyme_inhibitors_list():
 @bp.route('/see_enzyme_inhibitor/<inhibitor_id>', methods=['GET', 'POST'])
 @login_required
 def see_enzyme_inhibitor(inhibitor_id):
+    """
+    Get's the data about the specified inhibitor to be rendered in the front end:
+     - isoenzyme
+     - reaction
+     - organism
+     - inhibiting metabolite
+     - inhibition type
+     - affected metabolite
+     - inhibition constant
+     - evidence level
+     - comments
+     - models that the inhibitor is associated to
+     - references for the specified inhibition
+
+    It also renders a "Modify" button which will redirect the user to  modify_enzyme_inhibitor
+
+    Returns:
+        url_for modify_enzyme_inhibitor if user clicks on "Modify"
+        render_template to see_data with data_type set to inhibitor.
+    """
+
     enz_inhib = EnzymeReactionInhibition.query.filter_by(id=inhibitor_id).first()
 
     data = []
@@ -167,6 +233,20 @@ def see_enzyme_inhibitor(inhibitor_id):
 @bp.route('/see_enzyme_activators_list')
 @login_required
 def see_enzyme_activators_list():
+    """
+    Get's the data about all enzyme inhibitors in the DB to put on a table:
+     - ID
+     - inhibitor
+     - inhibition type
+     - affected metabolite
+     - enzyme
+     - reaction
+     - organism
+
+    Returns:
+        render_template to see_data with tab_status set to enzyme_inhibitors.
+    """
+
     tab_status = {"enzymes": "#", "metabolites": "#", "models": "#", "organisms": "#", "reactions": "#",
                   "enzyme_inhibitors:": "#", "enzyme_activators:": "active", "enzyme_effectors:": "#",
                   "enzyme_misc_info:": "#", "model_assumptions": "#", "mechanisms": "#"}
@@ -192,6 +272,25 @@ def see_enzyme_activators_list():
 @bp.route('/see_enzyme_activator/<activator_id>', methods=['GET', 'POST'])
 @login_required
 def see_enzyme_activator(activator_id):
+    """
+    Get's the data about the specified activator to be rendered in the front end:
+     - isoenzyme
+     - reaction
+     - organism
+     - activating metabolite
+     - activation constant
+     - evidence level
+     - comments
+     - models that the activator is associated to
+     - references for the specified inhibition
+
+    It also renders a "Modify" button which will redirect the user to  modify_enzyme_activator
+
+    Returns:
+        url_for modify_enzyme_activator if user clicks on "Modify"
+        render_template to see_data with data_type set to activator.
+    """
+
     enz_activator = EnzymeReactionActivation.query.filter_by(id=activator_id).first()
 
     data = []
@@ -222,6 +321,19 @@ def see_enzyme_activator(activator_id):
 @bp.route('/see_enzyme_effectors_list')
 @login_required
 def see_enzyme_effectors_list():
+    """
+    Get's the data about all enzyme effectors in the DB to put on a table:
+     - ID
+     - effector
+     - type
+     - enzyme
+     - reaction
+     - organism
+
+    Returns:
+        render_template to see_data with tab_status set to enzyme_effectors.
+    """
+
     tab_status = {"enzymes": "#", "metabolites": "#", "models": "#", "organisms": "#", "reactions": "#",
                   "enzyme_inhibitors:": "#", "enzyme_activators:": "#", "enzyme_effectors:": "active",
                   "enzyme_misc_info:": "#", "model_assumptions": "#", "mechanisms": "#"}
@@ -248,6 +360,25 @@ def see_enzyme_effectors_list():
 @bp.route('/see_enzyme_effector/<effector_id>', methods=['GET', 'POST'])
 @login_required
 def see_enzyme_effector(effector_id):
+    """
+     Get's the data about the specified effector to be rendered in the front end:
+      - isoenzyme
+      - reaction
+      - organism
+      - effector metabolite
+      - effector type
+      - evidence level
+      - comments
+      - models that the effector is associated to
+      - references for the specified effector
+
+     It also renders a "Modify" button which will redirect the user to  modify_enzyme_effector
+
+     Returns:
+         url_for modify_enzyme_effector if user clicks on "Modify"
+         render_template to see_data with data_type set to effector.
+     """
+
     enz_effector = EnzymeReactionEffector.query.filter_by(id=effector_id).first()
 
     data = []
@@ -282,6 +413,18 @@ def see_enzyme_effector(effector_id):
 @bp.route('/see_enzyme_misc_info_list')
 @login_required
 def see_enzyme_misc_info_list():
+    """
+    Get's the data about all miscellaneous info in the DB to put on a table:
+     - ID
+     - topic
+     - enzyme
+     - reaction
+     - organism
+
+    Returns:
+        render_template to see_data with tab_status set to enzyme_misc_info.
+    """
+
     tab_status = {"enzymes": "#", "metabolites": "#", "models": "#", "organisms": "#", "reactions": "#",
                   "enzyme_inhibitors:": "#", "enzyme_activators:": "#", "enzyme_effectors:": "#",
                   "enzyme_misc_info:": "active", "model_assumptions": "#", "mechanisms": "#"}
@@ -307,6 +450,25 @@ def see_enzyme_misc_info_list():
 @bp.route('/see_enzyme_misc_info/<misc_info_id>', methods=['GET', 'POST'])
 @login_required
 def see_enzyme_misc_info(misc_info_id):
+    """
+     Get's the data about the specified miscellaneous info to be rendered in the front end:
+      - isoenzyme
+      - reaction
+      - organism
+      - topic
+      - description
+      - evidence level
+      - comments
+      - models that the misc info is associated to
+      - references for the specified misc info
+
+     It also renders a "Modify" button which will redirect the user to  modify_enzyme_misc_info
+
+     Returns:
+         url_for modify_enzyme_misc_info if user clicks on "Modify"
+         render_template to see_data with data_type set to misc_info.
+     """
+
     enz_misc_info = EnzymeReactionMiscInfo.query.filter_by(id=misc_info_id).first()
 
     data = []
@@ -337,6 +499,14 @@ def see_enzyme_misc_info(misc_info_id):
 @bp.route('/see_gene_list')
 @login_required
 def see_gene_list():
+    """
+    Get's the data about all genes info in the DB to put on a table:
+     - in theory, in practice there is no tab for genes yet  TODO
+
+    Returns:
+        render_template to see_data with tab_status set to ... TODO
+    """
+
     tab_status = {"enzymes": "#", "metabolites": "#", "models": "active", "organisms": "#", "reactions": "#",
                   "enzyme_inhibitors:": "#", "enzyme_activators:": "#", "enzyme_effectors:": "#",
                   "enzyme_misc_info:": "#", "model_assumptions": "#", "mechanisms": "#"}
@@ -357,6 +527,16 @@ def see_gene_list():
 @bp.route('/see_mechanism_list')
 @login_required
 def see_mechanism_list():
+    """
+    Get's the data about all enzyme mechanisms info in the DB to put on a table:
+     - ID
+     - name
+     - image (diagram with binding/release order)
+
+    Returns:
+        render_template to see_data with tab_status set to mechanisms.
+    """
+
     tab_status = {"enzymes": "#", "metabolites": "#", "models": "#", "organisms": "#", "reactions": "#",
                   "enzyme_inhibitors:": "#", "enzyme_activators:": "#", "enzyme_effectors:": "#",
                   "enzyme_misc_info:": "#", "model_assumptions": "#", "mechanisms": "active"}
@@ -379,6 +559,18 @@ def see_mechanism_list():
 @bp.route('/see_metabolite_list')
 @login_required
 def see_metabolite_list():
+    """
+    Get's the data about all metabolites in the DB to put on a table:
+     - GRASP ID
+     - name
+     - bigg ID
+     - metanetX ID
+     - compartment
+
+    Returns:
+        render_template to see_data with tab_status set to metabolites.
+    """
+
     tab_status = {"enzymes": "#", "metabolites": "active", "models": "#", "organisms": "#", "reactions": "#",
                   "enzyme_inhibitors:": "#", "enzyme_activators:": "#", "enzyme_effectors:": "#",
                   "enzyme_misc_info:": "#", "model_assumptions": "#", "mechanisms": "#"}
@@ -403,6 +595,24 @@ def see_metabolite_list():
 @bp.route('/see_metabolite/<grasp_id>', methods=['GET', 'POST'])
 @login_required
 def see_metabolite(grasp_id):
+    """
+     Get's the data about the specified metabolite to be rendered in the front end:
+      - name
+      - grasp ID
+      - bigg ID
+      - metanetX ID
+      - compartments where the metabolite can be found
+      - ChEBIs
+      - InChis
+      - reactions in which it participates
+
+     It also renders a "Modify" button which will redirect the user to modify_metabolite
+
+     Returns:
+         url_for modify_metabolite if user clicks on "Modify"
+         render_template to see_data with data_type set to metabolite.
+     """
+
     metabolite = Metabolite.query.filter_by(grasp_id=grasp_id).first()
 
     data = []
@@ -434,6 +644,16 @@ def see_metabolite(grasp_id):
 @bp.route('/see_model_list')
 @login_required
 def see_model_list():
+    """
+    Get's the data about all models in the DB to put on a table:
+     - name
+     - organism
+     - strain
+
+    Returns:
+        render_template to see_data with tab_status set to models.
+    """
+
     tab_status = {"enzymes": "#", "metabolites": "#", "models": "active", "organisms": "#", "reactions": "#",
                   "enzyme_inhibitors:": "#", "enzyme_activators:": "#", "enzyme_effectors:": "#",
                   "enzyme_misc_info:": "#", "model_assumptions": "#", "mechanisms": "#"}
@@ -456,6 +676,26 @@ def see_model_list():
 @bp.route('/see_model/<model_name>', methods=['GET', 'POST'])
 @login_required
 def see_model(model_name):
+    """
+     Get's the data about the specified model to be rendered in the front end:
+      - name
+      - organism
+      - strain
+      - comments
+      - assumptions
+      - reactions that constitute the model with respective data:
+         - inhibitors
+         - activators
+         - effectors
+         - misc info
+
+     It also renders a "Modify" button which will redirect the user to modify_model
+
+     Returns:
+         url_for modify_model if user clicks on "Modify"
+         render_template to see_data with data_type set to model.
+     """
+
     model = Model.query.filter_by(name=model_name).first()
 
     data = []
@@ -508,6 +748,16 @@ def see_model(model_name):
 @bp.route('/see_model_assumptions_list')
 @login_required
 def see_model_assumptions_list():
+    """
+    Get's the data about all model assumptions in the DB to put on a table:
+     - ID
+     - assumption
+     - model
+
+    Returns:
+        render_template to see_data with tab_status set to model_assumptions.
+    """
+
     tab_status = {"enzymes": "#", "metabolites": "#", "models": "#", "organisms": "#", "reactions": "#",
                   "enzyme_inhibitors:": "#", "enzyme_activators:": "#", "enzyme_effectors:": "#",
                   "enzyme_misc_info:": "#", "model_assumptions": "active", "mechanisms": "#"}
@@ -531,6 +781,22 @@ def see_model_assumptions_list():
 @bp.route('/see_model_assumption/<model_assumption_id>', methods=['GET', 'POST'])
 @login_required
 def see_model_assumption(model_assumption_id):
+    """
+     Get's the data about the specified model assumption to be rendered in the front end:
+      - assumption
+      - description
+      - evidence level
+      - included in model
+      - comments
+      - references
+
+     It also renders a "Modify" button which will redirect the user to modify_model_assumption
+
+     Returns:
+         url_for modify_model_assumption if user clicks on "Modify"
+         render_template to see_data with data_type set to model_assumption.
+    """
+
     model_assumption = ModelAssumptions.query.filter_by(id=model_assumption_id).first()
 
     data = []
@@ -556,6 +822,14 @@ def see_model_assumption(model_assumption_id):
 @bp.route('/see_organism_list')
 @login_required
 def see_organism_list():
+    """
+    Get's the data about all organisms in the DB to put on a table:
+     - name
+
+    Returns:
+        render_template to see_data with tab_status set to organisms.
+    """
+
     tab_status = {"enzymes": "#", "metabolites": "#", "models": "#", "organisms": "active", "reactions": "#",
                   "enzyme_inhibitors:": "#", "enzyme_activators:": "#", "enzyme_effectors:": "#",
                   "enzyme_misc_info:": "#", "model_assumptions": "#", "mechanisms": "#"}
@@ -576,6 +850,18 @@ def see_organism_list():
 @bp.route('/see_organism/<organism_name>', methods=['GET', 'POST'])
 @login_required
 def see_organism(organism_name):
+    """
+     Get's the data about the specified organism to be rendered in the front end:
+      - name
+      - models for that organism
+
+     It also renders a "Modify" button which will redirect the user to modify_organism
+
+     Returns:
+         url_for modify_organism if user clicks on "Modify"
+         render_template to see_data with data_type set to organism.
+    """
+
     organism = Organism.query.filter_by(name=organism_name).first()
 
     data = []
@@ -596,6 +882,19 @@ def see_organism(organism_name):
 @bp.route('/see_reaction_list')
 @login_required
 def see_reaction_list():
+    """
+    Get's the data about all reactions in the DB to put on a table:
+     - name
+     - reaction
+     - metanetX
+     - bigg ID
+     - kegg ID
+     - compartment
+
+    Returns:
+        render_template to see_data with tab_status set to reactions.
+    """
+
     tab_status = {"enzymes": "#", "metabolites": "#", "models": "#", "organisms": "#", "reactions": "active",
                   "enzyme_inhibitors:": "#", "enzyme_activators:": "#", "enzyme_effectors:": "#",
                   "enzyme_misc_info:": "#", "model_assumptions": "#", "mechanisms": "#"}
@@ -622,6 +921,26 @@ def see_reaction_list():
 @bp.route('/see_reaction/<reaction_acronym>', methods=['GET', 'POST'])
 @login_required
 def see_reaction(reaction_acronym):
+    """
+     Get's the data about the specified reaction to be rendered in the front end:
+      - name
+      - acronym
+      - reaction string
+      - metanetX ID
+      - KEGG ID
+      - compartment where it occurs
+      - catalyzing isoenzymes
+      - gibbs energies
+      - models it is part of
+      - organisms it is part of
+
+     It also renders a "Modify" button which will redirect the user to modify_reaction_select_organism
+
+     Returns:
+         url_for modify_reaction_select_organism if user clicks on "Modify"
+         render_template to see_data with data_type set to reaction.
+    """
+
     reaction = Reaction.query.filter_by(acronym=reaction_acronym).first()
 
     data = []
