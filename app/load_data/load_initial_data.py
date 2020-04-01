@@ -23,7 +23,8 @@ def load_compartments():
     """
     Using a file based on Metanetx comp_xref.tsv, populate the Compartment table with the compartments found in BiGG.
 
-    :return: None
+    Returns:
+        None
     """
 
     comp_data_df = pd.read_csv(COMPARTMENT_DATA_FILE, sep='\t', comment='#', header=None)
@@ -51,8 +52,10 @@ def load_enzymes():
     """
     Gets all enzymes names in enzymes_genes_data_file and adds them to the database.
 
-    :return: None
+    Returns:
+        None
     """
+
     enzymes_df = pd.read_csv(ENZYME_GENES_DATA_FILE, sep=',')
 
     for row in enzymes_df.index:
@@ -86,8 +89,10 @@ def load_genes():
     Gets all gene names in enzymes_genes_data_file and adds them to the database.
     Afterwards it adds the gene associations to the enzymes and organism.
 
-    :return: None
+    Returns:
+        None
     """
+
     genes_df = pd.read_csv(ENZYME_GENES_DATA_FILE, sep=',')
 
     organism = Organism.query.filter_by(name='E. coli').first()
@@ -139,7 +144,8 @@ def load_metabolites():
     Gets all metabolites on the E. coli core model (see BiGG database), and then uses chem_xref.tsv from metanetx to
     get the metanetx ids and populate the Metabolite table.
 
-    :return: None
+    Returns:
+        None
     """
 
     metabolites_df = _get_metabolites_from_core_ecoli()
@@ -212,8 +218,10 @@ def load_organisms():
     """
     Loads E. coli and S. cerevisiae into the database.
 
-    :return: None
+    Returns:
+        None
     """
+
     organism_list = ['', 'E. coli', 'S. cerevisiae']
 
     for name in organism_list:
@@ -229,7 +237,8 @@ def load_reactions():
 
     It also gets the corresponding EC numbers from reac_prop.csv which will be used to populate the Enzyme table.
 
-    :return:
+    Returns:
+        None
     """
 
     reactions_df = _get_reactions_from_core_ecoli()
@@ -282,9 +291,10 @@ def load_enzyme_reaction_relation():
     """
     Gets all reaction and respective catalyzing enzymes and creates populates the table enzyme_reaction_organism for
      E. coli.
-
-    :return: None
+    Returns:
+        None
     """
+
     data_df = pd.read_csv(ENZYME_GENES_DATA_FILE, sep=',')
 
     organism = Organism.query.filter_by(name='E. coli').first()
@@ -310,8 +320,10 @@ def load_reference_types():
     """
     Loads four types of references into database.
 
-    :return: None
+    Returns:
+        None
     """
+
     reference_type_list = ['Article', 'Thesis', 'Online resource', 'Book']
 
     for type in reference_type_list:
@@ -324,8 +336,10 @@ def load_evidence_levels():
     """
     Adds evidence levels to the database.
 
-    :return: None
+    Returns:
+        None
     """
+
     evidence_list = ['Solid, clear evidence found in one or more papers for this organism.',
                      'Evidence found in papers but for other organisms',
                      'Evidence found in papers for this organism but not very clear or conflicting.',
@@ -344,7 +358,8 @@ def load_empty_model():
     """
     Adds empty model.
 
-    :return: None
+    Returns:
+        None
     """
 
     model = Model(name='')
@@ -356,7 +371,8 @@ def load_mechanisms():
     """
     Adds the most common mechanisms (from Cleland's paper) to the mechanism table.
 
-    :return: None
+    Returns:
+        None
     """
 
     mechanism_list = [('UniUni', ''),
@@ -424,34 +440,6 @@ class LoadDataConfig(Config):
     LOGIN_DISABLED = True
     WTF_CSRF_ENABLED = False
 
-
-def main2():
-    app = create_app(LoadDataConfig)
-    app_context = app.app_context()
-    app_context.push()
-
-    clear_data(db)
-
-    load_organisms()
-
-    load_compartments()
-    """
-    load_metabolites()
-    load_reactions()
-    """
-    load_enzymes()
-    """
-    load_genes()
-    """
-    load_reference_types()
-    """
-    load_enzyme_reaction_relation()
-    """
-    load_evidence_levels()
-
-    load_mechanisms()
-    """
-    load_empty_entries()"""
 
 def main():
     app = create_app(LoadDataConfig)
