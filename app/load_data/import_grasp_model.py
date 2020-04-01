@@ -5,9 +5,12 @@ def get_model_name(file_path, sheet_name):
     """
     Return the model name, which is assumed to be in the first row, second column of the sheet_name.
 
-    :param file_path: path to file containing the model
-    :param sheet_name: name of the excel sheet where the model name is, should be 'general'
-    :return: model_name
+    Args:
+        file_path: path to file containing the model
+        sheet_name: sheet_name: name of the excel sheet where the model name is, should be 'general'
+
+    Returns:
+        Model name
     """
 
     data_df = pd.read_excel(file_path, sheet_name=sheet_name)
@@ -20,9 +23,12 @@ def get_model_stoichiometry(file_path, sheet_name):
     """
     Gets the reaction strings from the stoichiometry matrix defined in the GRASP input models.
 
-    :param file_path: path to file containing the model
-    :param sheet_name: name of the excel sheet where the model stoichiometry is, should be 'stoic'
-    :return: mets, rxns, rxn_strings
+    Args:
+        file_path: path to file containing the model
+        sheet_name: name of the excel sheet where the model stoichiometry is, should be 'stoic'
+
+    Returns:
+        mets list, rxns lists, rxn_strings list
     """
 
     data_df = pd.read_excel(file_path, sheet_name=sheet_name, index_col=0, header=0)
@@ -58,9 +64,12 @@ def get_model_enzymes(file_path, sheet_name):
     """
     Imports the list of enzymes associated to each reaction in the model
 
-    :param file_path: path to file containing the model
-    :param sheet_name: name of the excel sheet where the model enzymes are, should be 'enzyme_reaction'
-    :return: enzyme_list
+    Args:
+        file_path: path to file containing the model
+        sheet_name: name of the excel sheet where the model enzymes are, should be 'enzyme_reaction'
+
+    Returns:
+        enzyme list
     """
 
     data_df = pd.read_excel(file_path, sheet_name=sheet_name, index_col=None, header=0)
@@ -78,10 +87,14 @@ def get_model_subunits(file_path, sheet_name):
     """
     Gets the columns reaction ID and subunits and returns a tuple (reaction ID, subunits).
 
-    :param file_path: path to file containing the model
-    :param sheet_name: name of the excel sheet where the enzyme subunits specification is, should be 'kinetics1'
-    :return: subunit_list
+    Args:
+        file_path: path to file containing the model
+        sheet_name: name of the excel sheet where the enzyme subunits specification is, should be 'kinetics1'
+
+    Returns:
+        subunit_dict with the form {rxn: number_of_subunits}
     """
+
     data_df = pd.read_excel(file_path, sheet_name=sheet_name, index_col=None, header=0)
     data_df = data_df.fillna('')
 
@@ -97,10 +110,15 @@ def get_model_mechanisms(file_path, sheet_name):
      {rxn_id : (mechanism, [mech_order], [mech_references])}.  Entry i in mech_references contains all references
       for the mechanism, and mech_order contains the order of substrate binding and product release.
 
-    :param file_path: path to file containing the model
-    :param sheet_name: name of the excel sheet where the reaction mechanism specification is, should be 'kinetics1'
-    :return: mechanisms_dict
+    Args:
+        file_path: path to file containing the model
+        sheet_name: name of the excel sheet where the reaction mechanism specification is, should be 'kinetics1'
+
+    Returns:
+        mechanisms_dict of the form:
+         {rxn_id: [mechanism name, [substrates binding order], [products release order], [references]]}
     """
+
     data_df = pd.read_excel(file_path, sheet_name=sheet_name, index_col=None, header=0)
     data_df['mechanism_refs'] = data_df['mechanism_refs'].fillna('')
 
@@ -120,10 +138,15 @@ def get_model_inhibitors(file_path, sheet_name):
       for inhibition i in inhibitor_list. If there are multiple references for the same inhibition these are still
       contained in the same string in entry i of inhib_references, where the reference strings are separated  by a space.
 
-    :param file_path: path to file containing the model
-    :param sheet_name: name of the excel sheet where the reaction inhibitors specification is, should be 'kinetics1'
-    :return: inhibitors_dict
+
+    Args:
+        file_path: path to file containing the model
+        sheet_name: name of the excel sheet where the reaction inhibitors specification is, should be 'kinetics1'
+
+    Returns:
+        inhibitors_dict of the form {rxn_id: [[inhibitors], [reference types], [references]]}
     """
+
     data_df = pd.read_excel(file_path, sheet_name=sheet_name, index_col=None, header=0)
 
     model_inhibitors = [inhib_list.split(' ') if isinstance(inhib_list, str) else [] for inhib_list in data_df['inhibitors'].values]
@@ -141,10 +164,14 @@ def get_model_activators(file_path, sheet_name):
       for activation i in activator_list. If there are multiple references for the same activation these are still
       contained in the same string in entry i of activ_references, where the reference strings are separated  by a space.
 
-    :param file_path: path to file containing the model
-    :param sheet_name: name of the excel sheet where the reaction activators specification is, should be 'kinetics1'
-    :return: activators_dict
+    Args:
+        file_path: path to file containing the model
+        sheet_name: name of the excel sheet where the reaction activators specification is, should be 'kinetics1'
+
+    Returns:
+        activators_dict of the form {rxn_id: [[activators], [reference types], [references]]}
     """
+
     data_df = pd.read_excel(file_path, sheet_name=sheet_name, index_col=None, header=0)
 
     model_activators = [activ_list.split(' ') if isinstance(activ_list, str) else [] for activ_list in data_df['activators'].values]
@@ -164,10 +191,14 @@ def get_model_effectors(file_path, sheet_name):
       by a space.
       In the end two different dictionaries are returned, one for positive effectors and another for negative effectors.
 
-    :param file_path: path to file containing the model
-    :param sheet_name: name of the excel sheet where the reaction effectors specification is, should be 'kinetics1'
-    :return: neg_effectors_dict, pos_effectors_dict
+    Args:
+        file_path: path to file containing the model
+        sheet_name: name of the excel sheet where the reaction effectors specification is, should be 'kinetics1'
+
+    Returns:
+        neg_effectors_dict and pos_effectors_dict of the form: {rxn_id: [[effectors], [reference types], [references]]}
     """
+
     data_df = pd.read_excel(file_path, sheet_name=sheet_name, index_col=None, header=0)
 
     model_neg_effectors = [neg_effectors_list.split(' ') if isinstance(neg_effectors_list, str) else [] for neg_effectors_list in data_df['negative effectors'].values]
@@ -185,11 +216,17 @@ def get_model_effectors(file_path, sheet_name):
 
 def get_model_gibbs_energies(file_path, sheet_name):
     """
+    Given the GRASP input excel file, extracts the gibbs energies (mean and respective std) for each reaction
+    from the thermoRxns sheet.
 
-    :param file_path:
-    :param sheet_name:
-    :return:
+    Args:
+        file_path: path to file containing the model
+        sheet_name: name of the excel sheet where the reaction effectors specification is, should be 'thermoRxns'
+
+    Returns:
+        dG_dict of the form {rxn_id: (dG_mean, dG_std, references)}
     """
+
     data_df = pd.read_excel(file_path, sheet_name=sheet_name, index_col=0, header=0)
     data_df = data_df.fillna('')
 
