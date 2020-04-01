@@ -8,14 +8,19 @@ from app.utils.parsers import ReactionParser, parse_input_list
 
 def add_enzyme_organism(enzyme, organism_id, uniprot_id_list, number_of_active_sites):
     """
-    If no enzyme_organism entry with the given uniprot_id exist, add it. Repeat for each uniprot_id in uniprot_id_list.
+    If no EnzymeOrganism entry with the given uniprot_id exists, add it.
+    Repeat for each uniprot_id in uniprot_id_list.
 
-    :param enzyme: an enzyme object.
-    :param organism_id: the id of the organism (in the DB).
-    :param uniprot_id_list: a list of uniprot IDs.
-    :param number_of_active_sites: the number of active sites in the enzyme.
-    :return: None
+    Args:
+        enzyme: an enzyme object.
+        organism_id: the id of the organism (in the DB).
+        uniprot_id_list: a list of uniprot IDs.
+        number_of_active_sites: the number of active sites in the enzyme.
+
+    Returns:
+        None
     """
+
     for uniprot_id in uniprot_id_list:
         enzyme_organism_db = EnzymeOrganism.query.filter_by(uniprot_id=uniprot_id).first()
         if not enzyme_organism_db:
@@ -29,14 +34,17 @@ def add_enzyme_organism(enzyme, organism_id, uniprot_id_list, number_of_active_s
 
 def add_enzyme_organism_subunits_only(enzyme, organism_id, number_of_active_sites):
     """
-    If no enzyme_organism for the given enzyme and organism exist, add it with the given number of active_sites.
+    If no EnzymeOrganism for the given enzyme and organism exist, add it with the given number of active_sites.
 
-    :param enzyme: an enzyme object.
-    :param organism_id: the id of the organism (in the DB).
-    :param uniprot_id_list: a list of uniprot IDs.
-    :param number_of_active_sites: the number of active sites in the enzyme.
-    :return: None
+    Args:
+        enzyme: an enzyme object.
+        organism_id: the id of the organism (in the DB).
+        number_of_active_sites: the number of active sites in the enzyme.
+
+    Returns:
+        None
     """
+
     enz_org_db = EnzymeOrganism.query.filter_by(organism_id=organism_id,
                                                 enzyme=enzyme).first()
     if not enz_org_db:
@@ -50,13 +58,18 @@ def add_enzyme_organism_subunits_only(enzyme, organism_id, number_of_active_site
 
 def add_enzyme_genes(gene_names, enzyme, organism_id):
     """
-    If gene doesn't exist in DB, adds it. Then adds the connection between gene, enzyme, and organism.
+    If gene doesn't exist in DB, adds it.
+    Then adds the connection between gene, enzyme, and organism.
 
-    :param gene_names: a list of gene names.
-    :param enzyme: an enzyme object.
-    :param organism_id: the id of the organism (in the DB).
-    :return: None
+    Args:
+        gene_names: a list of gene names.
+        enzyme: an enzyme object.
+        organism_id: the id of the organism (in the DB).
+
+    Returns:
+        None
     """
+
     # populate genes
     if gene_names:
         gene_bigg_ids_list = parse_input_list(gene_names)
@@ -81,11 +94,14 @@ def add_enzyme_structures(enzyme, organism_id, pdb_id_list, strain_list):
     """
     If the enzyme structures don't exist, adds them.
 
-    :param enzyme: an enzyme object.
-    :param organism_id: the id of the organism (in the DB).
-    :param pdb_id_list: a list of pdb ids.
-    :param strain_list: a list of strains, either a single one or one per pdb_id.
-    :return: None
+    Args:
+        enzyme: an enzyme object.
+        organism_id: the id of the organism (in the DB).
+        pdb_id_list: a list of pdb ids.
+        strain_list: a list of strains, either a single one or one per pdb_id.
+
+    Returns:
+        None
     """
 
     if len(strain_list) == 1 and len(pdb_id_list) > 1:
@@ -112,10 +128,14 @@ def add_metabolites_to_reaction(reaction, reaction_string):
     Takes in a reaction string, checks if the metabolites involved exist in the database, if not adds them, and then
     associates the metabolites with the reaction.
 
-    :param reaction: DB instance of reaction
-    :param reaction_string: reaction string in the format A_c + B_c <-> P_c
-    :return:
+    Args:
+        reaction: reaction object from DB
+        reaction_string: reaction string in the format A_c + B_c <-> P_c
+
+    Returns:
+        reaction object with added metabolites.
     """
+
     reversible, stoichiometry = ReactionParser().parse_reaction(reaction_string)
     # (True, OrderedDict([('m_pep_c', -1.0), ('m_adp_c', -1.5), ('m_pyr_c', 1.0), ('m_atp_m', 2.0)]))
 
@@ -138,17 +158,21 @@ def add_metabolites_to_reaction(reaction, reaction_string):
 def add_gibbs_energy(reaction_id, model_id, standard_dg, standard_dg_std, standard_dg_ph, standard_dg_is,
                      std_gibbs_energy_references):
     """
-    Adds the standard Gibbs energies to a reaction. First check if these exist already, if not creates it. Then adds the
-    references.
+    Adds the standard Gibbs energies to a reaction.
+    First check if these exist already, if not creates it.
+    Then adds the references.
 
-    :param reaction_id: id of the reaction to which the Gibbs energy is going to be associated with
-    :param model_id: id of model that the reaction is part of
-    :param standard_dg: value of the standard Gibbs energy in kJ/mol
-    :param standard_dg_std: value of the standard deviation of the standard Gibbs energy, in kJ/mol
-    :param standard_dg_ph: pH for the standard Gibbs energy
-    :param standard_dg_is: ionic strength for the standard Gibbs energy
-    :param std_gibbs_energy_references:  list of references for the given standard Gibbs energy
-    :return:
+    Args:
+        reaction_id: id of the reaction to which the Gibbs energy is going to be associated with
+        model_id: id of model that the reaction is part of
+        standard_dg: value of the standard Gibbs energy in kJ/mol
+        standard_dg_std: value of the standard deviation of the standard Gibbs energy, in kJ/mol
+        standard_dg_ph: pH for the standard Gibbs energy
+        standard_dg_is: ionic strength for the standard Gibbs energy
+        std_gibbs_energy_references:  list of references for the given standard Gibbs energy
+
+    Returns:
+        None
     """
 
     gibbs_energy_db = GibbsEnergy.query.filter_by(standard_dg=standard_dg,
@@ -202,11 +226,15 @@ def add_gibbs_energy(reaction_id, model_id, standard_dg, standard_dg_std, standa
 
 def add_mechanism_references(mechanism_references, enzyme_reaction_model):
     """
-    Takes in a list of doi and adds them as references to the database. Then adds them as mechanism references.
+    Takes in a list of doi and adds them as references to the database.
+    Then adds them as mechanism references.
 
-    :param mechanism_references: a list of references for a mechanism
-    :param enzyme_reaction_model: enzyme_reaction_model that has the given mechanism refs
-    :return: None
+    Args:
+        mechanism_references: a list of references for a mechanism
+        enzyme_reaction_model: enzyme_reaction_model that has the given mechanism refs
+
+    Returns:
+        None
     """
 
     mech_references = parse_input_list(mechanism_references)
@@ -224,11 +252,13 @@ def add_references(references, obj, mechanism_ref=False):
     """
     Takes in a list of doi and adds them as references to the database. Returns a list of the DB instances of the
     references inserted.
+    Args:
+        references: a list of references
+        obj: DB object to which the references will be added
+        mechanism_ref: boolean specifying whether or not the reference is for a mechanism
 
-    :param references: a list of references
-    :param obj: DB object to which the references will be added
-    :param mechanism_ref: boolean specifying whether or not the reference is for a mechanism
-    :return: None
+    Returns:
+        None
     """
 
     if type(references) is not list:
@@ -253,8 +283,11 @@ def check_metabolite(bigg_id):
     """
     Check if metabolite is part of the database and if it isn't add it and return the instance.
 
-    :param bigg_id: bigg_id for the metabolite.
-    :return: met_db
+    Args:
+        bigg_id: bigg_id for the metabolite.
+
+    Returns:
+        the metabolite object that was added to the DB
     """
 
     if bigg_id.find('_') != -1:
@@ -273,12 +306,19 @@ def check_metabolite(bigg_id):
 
 def set_binding_release_order(rxn, rxn_string, enz_rxn_org, mechanisms_dict):
     """
+    Used in the model_io to add binding and release order for the metabolites in the given reaction following the
+    given mechanism.
 
-    :param rxn_string:
-    :param enz_rxn_org:
-    :param mechanisms_dict:
-    :return:
+    Args:
+        rxn: reaction name
+        rxn_string: reaction string in the format A_c + B_c <-> P_c
+        enz_rxn_org: EnzymeReactionOrganism object from the database
+        mechanisms_dict: dictionary with the form {'rxn': [[mech name], [binding metabolites], [release metabolites]]}
+
+    Returns:
+        binding_order, release_order lists
     """
+
     rev, stoic = ReactionParser().parse_reaction(rxn_string)
 
     binding_ind = []
@@ -302,13 +342,22 @@ def set_binding_release_order(rxn, rxn_string, enz_rxn_org, mechanisms_dict):
 
 def add_effector(effector_dic, rxn, effector_type, model, enz_rxn_org):
     """
+    Used in model_io to add effectors to the DB.
+    Checks if the effector metabolite already exists in the DB, if not adds it.
+    Checks if the effector already exists in the DB, if not adds it.
+    If there are references associated adds them.
 
-    :param effector_dic:
-    :param rxn:
-    :param effector_type:
-    :param model:
-    :return:
+    Args:
+        effector_dic: with entries like {reaction ID: [[effectors], [references]]}
+        rxn: reaction ID
+        effector_type: effector type, either inhibiting or activating
+        model: model object to associate effector to
+        enz_rxn_org: EnzymeReactionOrganism to associate effector with
+
+    Returns:
+        None
     """
+
     for effector_i, effector in enumerate(effector_dic[rxn][0]):
         effector_met_db = check_metabolite(effector)
 
