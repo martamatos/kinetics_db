@@ -34,7 +34,7 @@ Soon the user will be able to:
  - download complete models in an excel file (same format that GRASP takes as an input).;
  - add models (and respective information) by uploading a GRASP input excel file.
 
-The API documentation can be found here (TODO sphinx link).
+The API documentation can be found [here](https://kinetics-db.readthedocs.io/en/latest/).
  
  
 
