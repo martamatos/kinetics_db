@@ -471,5 +471,7 @@ def main():
 
     load_empty_entries()
 
-main()
+
+if __name__ == '__main__':
+    main()
 
