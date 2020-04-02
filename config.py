@@ -12,7 +12,7 @@ class Config(object):
     POSTGRES_PW = os.environ.get('POSTGRES_PW')
     POSTGRES_DB = os.environ.get('POSTGRES_DB')
 
-    SQLALCHEMY_DATABASE_URI = 'postgresql+psycopg2://{user}:{pw}@{url}/{db}'.format(user=POSTGRES_USER,pw=POSTGRES_PW,url=POSTGRES_URL,db=POSTGRES_DB)
+    SQLALCHEMY_DATABASE_URI = 'postgresql+psycopg2://{user}:{pw}@{url}/{db}'.format(user=POSTGRES_USER, pw=POSTGRES_PW,url=POSTGRES_URL,db=POSTGRES_DB)
     #SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or 'sqlite:///' + os.path.join(basedir, 'app.db')
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     MAIL_SERVER = os.environ.get('MAIL_SERVER')
@@ -22,3 +22,8 @@ class Config(object):
     MAIL_PASSWORD = os.environ.get('MAIL_PASSWORD')
     ADMINS = ['your-email@example.com']
     POSTS_PER_PAGE = 25
+
+    UPLOAD_FOLDER = './app/static/models'
+    DOWNLOAD_FOLDER = './app/static/models'
+
+

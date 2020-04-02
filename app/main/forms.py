@@ -4,6 +4,7 @@ from flask_wtf import FlaskForm
 from wtforms import FloatField, IntegerField, SelectField, StringField, SubmitField, TextAreaField
 from wtforms.ext.sqlalchemy.fields import QuerySelectField, QuerySelectMultipleField
 from wtforms.validators import ValidationError, DataRequired, Length, Optional
+from flask_wtf.file import FileField, FileRequired
 
 from app.models import Compartment, Enzyme, EvidenceLevel, Mechanism, Model, Organism, Reaction, User, \
     EnzymeReactionOrganism, EnzymeReactionInhibition, EnzymeReactionActivation, \
@@ -480,3 +481,20 @@ class SelectModelForm(FlaskForm):
     def validate_model(self, model):
         if len(model.data) > 1:
             raise ValidationError('Please select only one model.')
+
+
+class UploadModelForm(FlaskForm):
+    organism = QuerySelectField('Organism', query_factory=get_organisms, validators=[DataRequired()])
+    model = FileField('Model', validators=[FileRequired()])
+
+    submit = SubmitField('Submit')
+
+    #def validate_model(self, model):
+    #    # make sure all the sheets are there and are not empty
+    # make sure enzyme_Reaction columns have the correct names
+    #    return 0
+    #validate model name
+    # make sure kinetics1 sheet has the right column names
+
+
+

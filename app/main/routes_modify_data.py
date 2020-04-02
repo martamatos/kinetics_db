@@ -22,6 +22,21 @@ from app.utils.parsers import ReactionParser, parse_input_list
 @bp.route('/modify_enzyme_select_organism/<isoenzyme>', methods=['GET', 'POST'])
 @login_required
 def modify_enzyme_select_organism(isoenzyme):
+    """
+    Modifies an isoenzyme in the database.
+
+    It starts by showing a form for the user to select the organism, then collects all the data for the specified enzyme
+    in the given organism from the database, puts it into data_form and redirects the user to modify_enzyme.
+    When in modify_enzyme, a form will be displayed with all fields filled in with the data in data_form.
+
+    Args:
+        isoenzyme: the name of the isoenzyme to be modified.
+
+     Returns:
+         url_for insert_data with ReactionForm before form validation
+         url_for modify_enzyme after form validation
+    """
+
     form_organism = SelectOrganismForm()
 
     if form_organism.validate_on_submit():
@@ -82,6 +97,31 @@ def modify_enzyme_select_organism(isoenzyme):
 @bp.route('/modify_enzyme/<isoenzyme>', methods=['GET', 'POST'])
 @login_required
 def modify_enzyme(isoenzyme):
+    """
+    Modifies an enzyme in the database.
+
+    Before form validation:
+     - formats data_form properly to pass the data to EnzymeForm, this data is used to fill in the EnzymeForm with the
+     values currently in the database.
+     - gathers gene_ids and strains into data_list to use for form autocompletion
+
+     After form validation:
+     - updates the enzyme data
+     - if an organism is specified, it removes all:
+        - genes associated to the enzyme
+        - structures associated to the enzyme
+        - organisms associated to the enzyme
+     - the new associations are then added if specified
+
+
+    Args:
+        isoenzyme: the name of the isoenzyme to be modified.
+
+     Returns:
+         url_for insert_data with EnzymeForm before form validation
+         url_for see_enzyme after form validation
+    """
+
     data_form = request.args.get('data_form')
     data_form = json.loads(data_form.replace("'", "\""))
 
@@ -144,11 +184,31 @@ def modify_enzyme(isoenzyme):
 @login_required
 def modify_enzyme_inhibitor(inhibitor_id):
     """
-    Enzyme inhibitions can only be added to models through this view, not removed, so that a given user doesn't mess
-    around with other users models.
+    Modifies an enzyme inhibitor in the database.
 
-    :param inhibitor_id:
-    :return:
+    Before form validation:
+     - gathers all metabolite bigg ids in data_list to use for the form autocompletion
+     - gathers all the data for the inhibitor from the DB to fill in the form with the existing values
+
+    After form validation:
+     - if any of the specified ids for EnzymeReactionOrganism is different from the current ones, it looks for the
+     entity with the new ids, and if it doesn't exist, it creates a new one and associates it to the inhibitor.
+    - checks if the inhibitor metabolite already exists in the DB and if not adds it
+    - checks if the affected metabolite already exists in the DB and if not adds it
+    - updates the attributes for evidence level and comments
+    - associates the inhibitor to the specified models (should also be emptying the associated models before? TODO)
+    - removes all references associated to this inhibition and adds the newly specified ones
+
+
+    Note: enzyme inhibitions can only be added to models through this view, not removed, so that a given user doesn't
+    mess around with other users models.
+
+    Args:
+        inhibitor_id: the id of the inhibitor to be modified
+
+     Returns:
+         url_for insert_data with EnzymeInhibitionForm before form validation
+         url_for see_enzyme_inhibitor after form validation
     """
 
     metabolites = Metabolite.query.all()
@@ -194,8 +254,10 @@ def modify_enzyme_inhibitor(inhibitor_id):
 
         inhibitor_met = check_metabolite(form.inhibitor_met.data)
         enz_inhibitor.inhibitor_met = inhibitor_met
+
         affected_met = check_metabolite(form.affected_met.data)
         enz_inhibitor.affected_met = affected_met
+
         enz_inhibitor.inhibition_type = form.inhibition_type.data
         enz_inhibitor.inhibition_constant = form.inhibition_constant.data
 
@@ -212,9 +274,9 @@ def modify_enzyme_inhibitor(inhibitor_id):
         if form.references.data:
             enz_inhibitor.empty_references()
 
-            ref_db_list = add_references(form.references.data)
-            for ref_db in ref_db_list:
-                enz_inhibitor.add_reference(ref_db)
+            add_references(form.references.data, enz_inhibitor)
+            #for ref_db in ref_db_list:
+            #    enz_inhibitor.add_reference(ref_db)
         db.session.commit()
 
         flash('Your enzyme inhibition has been modified.', 'success')
@@ -229,11 +291,30 @@ def modify_enzyme_inhibitor(inhibitor_id):
 @login_required
 def modify_enzyme_activator(activator_id):
     """
-    Enzyme activations can only be added to models through this view, not removed, so that a given user doesn't mess
-    around with other users models.
+    Modifies an enzyme activator in the database.
 
-    :param activator_id:
-    :return:
+    Before form validation:
+     - gathers all metabolite bigg ids in data_list to use for the form autocompletion
+     - gathers all the data for the activator from the DB to fill in the form with the existing values
+
+    After form validation:
+     - if any of the specified ids for EnzymeReactionOrganism is different from the current ones, it looks for the
+     entity with the new ids, and if it doesn't exist, it creates a new one and associates it to the activator.
+    - checks if the activator metabolite already exists in the DB and if not adds it
+    - updates the attributes for evidence level and comments
+    - associates the activator to the specified models (should also be emptying the associated models before? TODO)
+    - removes all references associated to this activation and adds the newly specified ones
+
+
+    Note: enzyme activations can only be added to models through this view, not removed, so that a given user doesn't
+    mess around with other users models.
+
+    Args:
+        activator_id: the id of the activator to be modified
+
+     Returns:
+         url_for insert_data with EnzymeActivationForm before form validation
+         url_for see_enzyme_activator after form validation
     """
 
     metabolites = Metabolite.query.all()
@@ -292,9 +373,9 @@ def modify_enzyme_activator(activator_id):
         if form.references.data:
             enz_activator.empty_references()
 
-            ref_db_list = add_references(form.references.data)
-            for ref_db in ref_db_list:
-                enz_activator.add_reference(ref_db)
+            add_references(form.references.data, enz_activator)
+            #for ref_db in ref_db_list:
+            #    enz_activator.add_reference(ref_db)
         db.session.commit()
 
         flash('Your enzyme activation has been modified.', 'success')
@@ -309,11 +390,33 @@ def modify_enzyme_activator(activator_id):
 @login_required
 def modify_enzyme_effector(effector_id):
     """
-    Enzyme effectors can only be added to models through this view, not removed, so that a given user doesn't mess
+    Modifies an enzyme effector in the database.
+
+    An effector is an allosteric effector, it can be either activating or inhibiting and is modelled differently from
+    the inhibitors and activators.
+
+    Before form validation:
+     - gathers all metabolite bigg ids in data_list to use for the form autocompletion
+     - gathers all the data for the effector from the DB to fill in the form with the existing values
+
+    After form validation:
+     - if any of the specified ids for EnzymeReactionOrganism is different from the current ones, it looks for the
+     entity with the new ids, and if it doesn't exist, it creates a new one and associates it to the effector.
+    - checks if the effector metabolite already exists in the DB and if not adds it
+    - updates the attributes for evidence level and comments
+    - associates the effector to the specified models (should also be emptying the associated models before? TODO)
+    - removes all references associated to this effector and adds the newly specified ones
+
+
+    Note: enzyme effectors can only be added to models through this view, not removed, so that a given user doesn't mess
     around with other users models.
 
-    :param effector_id:
-    :return:
+    Args:
+        effector_id: the id of the effector to be modified
+
+     Returns:
+         url_for insert_data with EnzymeEffectorForm before form validation
+         url_for see_enzyme_effector after form validation
     """
 
     metabolites = Metabolite.query.all()
@@ -374,9 +477,9 @@ def modify_enzyme_effector(effector_id):
         if form.references.data:
             enz_effector.empty_references()
 
-            ref_db_list = add_references(form.references.data)
-            for ref_db in ref_db_list:
-                enz_effector.add_reference(ref_db)
+            add_references(form.references.data, enz_effector)
+            #for ref_db in ref_db_list:
+            #    enz_effector.add_reference(ref_db)
 
         db.session.commit()
         flash('Your enzyme effector has been modified.', 'success')
@@ -391,11 +494,30 @@ def modify_enzyme_effector(effector_id):
 @login_required
 def modify_enzyme_misc_info(misc_info_id):
     """
-    Enzyme misc info can only be added to models through this view, not removed, so that a given user doesn't mess
+    Modifies a miscellaneous info entry in the database.
+
+
+    Before form validation:
+     - gathers all the data for the misc info from the DB to fill in the form with the existing values
+
+    After form validation:
+     - if any of the specified ids for EnzymeReactionOrganism is different from the current ones, it looks for the
+     entity with the new ids, and if it doesn't exist, it creates a new one and associates it to the misc info.
+     - updates the topic and description
+     - updates the attributes for evidence level and comments
+     - associates the misc info to the specified models (should also be emptying the associated models before? TODO)
+     - removes all references associated to this misc info and adds the newly specified ones
+
+    Note: enzyme misc info can only be added to models through this view, not removed, so that a given user doesn't mess
     around with other users models.
 
-    :param misc_info_id:
-    :return:
+
+    Args:
+        misc_info_id: the id of the miscellaneous information to be modified
+
+     Returns:
+         url_for insert_data with EnzymeMiscInfoForm before form validation
+         url_for see_enzyme_misc_info after form validation
     """
 
     enz_misc_info = EnzymeReactionMiscInfo.query.filter_by(id=misc_info_id).first()
@@ -448,9 +570,9 @@ def modify_enzyme_misc_info(misc_info_id):
         if form.references.data:
             enz_misc_info.empty_references()
 
-            ref_db_list = add_references(form.references.data)
-            for ref_db in ref_db_list:
-                enz_misc_info.add_reference(ref_db)
+            add_references(form.references.data, enz_misc_info)
+            #for ref_db in ref_db_list:
+            #    enz_misc_info.add_reference(ref_db)
 
         db.session.commit()
         flash('Your enzyme misc info has been modified.', 'success')
@@ -464,6 +586,33 @@ def modify_enzyme_misc_info(misc_info_id):
 @bp.route('/modify_model/<model_name>', methods=['GET', 'POST'])
 @login_required
 def modify_model(model_name):
+    """
+    Modifies the model with the specified name (model names are unique).
+
+    Before form validation:
+     - gathers all the data for the model from the DB to fill in the form with the existing values
+     - gathers all organism names into data_list to be used for autocompletion in the form
+
+    After form validation:
+     - looks for the specified organism in the DB, and if it doesn't exist it creates it
+     - updates the model attributes
+     - removes all the model associations to:
+        - inhibitors
+        - activators
+        - effectors
+        - EnzymeReactionOrganisms
+        - misc info
+        - model assumptions
+     - adds the newly specified (above) associations
+
+    Args:
+        model_name: name of the model to be modified
+
+     Returns:
+         url_for insert_data with ModelModifyForm before form validation
+         url_for see_model after form validation
+    """
+
     model = Model.query.filter_by(name=model_name).first()
 
     data_form = dict(name=model.name,
@@ -539,6 +688,26 @@ def modify_model(model_name):
 @bp.route('/modify_metabolite/<grasp_id>', methods=['GET', 'POST'])
 @login_required
 def modify_metabolite(grasp_id):
+    """
+    Modifies the metabolite with the specified grasp_id.
+
+    Before form validation:
+     - gathers all the data for the metabolite from the DB to fill in the form with the existing values
+
+    After form validation:
+     - updates the metabolite attributes
+     - removes the existing metabolite associations to compartments and adds the newly specified ones
+     - removes the existing metabolite associations to ChebiIds and adds the newly specified ones
+
+
+    Args:
+        grasp_id: grasp_id of the metabolite to be modified
+
+     Returns:
+         url_for insert_data with MetaboliteForm before form validation
+         url_for see_metabolite after form validation
+    """
+
     metabolite = Metabolite.query.filter_by(grasp_id=grasp_id).first()
 
     chebi_id_list = [chebi.chebi_id for chebi in metabolite.chebis]
@@ -589,6 +758,25 @@ def modify_metabolite(grasp_id):
 @bp.route('/modify_model_assumption/<model_assumption_id>', methods=['GET', 'POST'])
 @login_required
 def modify_model_assumption(model_assumption_id):
+    """
+    Modifies the model assumption with the specified ID.
+
+    Before form validation:
+     - gathers all the data for the given model assumption from the DB to fill in the form with the existing values
+
+    After form validation:
+     - updates the model assumption attributes
+     - removes the existing references associated to the assumptions and adds the newly specified ones
+
+
+    Args:
+        model_assumption_id: id of the model assumption to be modified
+
+     Returns:
+         url_for insert_data with ModelAssumptionsForm before form validation
+         url_for see_model_assumption after form validation
+    """
+
     model_assumption = ModelAssumptions.query.filter_by(id=model_assumption_id).first()
     model_assumption_refs = ', '.join(
         [ref.doi for ref in model_assumption.references]) if model_assumption.references else ''
@@ -613,9 +801,9 @@ def modify_model_assumption(model_assumption_id):
         if form.references.data:
             model_assumption.empty_references()
 
-            ref_db_list = add_references(form.references.data)
-            for ref_db in ref_db_list:
-                model_assumption.add_reference(ref_db)
+            add_references(form.references.data, model_assumption)
+            #for ref_db in ref_db_list:
+            #    model_assumption.add_reference(ref_db)
 
         db.session.commit()
         flash('Your model assumption has been modified.', 'success')
@@ -629,6 +817,24 @@ def modify_model_assumption(model_assumption_id):
 @bp.route('/modify_organism/<organism_name>', methods=['GET', 'POST'])
 @login_required
 def modify_organism(organism_name):
+    """
+    Modifies the organism with the specified name (organism names are unique).
+
+    Before form validation:
+     - gathers the data for the given organism from the DB to fill in the form with the existing values
+
+    After form validation:
+     - updates the organism attributes (basically the name)
+
+
+    Args:
+        organism_name: name of the organism to be modified
+
+     Returns:
+         url_for insert_data with OrganismForm before form validation
+         url_for see_organism after form validation
+    """
+
     data_form = dict(name=organism_name)
     form = OrganismForm(data=data_form)
 
@@ -646,6 +852,26 @@ def modify_organism(organism_name):
 @bp.route('/modify_reaction_select_organism/<reaction_acronym>', methods=['GET', 'POST'])
 @login_required
 def modify_reaction_select_organism(reaction_acronym):
+    """
+    Before selecting a reaction to be modified the user needs to:
+      1. select the organism that the reaction is associated to
+      2. select the isoenzyme that catalyzes the reaction
+      3. select the model to which the reaction is associated to
+
+    In here, the user is selecting the organism that the reaction is associated to (step 1).
+
+    After form validation:
+     - starts gathering data into data_form to be used in modify_reaction, in particular the organism name.
+
+    Args:
+        reaction_acronym: the acronym of the reaction  to be modified
+
+     Returns:
+         url_for insert_data with SelectOrganismForm before form validation and after form validation if no organism is
+           selected.
+         url_for modify_reaction_select_isoenzyme after form validation
+    """
+
     form_organism = SelectOrganismForm()
 
     if form_organism.validate_on_submit():
@@ -666,6 +892,30 @@ def modify_reaction_select_organism(reaction_acronym):
 @bp.route('/modify_reaction_select_isoenzyme/<reaction_acronym>', methods=['GET', 'POST'])
 @login_required
 def modify_reaction_select_isoenzyme(reaction_acronym):
+    """
+    Before selecting a reaction to be modified the user needs to:
+      1. select the organism that the reaction is associated to
+      2. select the isoenzyme that catalyzes the reaction
+      3. select the model to which the reaction is associated to
+
+    In here, the user is selecting the isoenzyme that catalyzes the reaction (step 2).
+
+    Before form validation:
+     - gets all the isoenzymes associated to the previously specified organism and reaction_acronym, these will be
+     passed on to the SelectIsoenzymeForm and are pre-selected.
+
+    After form validation:
+     - adds the selected isoenzyme to the data_form to be used in modify_reaction
+
+
+    Args:
+        reaction_acronym: the acronym of the reaction  to be modified
+
+     Returns:
+         url_for insert_data with SelectIsoenzymeForm before form validation
+         url_for modify_reaction_select_model after form validation
+    """
+
     data_form = request.args.get('data_form')
     data_form = json.loads(data_form.replace("'", "\""))
 
@@ -691,6 +941,31 @@ def modify_reaction_select_isoenzyme(reaction_acronym):
 @bp.route('/modify_reaction_select_model/<reaction_acronym>', methods=['GET', 'POST'])
 @login_required
 def modify_reaction_select_model(reaction_acronym):
+    """
+    Before selecting a reaction to be modified the user needs to:
+      1. select the organism that the reaction is associated to
+      2. select the isoenzyme that catalyzes the reaction
+      3. select the model to which the reaction is associated to
+
+    In here, the user is selecting the model to which the reaction is associated to (step 3).
+
+    Before form validation:
+     - gets the EnzymeReactionOrganism entity to which the reaction can be associated to, so it can select all models
+     associated to that EnzymeReactionOrganism, from which the user can select one in the SelectModelForm
+        - even though this is the intention, i'm not sure it is working like that (TODO)
+
+    After form validation:
+     - adds the selected model name to the data_form to be used in modify_reaction
+
+
+    Args:
+        reaction_acronym: the acronym of the reaction  to be modified
+
+     Returns:
+         url_for insert_data with SelectModelForm before form validation
+         url_for modify_reaction after form validation
+    """
+
     data_form = request.args.get('data_form')
     data_form = json.loads(data_form.replace("'", "\""))
 
@@ -719,12 +994,39 @@ def modify_reaction_select_model(reaction_acronym):
 @login_required
 def modify_reaction(reaction_acronym):
     """
+    Modifies the reaction in the DB with the given reaction_acronym.
 
-    The models associated to a given enzyme_reaction_organism are never removed, only added. This is to avoid that user
-    2 by mistake removes the association between a given enzyme_reaction_organism and the models from user 1.
+    Before getting here the user has already:
+      1. selected the organism that the reaction is associated to
+      2. selected the isoenzyme that catalyzes the reaction
+      3. selected the model to which the reaction is associated to
 
-    :param reaction_acronym:
-    :return:
+    Before form validation:
+     - gets all the info needed to fill in the data_form which is used to fill in the fields of ReactionForm with
+     the current information in the DB
+
+    After form validation:
+     - updates all the reaction attributes
+     - removes currently associated metabolites and adds the ones newly specified
+     - associates the reaction the newly specified compartments (shouldn't it remove it from the previous ones as well?
+     maybe not)
+     - if there is more than one isoenzyme associated to the reaction it focuses  on the first one to find the
+     respective EnzymeReactionOrganism entity, and if it doesn't exist, it is created (there should probably be a loop
+     going through all the EnzymeReactionOrganism entities? TODO)
+     - the current enzyme mechanism references are removed and the newly specified ones are added
+     - newly specified models and gibbs energies are added
+        - the reason model associations are not removed is because it might mess other people's models.
+
+
+    Note: the models associated to a given enzyme_reaction_organism are never removed, only added. This is to avoid that
+    user 2 by mistake removes the association between a given enzyme_reaction_organism and the models from user 1.
+
+    Args:
+        reaction_acronym: the acronym of the reaction  to be modified
+
+     Returns:
+         url_for insert_data with ReactionForm before form validation
+         url_for see_reaction after form validation
     """
 
     data_form = request.args.get('data_form')
@@ -828,7 +1130,7 @@ def modify_reaction(reaction_acronym):
 
         if form.mechanism_references.data:
             enzyme_rxn_org.empty_mechanism_references()
-            add_mechanism_references(form.mechanism_references.data, enzyme_rxn_org)
+            add_references(form.mechanism_references.data, enzyme_rxn_org, mechanism_ref=True)
 
         if form.models.data:
             for model in form.models.data:

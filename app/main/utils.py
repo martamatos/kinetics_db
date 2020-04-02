@@ -2,60 +2,74 @@ import re
 
 from app import db
 from app.models import Compartment, EnzymeGeneOrganism, EnzymeOrganism, EnzymeStructure, \
-    Gene, GibbsEnergy, GibbsEnergyReactionModel, Metabolite, Reference
+    Gene, GibbsEnergy, GibbsEnergyReactionModel, Metabolite, Reference, EnzymeReactionEffector, ReactionMetabolite
 from app.utils.parsers import ReactionParser, parse_input_list
 
 
 def add_enzyme_organism(enzyme, organism_id, uniprot_id_list, number_of_active_sites):
     """
-    If no enzyme_organism entry with the given uniprot_id exist, add it. Repeat for each uniprot_id in uniprot_id_list.
+    If no EnzymeOrganism entry with the given uniprot_id exists, add it.
+    Repeat for each uniprot_id in uniprot_id_list.
 
-    :param enzyme: an enzyme object.
-    :param organism_id: the id of the organism (in the DB).
-    :param uniprot_id_list: a list of uniprot IDs.
-    :param number_of_active_sites: the number of active sites in the enzyme.
-    :return: None
+    Args:
+        enzyme: an enzyme object.
+        organism_id: the id of the organism (in the DB).
+        uniprot_id_list: a list of uniprot IDs.
+        number_of_active_sites: the number of active sites in the enzyme.
+
+    Returns:
+        None
     """
+
     for uniprot_id in uniprot_id_list:
         enzyme_organism_db = EnzymeOrganism.query.filter_by(uniprot_id=uniprot_id).first()
         if not enzyme_organism_db:
             enzyme_organism_db = EnzymeOrganism(enzyme_id=enzyme.id,
                                                 organism_id=organism_id,
                                                 uniprot_id=uniprot_id,
-                                                n_active_sites=number_of_active_sites)
+                                                n_active_sites=int(number_of_active_sites))
             db.session.add(enzyme_organism_db)
         enzyme.add_enzyme_organism(enzyme_organism_db)
 
 
-"""
-def modify_enzyme_organism(enzyme, organism_id, uniprot_id_list, number_of_active_sites):
-    for uniprot_id in uniprot_id_list:
-        enzyme_organism_db = EnzymeOrganism.query.filter_by(uniprot_id=uniprot_id).first()
-        if not enzyme_organism_db:
-            enzyme_organism_db = EnzymeOrganism(enzyme_id=enzyme.id,
-                                                organism_id=organism_id,
-                                                uniprot_id=uniprot_id,
-                                                n_active_sites=number_of_active_sites)
-            db.session.add(enzyme_organism_db)
-        else:
-            enzyme_organism_db.enzyme_id = enzyme.id
-            enzyme_organism_db.organism_id = organism_id
-            enzyme_organism_db.n_active_sites = number_of_active_sites
-        enzyme.add_enzyme_organism(enzyme_organism_db)
+def add_enzyme_organism_subunits_only(enzyme, organism_id, number_of_active_sites):
+    """
+    If no EnzymeOrganism for the given enzyme and organism exist, add it with the given number of active_sites.
 
-    db.session.commit()
-"""
+    Args:
+        enzyme: an enzyme object.
+        organism_id: the id of the organism (in the DB).
+        number_of_active_sites: the number of active sites in the enzyme.
+
+    Returns:
+        None
+    """
+
+    enz_org_db = EnzymeOrganism.query.filter_by(organism_id=organism_id,
+                                                enzyme=enzyme).first()
+    if not enz_org_db:
+        enz_org_db = EnzymeOrganism(organism_id=organism_id,
+                                    enzyme=enzyme,
+                                    n_active_sites=int(number_of_active_sites))
+        db.session.add(enz_org_db)
+
+    enzyme.add_enzyme_organism(enz_org_db)
 
 
 def add_enzyme_genes(gene_names, enzyme, organism_id):
     """
-    If gene doesn't exist in DB, adds it. Then adds the connection between gene, enzyme, and organism.
+    If gene doesn't exist in DB, adds it.
+    Then adds the connection between gene, enzyme, and organism.
 
-    :param gene_names: a list of gene names.
-    :param enzyme: an enzyme object.
-    :param organism_id: the id of the organism (in the DB).
-    :return: None
+    Args:
+        gene_names: a list of gene names.
+        enzyme: an enzyme object.
+        organism_id: the id of the organism (in the DB).
+
+    Returns:
+        None
     """
+
     # populate genes
     if gene_names:
         gene_bigg_ids_list = parse_input_list(gene_names)
@@ -80,11 +94,14 @@ def add_enzyme_structures(enzyme, organism_id, pdb_id_list, strain_list):
     """
     If the enzyme structures don't exist, adds them.
 
-    :param enzyme: an enzyme object.
-    :param organism_id: the id of the organism (in the DB).
-    :param pdb_id_list: a list of pdb ids.
-    :param strain_list: a list of strains, either a single one or one per pdb_id.
-    :return: None
+    Args:
+        enzyme: an enzyme object.
+        organism_id: the id of the organism (in the DB).
+        pdb_id_list: a list of pdb ids.
+        strain_list: a list of strains, either a single one or one per pdb_id.
+
+    Returns:
+        None
     """
 
     if len(strain_list) == 1 and len(pdb_id_list) > 1:
@@ -103,8 +120,22 @@ def add_enzyme_structures(enzyme, organism_id, pdb_id_list, strain_list):
                                                   strain=pdb_id_strain)
             db.session.add(enzyme_structure_db)
 
+        enzyme.add_structure(enzyme_structure_db)
+
 
 def add_metabolites_to_reaction(reaction, reaction_string):
+    """
+    Takes in a reaction string, checks if the metabolites involved exist in the database, if not adds them, and then
+    associates the metabolites with the reaction.
+
+    Args:
+        reaction: reaction object from DB
+        reaction_string: reaction string in the format A_c + B_c <-> P_c
+
+    Returns:
+        reaction object with added metabolites.
+    """
+
     reversible, stoichiometry = ReactionParser().parse_reaction(reaction_string)
     # (True, OrderedDict([('m_pep_c', -1.0), ('m_adp_c', -1.5), ('m_pyr_c', 1.0), ('m_atp_m', 2.0)]))
 
@@ -112,14 +143,9 @@ def add_metabolites_to_reaction(reaction, reaction_string):
         met_compartment = re.findall('(\w+)_(\w+)', met)[0]
 
         bigg_id = met_compartment[0]
-        met_db = Metabolite.query.filter_by(bigg_id=bigg_id).first()
-
         compartment_acronym = met_compartment[1]
 
-        if not met_db:
-            met_db = Metabolite(bigg_id=bigg_id,
-                                grasp_id=bigg_id)
-            db.session.add(met_db)
+        met_db = check_metabolite(bigg_id)
 
         compartment_db = Compartment.query.filter_by(bigg_id=compartment_acronym).first()
         met_db.add_compartment(compartment_db)
@@ -131,6 +157,24 @@ def add_metabolites_to_reaction(reaction, reaction_string):
 
 def add_gibbs_energy(reaction_id, model_id, standard_dg, standard_dg_std, standard_dg_ph, standard_dg_is,
                      std_gibbs_energy_references):
+    """
+    Adds the standard Gibbs energies to a reaction.
+    First check if these exist already, if not creates it.
+    Then adds the references.
+
+    Args:
+        reaction_id: id of the reaction to which the Gibbs energy is going to be associated with
+        model_id: id of model that the reaction is part of
+        standard_dg: value of the standard Gibbs energy in kJ/mol
+        standard_dg_std: value of the standard deviation of the standard Gibbs energy, in kJ/mol
+        standard_dg_ph: pH for the standard Gibbs energy
+        standard_dg_is: ionic strength for the standard Gibbs energy
+        std_gibbs_energy_references:  list of references for the given standard Gibbs energy
+
+    Returns:
+        None
+    """
+
     gibbs_energy_db = GibbsEnergy.query.filter_by(standard_dg=standard_dg,
                                                   standard_dg_std=standard_dg_std,
                                                   ph=standard_dg_ph,
@@ -181,6 +225,18 @@ def add_gibbs_energy(reaction_id, model_id, standard_dg, standard_dg_std, standa
 
 
 def add_mechanism_references(mechanism_references, enzyme_reaction_model):
+    """
+    Takes in a list of doi and adds them as references to the database.
+    Then adds them as mechanism references.
+
+    Args:
+        mechanism_references: a list of references for a mechanism
+        enzyme_reaction_model: enzyme_reaction_model that has the given mechanism refs
+
+    Returns:
+        None
+    """
+
     mech_references = parse_input_list(mechanism_references)
 
     for ref_doi in mech_references:
@@ -192,23 +248,137 @@ def add_mechanism_references(mechanism_references, enzyme_reaction_model):
         enzyme_reaction_model.add_mechanism_reference(ref_db)
 
 
-def add_references(references):
-    reference_list = parse_input_list(references)
-    ref_db_list = []
+def add_references(references, obj, mechanism_ref=False):
+    """
+    Takes in a list of doi and adds them as references to the database. Returns a list of the DB instances of the
+    references inserted.
+    Args:
+        references: a list of references
+        obj: DB object to which the references will be added
+        mechanism_ref: boolean specifying whether or not the reference is for a mechanism
+
+    Returns:
+        None
+    """
+
+    if type(references) is not list:
+        reference_list = parse_input_list(references)
+    else:
+        reference_list = references
+
     for reference in reference_list:
         ref_db = Reference.query.filter_by(doi=reference).first()
+
         if not ref_db:
             ref_db = Reference(doi=reference)
-        ref_db_list.append(ref_db)
+            db.session.add(ref_db)
 
-    return ref_db_list
+        if mechanism_ref:
+            obj.add_mechanism_reference(ref_db)
+        else:
+            obj.add_reference(ref_db)
 
 
 def check_metabolite(bigg_id):
+    """
+    Check if metabolite is part of the database and if it isn't add it and return the instance.
+
+    Args:
+        bigg_id: bigg_id for the metabolite.
+
+    Returns:
+        the metabolite object that was added to the DB
+    """
+
+    if bigg_id.find('_') != -1:
+        met_compartment = re.findall('(\w+)_(\w*)', bigg_id)[0]
+        bigg_id = met_compartment[0]
+
     met_db = Metabolite.query.filter_by(bigg_id=bigg_id).first()
+
     if not met_db:
         met_db = Metabolite(bigg_id=bigg_id,
                             grasp_id=bigg_id)
         db.session.add(met_db)
 
     return met_db
+
+
+def set_binding_release_order(rxn, rxn_string, enz_rxn_org, mechanisms_dict):
+    """
+    Used in the model_io to add binding and release order for the metabolites in the given reaction following the
+    given mechanism.
+
+    Args:
+        rxn: reaction name
+        rxn_string: reaction string in the format A_c + B_c <-> P_c
+        enz_rxn_org: EnzymeReactionOrganism object from the database
+        mechanisms_dict: dictionary with the form {'rxn': [[mech name], [binding metabolites], [release metabolites]]}
+
+    Returns:
+        binding_order, release_order lists
+    """
+
+    rev, stoic = ReactionParser().parse_reaction(rxn_string)
+
+    binding_ind = []
+    release_ind = []
+    for met, coeff in stoic.items():
+        if coeff < 0:
+            binding_ind.append(mechanisms_dict[rxn][1].index(met))
+        else:
+            release_ind.append(mechanisms_dict[rxn][2].index(met))
+
+    binding_ind.sort()
+    release_ind.sort()
+    binding_order = ' '.join([mechanisms_dict[rxn][1][ind] for ind in binding_ind])
+    release_order = ' '.join([mechanisms_dict[rxn][2][ind] for ind in release_ind])
+
+    enz_rxn_org.subs_binding_order = binding_order
+    enz_rxn_org.prod_release_order = release_order
+
+    return binding_order, release_order
+
+
+def add_effector(effector_dic, rxn, effector_type, model, enz_rxn_org):
+    """
+    Used in model_io to add effectors to the DB.
+    Checks if the effector metabolite already exists in the DB, if not adds it.
+    Checks if the effector already exists in the DB, if not adds it.
+    If there are references associated adds them.
+
+    Args:
+        effector_dic: with entries like {reaction ID: [[effectors], [references]]}
+        rxn: reaction ID
+        effector_type: effector type, either inhibiting or activating
+        model: model object to associate effector to
+        enz_rxn_org: EnzymeReactionOrganism to associate effector with
+
+    Returns:
+        None
+    """
+
+    for effector_i, effector in enumerate(effector_dic[rxn][0]):
+        effector_met_db = check_metabolite(effector)
+
+        enz_effector_db = EnzymeReactionEffector.query.filter_by(effector_met=effector_met_db,
+                                                                 effector_type=effector_type).first()
+
+        if not enz_effector_db:
+            enz_effector_db = EnzymeReactionEffector(effector_met=effector_met_db,
+                                                     effector_type=effector_type)
+            db.session.add(enz_effector_db)
+
+        enz_effector_db.add_model(model)
+        enz_rxn_org.add_enzyme_reaction_effector(enz_effector_db)
+
+        if effector_dic[rxn][1]:
+            try:
+                if len(effector_dic[rxn][1]) > 1:
+                    add_references(effector_dic[rxn][1][effector_i], enz_effector_db)
+                else:
+                    add_references(effector_dic[rxn][1][0], enz_effector_db)
+            except IndexError:
+                print(f'Number of references is wrong for effector {effector} from reaction {rxn}. '
+                      f'These references won\'t be added.'
+                      f'There should be either a single reference for all effectors, or one for each.')

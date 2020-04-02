@@ -5,12 +5,14 @@ from app import create_app, db
 from app.models import User, Post, Enzyme, EnzymeOrganism, EnzymeStructure, Gene, Model, \
     Organism, EnzymeGeneOrganism
 from app.utils.parsers import parse_input_list
+from app.utils.misc import clear_data
 from config import Config
 
 
 class TestConfig(Config):
     TESTING = True
-    SQLALCHEMY_DATABASE_URI = 'sqlite://'
+    #SQLALCHEMY_DATABASE_URI = 'sqlite://'
+    POSTGRES_DB = 'kinetics_db_test'
     LOGIN_DISABLED = True
     WTF_CSRF_ENABLED = False
 
@@ -107,6 +109,7 @@ class EnzymeModelCase(unittest.TestCase):
         self.app_context = self.app.app_context()
         self.app_context.push()
         db.create_all()
+        clear_data(db)
 
     def tearDown(self):
         db.session.remove()

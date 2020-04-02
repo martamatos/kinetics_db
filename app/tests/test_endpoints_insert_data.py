@@ -11,13 +11,16 @@ from app.utils.parsers import parse_input_list, ReactionParser
 from app.utils.populate_db import add_models, add_mechanisms, add_reaction, add_reference_types, add_enzymes, \
     add_compartments, add_evidence_levels, add_organisms, add_references
 from config import Config
+from werkzeug.datastructures import FileStorage
 
 
 class TestConfig(Config):
     TESTING = True
-    SQLALCHEMY_DATABASE_URI = 'sqlite://'
+    #SQLALCHEMY_DATABASE_URI = 'sqlite://'
+    POSTGRES_DB = 'kinetics_db_test'
     LOGIN_DISABLED = True
     WTF_CSRF_ENABLED = False
+    UPLOAD_FOLDER = '../../uploaded_models'
 
 
 def populate_db(test_case, client=None):
@@ -32,6 +35,17 @@ def populate_db(test_case, client=None):
         add_references()
 
     elif test_case == 'model':
+        add_compartments()
+        add_evidence_levels()
+        add_mechanisms()
+        add_organisms()
+        add_enzymes(client)
+        add_models()
+        add_reference_types()
+        add_references()
+        add_reaction(client)
+
+    elif test_case == 'upload_model':
         add_compartments()
         add_evidence_levels()
         add_mechanisms()
@@ -685,11 +699,11 @@ class TestAddEnzymeInhibition(unittest.TestCase):
         self.assertTrue(b'<title>\n    See enzyme inhibitor - Kinetics DB \n</title>' in response.data)
         self.assertTrue(b'Your enzyme inhibition is now live!' in response.data)
 
-        self.assertEqual(Enzyme.query.count(), 2)
+        self.assertEqual(Enzyme.query.count(), 3)
         self.assertEqual(GibbsEnergy.query.count(), 1)
         self.assertEqual(EnzymeReactionOrganism.query.count(), 2)
         self.assertEqual(EnzymeReactionInhibition.query.count(), 1)
-        self.assertEqual(Mechanism.query.count(), 2)
+        self.assertEqual(Mechanism.query.count(), 7)
         self.assertEqual(Reference.query.count(), 3)
         self.assertEqual(Model.query.count(), 2)
         self.assertEqual(Organism.query.count(), 2)
@@ -719,7 +733,7 @@ class TestAddEnzymeInhibition(unittest.TestCase):
                          Metabolite.query.filter_by(bigg_id=self.inhibitor_met).first())
         self.assertEqual(EnzymeReactionInhibition.query.first().affected_met,
                          Metabolite.query.filter_by(bigg_id=self.affected_met).first())
-        self.assertEqual(EnzymeReactionInhibition.query.first().inhibition_constant, self.inhibition_constant)
+        self.assertAlmostEqual(EnzymeReactionInhibition.query.first().inhibition_constant, self.inhibition_constant, 6)
         self.assertEqual(EnzymeReactionInhibition.query.first().evidence, EvidenceLevel.query.first())
         self.assertEqual(EnzymeReactionInhibition.query.first().comments, self.comments)
         self.assertEqual(EnzymeReactionInhibition.query.first().references[0].doi, self.reference_list[0])
@@ -753,11 +767,11 @@ class TestAddEnzymeInhibition(unittest.TestCase):
         self.assertTrue(b'<title>\n    See enzyme inhibitor - Kinetics DB \n</title>' in response.data)
         self.assertTrue(b'Your enzyme inhibition is now live!' in response.data)
 
-        self.assertEqual(Enzyme.query.count(), 2)
+        self.assertEqual(Enzyme.query.count(), 3)
         self.assertEqual(GibbsEnergy.query.count(), 1)
         self.assertEqual(EnzymeReactionOrganism.query.count(), 2)
         self.assertEqual(EnzymeReactionInhibition.query.count(), 1)
-        self.assertEqual(Mechanism.query.count(), 2)
+        self.assertEqual(Mechanism.query.count(), 7)
         self.assertEqual(Reference.query.count(), 3)
         self.assertEqual(Model.query.count(), 2)
         self.assertEqual(Organism.query.count(), 2)
@@ -787,7 +801,7 @@ class TestAddEnzymeInhibition(unittest.TestCase):
                          Metabolite.query.filter_by(bigg_id=self.inhibitor_met).first())
         self.assertEqual(EnzymeReactionInhibition.query.first().affected_met,
                          Metabolite.query.filter_by(bigg_id=self.affected_met).first())
-        self.assertEqual(EnzymeReactionInhibition.query.first().inhibition_constant, self.inhibition_constant)
+        self.assertAlmostEqual(EnzymeReactionInhibition.query.first().inhibition_constant, self.inhibition_constant, 6)
         self.assertEqual(EnzymeReactionInhibition.query.first().evidence, EvidenceLevel.query.first())
         self.assertEqual(EnzymeReactionInhibition.query.first().comments, self.comments)
         self.assertEqual(EnzymeReactionInhibition.query.first().references[0].doi, self.reference_list[0])
@@ -852,11 +866,11 @@ class TestAddEnzymeActivation(unittest.TestCase):
         self.assertTrue(b'<title>\n    See enzyme activator - Kinetics DB \n</title>' in response.data)
         self.assertTrue(b'Your enzyme activation is now live!' in response.data)
 
-        self.assertEqual(Enzyme.query.count(), 2)
+        self.assertEqual(Enzyme.query.count(), 3)
         self.assertEqual(GibbsEnergy.query.count(), 1)
         self.assertEqual(EnzymeReactionOrganism.query.count(), 2)
         self.assertEqual(EnzymeReactionActivation.query.count(), 1)
-        self.assertEqual(Mechanism.query.count(), 2)
+        self.assertEqual(Mechanism.query.count(), 7)
         self.assertEqual(Reference.query.count(), 3)
         self.assertEqual(Model.query.count(), 2)
         self.assertEqual(Organism.query.count(), 2)
@@ -884,7 +898,7 @@ class TestAddEnzymeActivation(unittest.TestCase):
         self.assertEqual(EnzymeReactionActivation.query.count(), 1)
         self.assertEqual(EnzymeReactionActivation.query.first().activator_met,
                          Metabolite.query.filter_by(bigg_id=self.activator_met).first())
-        self.assertEqual(EnzymeReactionActivation.query.first().activation_constant, self.activation_constant)
+        self.assertAlmostEqual(EnzymeReactionActivation.query.first().activation_constant, self.activation_constant, 6)
         self.assertEqual(EnzymeReactionActivation.query.first().evidence, EvidenceLevel.query.first())
         self.assertEqual(EnzymeReactionActivation.query.first().comments, self.comments)
         self.assertEqual(EnzymeReactionActivation.query.first().references[0].doi, self.reference_list[0])
@@ -916,11 +930,11 @@ class TestAddEnzymeActivation(unittest.TestCase):
         self.assertTrue(b'<title>\n    See enzyme activator - Kinetics DB \n</title>' in response.data)
         self.assertTrue(b'Your enzyme activation is now live!' in response.data)
 
-        self.assertEqual(Enzyme.query.count(), 2)
+        self.assertEqual(Enzyme.query.count(), 3)
         self.assertEqual(GibbsEnergy.query.count(), 1)
         self.assertEqual(EnzymeReactionOrganism.query.count(), 2)
         self.assertEqual(EnzymeReactionActivation.query.count(), 1)
-        self.assertEqual(Mechanism.query.count(), 2)
+        self.assertEqual(Mechanism.query.count(), 7)
         self.assertEqual(Reference.query.count(), 3)
         self.assertEqual(Model.query.count(), 2)
         self.assertEqual(Organism.query.count(), 2)
@@ -948,7 +962,7 @@ class TestAddEnzymeActivation(unittest.TestCase):
         self.assertEqual(EnzymeReactionActivation.query.count(), 1)
         self.assertEqual(EnzymeReactionActivation.query.first().activator_met,
                          Metabolite.query.filter_by(bigg_id=self.activator_met).first())
-        self.assertEqual(EnzymeReactionActivation.query.first().activation_constant, self.activation_constant)
+        self.assertAlmostEqual(EnzymeReactionActivation.query.first().activation_constant, self.activation_constant, 6)
         self.assertEqual(EnzymeReactionActivation.query.first().evidence, EvidenceLevel.query.first())
         self.assertEqual(EnzymeReactionActivation.query.first().comments, self.comments)
         self.assertEqual(EnzymeReactionActivation.query.first().references[0].doi, self.reference_list[0])
@@ -1013,11 +1027,11 @@ class TestAddEnzymeEffector(unittest.TestCase):
         self.assertTrue(b'<title>\n    See enzyme effector - Kinetics DB \n</title>' in response.data)
         self.assertTrue(b'Your enzyme effector is now live!' in response.data)
 
-        self.assertEqual(Enzyme.query.count(), 2)
+        self.assertEqual(Enzyme.query.count(), 3)
         self.assertEqual(GibbsEnergy.query.count(), 1)
         self.assertEqual(EnzymeReactionOrganism.query.count(), 2)
         self.assertEqual(EnzymeReactionEffector.query.count(), 1)
-        self.assertEqual(Mechanism.query.count(), 2)
+        self.assertEqual(Mechanism.query.count(), 7)
         self.assertEqual(Reference.query.count(), 3)
         self.assertEqual(Model.query.count(), 2)
         self.assertEqual(Organism.query.count(), 2)
@@ -1076,11 +1090,11 @@ class TestAddEnzymeEffector(unittest.TestCase):
         self.assertTrue(b'<title>\n    See enzyme effector - Kinetics DB \n</title>' in response.data)
         self.assertTrue(b'Your enzyme effector is now live!' in response.data)
 
-        self.assertEqual(Enzyme.query.count(), 2)
+        self.assertEqual(Enzyme.query.count(), 3)
         self.assertEqual(GibbsEnergy.query.count(), 1)
         self.assertEqual(EnzymeReactionOrganism.query.count(), 2)
         self.assertEqual(EnzymeReactionEffector.query.count(), 1)
-        self.assertEqual(Mechanism.query.count(), 2)
+        self.assertEqual(Mechanism.query.count(), 7)
         self.assertEqual(Reference.query.count(), 3)
         self.assertEqual(Model.query.count(), 2)
         self.assertEqual(Organism.query.count(), 2)
@@ -1171,11 +1185,11 @@ class TestAddEnzymeMiscInfo(unittest.TestCase):
         self.assertTrue(b'<title>\n    See enzyme misc info - Kinetics DB \n</title>' in response.data)
         self.assertTrue(b'Your enzyme misc info is now live!' in response.data)
 
-        self.assertEqual(Enzyme.query.count(), 2)
+        self.assertEqual(Enzyme.query.count(), 3)
         self.assertEqual(GibbsEnergy.query.count(), 1)
         self.assertEqual(EnzymeReactionOrganism.query.count(), 2)
         self.assertEqual(EnzymeReactionMiscInfo.query.count(), 1)
-        self.assertEqual(Mechanism.query.count(), 2)
+        self.assertEqual(Mechanism.query.count(), 7)
         self.assertEqual(Reference.query.count(), 3)
         self.assertEqual(Model.query.count(), 2)
         self.assertEqual(Organism.query.count(), 2)
@@ -1233,11 +1247,11 @@ class TestAddEnzymeMiscInfo(unittest.TestCase):
         self.assertTrue(b'<title>\n    See enzyme misc info - Kinetics DB \n</title>' in response.data)
         self.assertTrue(b'Your enzyme misc info is now live!' in response.data)
 
-        self.assertEqual(Enzyme.query.count(), 2)
+        self.assertEqual(Enzyme.query.count(), 3)
         self.assertEqual(GibbsEnergy.query.count(), 1)
         self.assertEqual(EnzymeReactionOrganism.query.count(), 2)
         self.assertEqual(EnzymeReactionMiscInfo.query.count(), 1)
-        self.assertEqual(Mechanism.query.count(), 2)
+        self.assertEqual(Mechanism.query.count(), 7)
         self.assertEqual(Reference.query.count(), 3)
         self.assertEqual(Model.query.count(), 2)
         self.assertEqual(Organism.query.count(), 2)
@@ -1524,10 +1538,13 @@ class TestAddModel(unittest.TestCase):
         self.assertTrue(b'<title>\n    See models - Kinetics DB \n</title>' in response.data)
         self.assertTrue(b'Your model is now live!' in response.data)
 
+        self.assertEqual(Model().query.count(), 1)
         self.assertEqual(Model().query.first().name, model_name)
         self.assertEqual(Model().query.first().organism_name, organism_name)
         self.assertEqual(Model().query.first().strain, strain)
         self.assertEqual(Model().query.first().comments, comments)
+
+        self.assertEqual(Organism().query.count(), 1)
         self.assertEqual(Organism().query.first().name, organism_name)
         self.assertEqual(Organism().query.first().models.count(), 1)
         self.assertEqual(Organism().query.first().models[0].name, model_name)
@@ -1594,7 +1611,10 @@ class TestAddModel(unittest.TestCase):
         self.assertEqual(Organism().query.first().models.count(), 0)
 
     def test_add_existing_model_name(self):
-        model_name = 'E. coli - iteration 2'
+
+        populate_db('model', self.client)
+
+        model_name = 'E. coli - iteration 3'
         organism_name = 'E. coli'
         strain = 'MG16555'
         comments = 'Just testing...'
@@ -1604,12 +1624,12 @@ class TestAddModel(unittest.TestCase):
                       strain=strain)
         db.session.add(model)
 
-        self.assertEqual(Model().query.first().name, model_name)
-        self.assertEqual(Model().query.first().organism_name, organism_name)
-        self.assertEqual(Model().query.first().strain, strain)
+        self.assertEqual(Model().query.all()[-1].name, model_name)
+        self.assertEqual(Model().query.all()[-1].organism_name, organism_name)
+        self.assertEqual(Model().query.all()[-1].strain, strain)
 
-        self.assertEqual(Model.query.count(), 1)
-        self.assertEqual(Organism.query.count(), 0)
+        self.assertEqual(Model.query.count(), 3)
+        self.assertEqual(Organism.query.count(), 2)
 
         response = self.client.post('/add_model', data=dict(
             name=model_name,
@@ -1621,14 +1641,18 @@ class TestAddModel(unittest.TestCase):
         self.assertTrue(b'<title>\n    Add model - Kinetics DB \n</title>' in response.data)
         self.assertTrue(b'A model with that name already exists, please use another name' in response.data)
 
-        self.assertEqual(Model.query.count(), 1)
-        self.assertEqual(Organism().query.count(), 0)
+        self.assertEqual(Model.query.count(), 3)
+        self.assertEqual(Organism().query.count(), 2)
 
     def test_add_second_model_name(self):
+
         model_name = 'E. coli - iteration 1'
         organism_name = 'E. coli'
         strain = 'MG16555'
         comments = 'Just testing...'
+
+        organism = Organism(name=organism_name)
+        db.session.add(organism)
 
         model = Model(name=model_name,
                       organism_name=organism_name,
@@ -1640,7 +1664,7 @@ class TestAddModel(unittest.TestCase):
         self.assertEqual(Model().query.first().strain, strain)
 
         self.assertEqual(Model.query.count(), 1)
-        self.assertEqual(Organism.query.count(), 0)
+        self.assertEqual(Organism.query.count(), 1)
 
         model_name = 'E. coli - iteration 2'
 
@@ -1707,11 +1731,11 @@ class TestAddModelAssumption(unittest.TestCase):
         self.assertTrue(b'<title>\n    See models - Kinetics DB \n</title>' in response.data)
         self.assertTrue(b'Your model assumption is now live!' in response.data)
 
-        self.assertEqual(Enzyme.query.count(), 2)
+        self.assertEqual(Enzyme.query.count(), 3)
         self.assertEqual(GibbsEnergy.query.count(), 1)
         self.assertEqual(EnzymeReactionOrganism.query.count(), 2)
         self.assertEqual(ModelAssumptions.query.count(), 1)
-        self.assertEqual(Mechanism.query.count(), 2)
+        self.assertEqual(Mechanism.query.count(), 7)
         self.assertEqual(Reference.query.count(), 3)
         self.assertEqual(Model.query.count(), 2)
         self.assertEqual(Organism.query.count(), 2)
@@ -1873,10 +1897,10 @@ class TestAddReaction(unittest.TestCase):
         self.assertTrue(b'<title>\n    See reactions - Kinetics DB \n</title>' in response.data)
         self.assertTrue(b'Your reaction is now live!' in response.data)
 
-        self.assertEqual(Enzyme.query.count(), 2)
+        self.assertEqual(Enzyme.query.count(), 3)
         self.assertEqual(GibbsEnergy.query.count(), 1)
         self.assertEqual(EnzymeReactionOrganism.query.count(), 1)
-        self.assertEqual(Mechanism.query.count(), 2)
+        self.assertEqual(Mechanism.query.count(), 7)
         self.assertEqual(Reference.query.count(), 2)
         self.assertEqual(Model.query.count(), 2)
         self.assertEqual(Organism.query.count(), 2)
@@ -1984,9 +2008,9 @@ class TestAddReaction(unittest.TestCase):
         self.assertTrue(b'<title>\n    See reactions - Kinetics DB \n</title>' in response.data)
         self.assertTrue(b'Your reaction is now live!' in response.data)
 
-        self.assertEqual(Enzyme.query.count(), 2)
+        self.assertEqual(Enzyme.query.count(), 3)
 
-        self.assertEqual(Mechanism.query.count(), 2)
+        self.assertEqual(Mechanism.query.count(), 7)
         self.assertEqual(Reference.query.count(), 2)
         self.assertEqual(Model.query.count(), 2)
         self.assertEqual(Organism.query.count(), 2)
@@ -2109,9 +2133,9 @@ class TestAddReaction(unittest.TestCase):
         self.assertTrue(b'<title>\n    See reactions - Kinetics DB \n</title>' in response.data)
         self.assertTrue(b'Your reaction is now live!' in response.data)
 
-        self.assertEqual(Enzyme.query.count(), 2)
+        self.assertEqual(Enzyme.query.count(), 3)
 
-        self.assertEqual(Mechanism.query.count(), 2)
+        self.assertEqual(Mechanism.query.count(), 7)
         self.assertEqual(Reference.query.count(), 3)
         self.assertEqual(Model.query.count(), 2)
         self.assertEqual(Organism.query.count(), 2)
@@ -2249,8 +2273,8 @@ class TestAddReaction(unittest.TestCase):
         self.assertTrue(b'<title>\n    See reactions - Kinetics DB \n</title>' in response.data)
         self.assertTrue(b'Your reaction is now live!' in response.data)
 
-        self.assertEqual(Enzyme.query.count(), 2)
-        self.assertEqual(Mechanism.query.count(), 2)
+        self.assertEqual(Enzyme.query.count(), 3)
+        self.assertEqual(Mechanism.query.count(), 7)
         self.assertEqual(Model.query.count(), 2)
         self.assertEqual(Organism.query.count(), 2)
 
@@ -2384,11 +2408,11 @@ class TestAddReaction(unittest.TestCase):
         self.assertTrue(b'<title>\n    Add reaction - Kinetics DB \n</title>' in response.data)
 
         self.assertEqual(Reaction.query.count(), 0)
-        self.assertEqual(Enzyme.query.count(), 2)
+        self.assertEqual(Enzyme.query.count(), 3)
         self.assertEqual(GibbsEnergy.query.count(), 0)
         self.assertEqual(GibbsEnergyReactionModel.query.count(), 0)
         self.assertEqual(EnzymeReactionOrganism.query.count(), 0)
-        self.assertEqual(Mechanism.query.count(), 2)
+        self.assertEqual(Mechanism.query.count(), 7)
         self.assertEqual(Reference.query.count(), 1)
         self.assertEqual(Model.query.count(), 2)
         self.assertEqual(Organism.query.count(), 2)
@@ -2430,11 +2454,11 @@ class TestAddReaction(unittest.TestCase):
         self.assertTrue(b'Please specify the metabolite' in response.data)
 
         self.assertEqual(Reaction.query.count(), 0)
-        self.assertEqual(Enzyme.query.count(), 2)
+        self.assertEqual(Enzyme.query.count(), 3)
         self.assertEqual(GibbsEnergy.query.count(), 0)
         self.assertEqual(GibbsEnergyReactionModel.query.count(), 0)
         self.assertEqual(EnzymeReactionOrganism.query.count(), 0)
-        self.assertEqual(Mechanism.query.count(), 2)
+        self.assertEqual(Mechanism.query.count(), 7)
         self.assertEqual(Reference.query.count(), 1)
         self.assertEqual(Model.query.count(), 2)
         self.assertEqual(Organism.query.count(), 2)
@@ -2476,11 +2500,11 @@ class TestAddReaction(unittest.TestCase):
         self.assertTrue(b'The specified compartment bigg_acronym' in response.data)
 
         self.assertEqual(Reaction.query.count(), 0)
-        self.assertEqual(Enzyme.query.count(), 2)
+        self.assertEqual(Enzyme.query.count(), 3)
         self.assertEqual(GibbsEnergy.query.count(), 0)
         self.assertEqual(GibbsEnergyReactionModel.query.count(), 0)
         self.assertEqual(EnzymeReactionOrganism.query.count(), 0)
-        self.assertEqual(Mechanism.query.count(), 2)
+        self.assertEqual(Mechanism.query.count(), 7)
         self.assertEqual(Reference.query.count(), 1)
         self.assertEqual(Model.query.count(), 2)
         self.assertEqual(Organism.query.count(), 2)
@@ -2517,11 +2541,11 @@ class TestAddReaction(unittest.TestCase):
         self.assertTrue(b'does not match any metabolite in' in response.data)
 
         self.assertEqual(Reaction.query.count(), 0)
-        self.assertEqual(Enzyme.query.count(), 2)
+        self.assertEqual(Enzyme.query.count(), 3)
         self.assertEqual(GibbsEnergy.query.count(), 0)
         self.assertEqual(GibbsEnergyReactionModel.query.count(), 0)
         self.assertEqual(EnzymeReactionOrganism.query.count(), 0)
-        self.assertEqual(Mechanism.query.count(), 2)
+        self.assertEqual(Mechanism.query.count(), 7)
         self.assertEqual(Reference.query.count(), 1)
         self.assertEqual(Model.query.count(), 2)
         self.assertEqual(Organism.query.count(), 2)
@@ -2558,11 +2582,11 @@ class TestAddReaction(unittest.TestCase):
         self.assertTrue(b'does not match any metabolite in' in response.data)
 
         self.assertEqual(Reaction.query.count(), 0)
-        self.assertEqual(Enzyme.query.count(), 2)
+        self.assertEqual(Enzyme.query.count(), 3)
         self.assertEqual(GibbsEnergy.query.count(), 0)
         self.assertEqual(GibbsEnergyReactionModel.query.count(), 0)
         self.assertEqual(EnzymeReactionOrganism.query.count(), 0)
-        self.assertEqual(Mechanism.query.count(), 2)
+        self.assertEqual(Mechanism.query.count(), 7)
         self.assertEqual(Reference.query.count(), 1)
         self.assertEqual(Model.query.count(), 2)
         self.assertEqual(Organism.query.count(), 2)
@@ -2601,11 +2625,11 @@ class TestAddReaction(unittest.TestCase):
             b'If you add a reaction mechanism, you need to specify the catalyzing isoenzyme(s).' in response.data)
 
         self.assertEqual(Reaction.query.count(), 0)
-        self.assertEqual(Enzyme.query.count(), 2)
+        self.assertEqual(Enzyme.query.count(), 3)
         self.assertEqual(GibbsEnergy.query.count(), 0)
         self.assertEqual(GibbsEnergyReactionModel.query.count(), 0)
         self.assertEqual(EnzymeReactionOrganism.query.count(), 0)
-        self.assertEqual(Mechanism.query.count(), 2)
+        self.assertEqual(Mechanism.query.count(), 7)
         self.assertEqual(Reference.query.count(), 1)
         self.assertEqual(Model.query.count(), 2)
         self.assertEqual(Organism.query.count(), 2)
@@ -2644,11 +2668,11 @@ class TestAddReaction(unittest.TestCase):
             b'You cannot specify evidence level for the mechanism without specifying a mechanism.' in response.data)
 
         self.assertEqual(Reaction.query.count(), 0)
-        self.assertEqual(Enzyme.query.count(), 2)
+        self.assertEqual(Enzyme.query.count(), 3)
         self.assertEqual(GibbsEnergy.query.count(), 0)
         self.assertEqual(GibbsEnergyReactionModel.query.count(), 0)
         self.assertEqual(EnzymeReactionOrganism.query.count(), 0)
-        self.assertEqual(Mechanism.query.count(), 2)
+        self.assertEqual(Mechanism.query.count(), 7)
         self.assertEqual(Reference.query.count(), 1)
         self.assertEqual(Model.query.count(), 2)
         self.assertEqual(Organism.query.count(), 2)
@@ -2687,11 +2711,11 @@ class TestAddReaction(unittest.TestCase):
             b'If you add substrate binding order without specifying the catalyzing isoenzyme(s)' in response.data)
 
         self.assertEqual(Reaction.query.count(), 0)
-        self.assertEqual(Enzyme.query.count(), 2)
+        self.assertEqual(Enzyme.query.count(), 3)
         self.assertEqual(GibbsEnergy.query.count(), 0)
         self.assertEqual(GibbsEnergyReactionModel.query.count(), 0)
         self.assertEqual(EnzymeReactionOrganism.query.count(), 0)
-        self.assertEqual(Mechanism.query.count(), 2)
+        self.assertEqual(Mechanism.query.count(), 7)
         self.assertEqual(Reference.query.count(), 1)
         self.assertEqual(Model.query.count(), 2)
         self.assertEqual(Organism.query.count(), 2)
@@ -2737,11 +2761,11 @@ class TestAddReaction(unittest.TestCase):
             b'If you add product release order without specifying the catalyzing isoenzyme(s)' in response.data)
 
         self.assertEqual(Reaction.query.count(), 0)
-        self.assertEqual(Enzyme.query.count(), 2)
+        self.assertEqual(Enzyme.query.count(), 3)
         self.assertEqual(GibbsEnergy.query.count(), 0)
         self.assertEqual(GibbsEnergyReactionModel.query.count(), 0)
         self.assertEqual(EnzymeReactionOrganism.query.count(), 0)
-        self.assertEqual(Mechanism.query.count(), 2)
+        self.assertEqual(Mechanism.query.count(), 7)
         self.assertEqual(Reference.query.count(), 1)
         self.assertEqual(Model.query.count(), 2)
         self.assertEqual(Organism.query.count(), 2)
@@ -2780,10 +2804,10 @@ class TestAddReaction(unittest.TestCase):
             b'Gibbs energies cannot be added to reactions alone, a model must be associated as well. Please add model name.' in response.data)
 
         self.assertEqual(Reaction.query.count(), 0)
-        self.assertEqual(Enzyme.query.count(), 2)
+        self.assertEqual(Enzyme.query.count(), 3)
         self.assertEqual(GibbsEnergyReactionModel.query.count(), 0)
         self.assertEqual(EnzymeReactionOrganism.query.count(), 0)
-        self.assertEqual(Mechanism.query.count(), 2)
+        self.assertEqual(Mechanism.query.count(), 7)
         self.assertEqual(Reference.query.count(), 1)
         self.assertEqual(Model.query.count(), 2)
         self.assertEqual(Organism.query.count(), 2)
@@ -2826,10 +2850,10 @@ class TestAddReaction(unittest.TestCase):
         self.assertTrue(b'Please specify the standard Gibbs energy as well.' in response.data)
 
         self.assertEqual(Reaction.query.count(), 0)
-        self.assertEqual(Enzyme.query.count(), 2)
+        self.assertEqual(Enzyme.query.count(), 3)
         self.assertEqual(GibbsEnergyReactionModel.query.count(), 0)
         self.assertEqual(EnzymeReactionOrganism.query.count(), 0)
-        self.assertEqual(Mechanism.query.count(), 2)
+        self.assertEqual(Mechanism.query.count(), 7)
         self.assertEqual(Reference.query.count(), 1)
         self.assertEqual(Model.query.count(), 2)
         self.assertEqual(Organism.query.count(), 2)
@@ -2872,10 +2896,10 @@ class TestAddReaction(unittest.TestCase):
         self.assertTrue(b'Please specify the standard Gibbs energy as well.' in response.data)
 
         self.assertEqual(Reaction.query.count(), 0)
-        self.assertEqual(Enzyme.query.count(), 2)
+        self.assertEqual(Enzyme.query.count(), 3)
         self.assertEqual(GibbsEnergyReactionModel.query.count(), 0)
         self.assertEqual(EnzymeReactionOrganism.query.count(), 0)
-        self.assertEqual(Mechanism.query.count(), 2)
+        self.assertEqual(Mechanism.query.count(), 7)
         self.assertEqual(Reference.query.count(), 1)
         self.assertEqual(Model.query.count(), 2)
         self.assertEqual(Organism.query.count(), 2)
@@ -2918,10 +2942,10 @@ class TestAddReaction(unittest.TestCase):
         self.assertTrue(b'Please specify the standard Gibbs energy as well.' in response.data)
 
         self.assertEqual(Reaction.query.count(), 0)
-        self.assertEqual(Enzyme.query.count(), 2)
+        self.assertEqual(Enzyme.query.count(), 3)
         self.assertEqual(GibbsEnergyReactionModel.query.count(), 0)
         self.assertEqual(EnzymeReactionOrganism.query.count(), 0)
-        self.assertEqual(Mechanism.query.count(), 2)
+        self.assertEqual(Mechanism.query.count(), 7)
         self.assertEqual(Reference.query.count(), 1)
         self.assertEqual(Model.query.count(), 2)
         self.assertEqual(Organism.query.count(), 2)
@@ -2964,11 +2988,11 @@ class TestAddReaction(unittest.TestCase):
         self.assertTrue(b'Please specify the standard Gibbs energy as well.' in response.data)
 
         self.assertEqual(Reaction.query.count(), 0)
-        self.assertEqual(Enzyme.query.count(), 2)
+        self.assertEqual(Enzyme.query.count(), 3)
         self.assertEqual(GibbsEnergy.query.count(), 0)
         self.assertEqual(GibbsEnergyReactionModel.query.count(), 0)
         self.assertEqual(EnzymeReactionOrganism.query.count(), 0)
-        self.assertEqual(Mechanism.query.count(), 2)
+        self.assertEqual(Mechanism.query.count(), 7)
         self.assertEqual(Reference.query.count(), 1)
         self.assertEqual(Model.query.count(), 2)
         self.assertEqual(Organism.query.count(), 2)
@@ -3011,11 +3035,11 @@ class TestAddReaction(unittest.TestCase):
         self.assertTrue(b'Please specify the reference for the above standard Gibbs energy' in response.data)
 
         self.assertEqual(Reaction.query.count(), 0)
-        self.assertEqual(Enzyme.query.count(), 2)
+        self.assertEqual(Enzyme.query.count(), 3)
         self.assertEqual(GibbsEnergy.query.count(), 0)
         self.assertEqual(GibbsEnergyReactionModel.query.count(), 0)
         self.assertEqual(EnzymeReactionOrganism.query.count(), 0)
-        self.assertEqual(Mechanism.query.count(), 2)
+        self.assertEqual(Mechanism.query.count(), 7)
         self.assertEqual(Reference.query.count(), 1)
         self.assertEqual(Model.query.count(), 2)
         self.assertEqual(Organism.query.count(), 2)
@@ -3066,11 +3090,11 @@ class TestAddReaction(unittest.TestCase):
         self.assertTrue(b'Your reaction is now live!' in response.data)
 
         self.assertEqual(Reaction.query.count(), 1)
-        self.assertEqual(Enzyme.query.count(), 2)
+        self.assertEqual(Enzyme.query.count(), 3)
         self.assertEqual(GibbsEnergy.query.count(), 0)
         self.assertEqual(GibbsEnergyReactionModel.query.count(), 0)
 
-        self.assertEqual(Mechanism.query.count(), 2)
+        self.assertEqual(Mechanism.query.count(), 7)
         self.assertEqual(Reference.query.count(), 1)
         self.assertEqual(Model.query.count(), 2)
         self.assertEqual(Organism.query.count(), 2)
@@ -3082,7 +3106,7 @@ class TestAddReaction(unittest.TestCase):
 
         self.assertEqual(Reaction.query.count(), 1)
         self.assertEqual(Reaction.query.first().name, self.reaction_name)
-        self.assertEqual(Reaction.query.first().compartment_name, '')
+        self.assertEqual(Reaction.query.first().compartment_name, None)
 
         self.assertEqual(Reference.query.count(), 1)
         self.assertEqual(Reference.query.all()[0].title, true_gibbs_energy_ref)
@@ -3166,10 +3190,10 @@ class TestAddReaction(unittest.TestCase):
         self.assertTrue(b'Your reaction is now live!' in response.data)
 
         self.assertEqual(Reaction.query.count(), 1)
-        self.assertEqual(Enzyme.query.count(), 2)
+        self.assertEqual(Enzyme.query.count(), 3)
         self.assertEqual(GibbsEnergy.query.count(), 0)
         self.assertEqual(GibbsEnergyReactionModel.query.count(), 0)
-        self.assertEqual(Mechanism.query.count(), 2)
+        self.assertEqual(Mechanism.query.count(), 7)
         self.assertEqual(Reference.query.count(), 1)
         self.assertEqual(Model.query.count(), 2)
         self.assertEqual(Organism.query.count(), 2)
@@ -3260,10 +3284,10 @@ class TestAddReaction(unittest.TestCase):
         self.assertTrue(b'Your reaction is now live!' in response.data)
 
         self.assertEqual(Reaction.query.count(), 1)
-        self.assertEqual(Enzyme.query.count(), 2)
+        self.assertEqual(Enzyme.query.count(), 3)
         self.assertEqual(GibbsEnergy.query.count(), 0)
         self.assertEqual(GibbsEnergyReactionModel.query.count(), 0)
-        self.assertEqual(Mechanism.query.count(), 2)
+        self.assertEqual(Mechanism.query.count(), 7)
         self.assertEqual(Model.query.count(), 2)
         self.assertEqual(Organism.query.count(), 2)
 
@@ -3339,6 +3363,8 @@ class TestAddReaction(unittest.TestCase):
         self.subs_binding_order = ''
         self.prod_release_order = ''
 
+        self.assertEqual(Enzyme.query.count(), 3)
+
         response = self.client.post('/add_reaction', data=dict(
             name=self.reaction_name,
             acronym=self.reaction_acronym,
@@ -3367,8 +3393,8 @@ class TestAddReaction(unittest.TestCase):
         self.assertTrue(b'<title>\n    See reactions - Kinetics DB \n</title>' in response.data)
         self.assertTrue(b'Your reaction is now live!' in response.data)
 
-        self.assertEqual(Enzyme.query.count(), 2)
-        self.assertEqual(Mechanism.query.count(), 2)
+        self.assertEqual(Enzyme.query.count(), 3)
+        self.assertEqual(Mechanism.query.count(), 7)
         self.assertEqual(Model.query.count(), 2)
         self.assertEqual(Organism.query.count(), 2)
 
@@ -3437,5 +3463,83 @@ class TestAddReaction(unittest.TestCase):
         self.assertEqual(ReactionMetabolite.query.all()[3].reaction.acronym, self.reaction_acronym)
 
 
+"""
+        self.assertEqual(Enzyme.query.count(), 2)
+        self.assertEqual(GibbsEnergy.query.count(), 1)
+        self.assertEqual(EnzymeReactionOrganism.query.count(), 1)
+        self.assertEqual(Mechanism.query.count(), 2)
+        self.assertEqual(Reference.query.count(), 2)
+        self.assertEqual(Model.query.count(), 2)
+        self.assertEqual(Organism.query.count(), 2)
+        self.assertEqual(Model.query.first().enzyme_reaction_organisms.count(), 1)
+
+        self.assertEqual(Reaction.query.count(), 1)
+        self.assertEqual(Reaction.query.first().name, self.reaction_name)
+        self.assertEqual(Reaction.query.first().compartment_name, Compartment.query.first().name)
+
+        self.assertEqual(EnzymeReactionOrganism.query.first().enzyme_id, 1)
+        self.assertEqual(EnzymeReactionOrganism.query.first().reaction_id, 1)
+        self.assertEqual(EnzymeReactionOrganism.query.first().organism_id, 1)
+        self.assertEqual(EnzymeReactionOrganism.query.first().mechanism_id, 1)
+        self.assertEqual(EnzymeReactionOrganism.query.first().mech_evidence_level_id, 1)
+
+        self.assertEqual(EnzymeReactionOrganism.query.first().grasp_id, self.reaction_grasp_id)
+        self.assertEqual(EnzymeReactionOrganism.query.first().subs_binding_order, self.subs_binding_order)
+        self.assertEqual(EnzymeReactionOrganism.query.first().prod_release_order, self.prod_release_order)
+        self.assertEqual(EnzymeReactionOrganism.query.first().reaction.name, self.reaction_name)
+        self.assertEqual(EnzymeReactionOrganism.query.first().enzyme.isoenzyme, true_isoenzyme_acronym)
+        self.assertEqual(EnzymeReactionOrganism.query.first().models[0], Model.query.first())
+        self.assertEqual(EnzymeReactionOrganism.query.first().mech_evidence, EvidenceLevel.query.first())
+        self.assertEqual(EnzymeReactionOrganism.query.first().mechanism, Mechanism.query.first())
+        self.assertEqual(EnzymeReactionOrganism.query.all()[0].mechanism_references[0].doi, self.mechanism_references)
+
+        self.assertEqual(GibbsEnergyReactionModel.query.count(), 1)
+        self.assertEqual(GibbsEnergyReactionModel.query.first().reaction_id, 1)
+        self.assertEqual(GibbsEnergyReactionModel.query.first().model_id, 1)
+        self.assertEqual(GibbsEnergyReactionModel.query.first().gibbs_energy_id, 1)
+
+        self.assertEqual(GibbsEnergy.query.first().standard_dg, self.std_gibbs_energy)
+        self.assertEqual(GibbsEnergy.query.first().standard_dg_std, self.std_gibbs_energy_std)
+        self.assertEqual(GibbsEnergy.query.first().ph, self.std_gibbs_energy_ph)
+        self.assertEqual(GibbsEnergy.query.first().ionic_strength, self.std_gibbs_energy_ionic_strength)
+        self.assertEqual(GibbsEnergy.query.first().references[0].title, true_gibbs_energy_ref)
+
+        self.assertEqual(Reference.query.all()[0].title, true_gibbs_energy_ref)
+        self.assertEqual(Reference.query.all()[0].type.type, 'Online database')
+        self.assertEqual(Reference.query.all()[1].doi, self.mechanism_references)
+
+        self.assertEqual(Metabolite.query.count(), 4)
+        self.assertEqual(Metabolite.query.all()[0].bigg_id, 'pep')
+        self.assertEqual(Metabolite.query.all()[0].grasp_id, 'pep')
+        self.assertEqual(Metabolite.query.all()[0].compartments[0].bigg_id, 'c')
+        self.assertEqual(Metabolite.query.all()[1].bigg_id, 'adp')
+        self.assertEqual(Metabolite.query.all()[1].grasp_id, 'adp')
+        self.assertEqual(Metabolite.query.all()[1].compartments[0].bigg_id, 'c')
+        self.assertEqual(Metabolite.query.all()[2].bigg_id, 'pyr')
+        self.assertEqual(Metabolite.query.all()[2].grasp_id, 'pyr')
+        self.assertEqual(Metabolite.query.all()[2].compartments[0].bigg_id, 'c')
+        self.assertEqual(Metabolite.query.all()[3].bigg_id, 'atp')
+        self.assertEqual(Metabolite.query.all()[3].grasp_id, 'atp')
+        self.assertEqual(Metabolite.query.all()[3].compartments[0].bigg_id, 'm')
+
+        self.assertEqual(ReactionMetabolite.query.count(), 4)
+        self.assertEqual(ReactionMetabolite.query.all()[0].metabolite.bigg_id, 'pep')
+        self.assertEqual(ReactionMetabolite.query.all()[0].compartment.bigg_id, 'c')
+        self.assertEqual(ReactionMetabolite.query.all()[0].stoich_coef, -1)
+        self.assertEqual(ReactionMetabolite.query.all()[0].reaction.acronym, self.reaction_acronym)
+        self.assertEqual(ReactionMetabolite.query.all()[1].metabolite.bigg_id, 'adp')
+        self.assertEqual(ReactionMetabolite.query.all()[1].compartment.bigg_id, 'c')
+        self.assertEqual(ReactionMetabolite.query.all()[1].stoich_coef, -1.5)
+        self.assertEqual(ReactionMetabolite.query.all()[1].reaction.acronym, self.reaction_acronym)
+        self.assertEqual(ReactionMetabolite.query.all()[2].metabolite.bigg_id, 'pyr')
+        self.assertEqual(ReactionMetabolite.query.all()[2].compartment.bigg_id, 'c')
+        self.assertEqual(ReactionMetabolite.query.all()[2].stoich_coef, 1)
+        self.assertEqual(ReactionMetabolite.query.all()[2].reaction.acronym, self.reaction_acronym)
+        self.assertEqual(ReactionMetabolite.query.all()[3].metabolite.bigg_id, 'atp')
+        self.assertEqual(ReactionMetabolite.query.all()[3].compartment.bigg_id, 'm')
+        self.assertEqual(ReactionMetabolite.query.all()[3].stoich_coef, 2)
+        self.assertEqual(ReactionMetabolite.query.all()[3].reaction.acronym, self.reaction_acronym)
+
+"""
 if __name__ == '__main__':
     unittest.main(verbosity=2)

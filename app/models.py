@@ -490,14 +490,14 @@ class ReactionMetabolite(db.Model):
     reaction_id = db.Column(db.Integer, db.ForeignKey('reaction.id'), primary_key=True)
     metabolite_id = db.Column(db.Integer, db.ForeignKey('metabolite.id'), primary_key=True)
     compartment_id = db.Column(db.Integer, db.ForeignKey('compartment.id'), primary_key=True)
-    stoich_coef = db.Column(db.Integer)
+    stoich_coef = db.Column(db.Float)
 
     metabolite = db.relationship('Metabolite', back_populates='reactions')
     reaction = db.relationship('Reaction', back_populates='metabolites')
     compartment = db.relationship('Compartment')
 
     def __repr__(self):
-        return str((self.reaction.bigg_id, self.stoich_coef, self.metabolite.bigg_id, self.compartment.bigg_id))
+        return str((self.reaction.acronym, self.stoich_coef, self.metabolite.bigg_id, self.compartment.bigg_id))
 
 
 class Metabolite(db.Model):
@@ -558,7 +558,7 @@ class Metabolite(db.Model):
 
 
     def add_compartment(self, compartment):
-        if not self.met_in_compartment(compartment):
+        if compartment is not None and not self.met_in_compartment(compartment):
             self.compartments.append(compartment)
 
     def remove_metabolite(self, compartment):
@@ -576,7 +576,7 @@ class Metabolite(db.Model):
 class ChebiIds(db.Model):
     __tablename__ = 'chebi_ids'
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    chebi_id = db.Column(db.Integer)
+    chebi_id = db.Column(db.String)
     inchi = db.Column(db.String)
     metabolites = db.relationship(
         'Metabolite', secondary=metabolite_chebi,
@@ -956,7 +956,8 @@ class EnzymeStructure(db.Model):
 class Mechanism(db.Model):
     __tablename__ = 'mechanism'
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    name = db.Column(db.String,  nullable=False)
+    name = db.Column(db.String,  nullable=False)  # this should be named type, but doing the migration requires some work.
+    grasp_name = db.Column(db.String, unique=True)
     image_name = db.Column(db.String)
     enzyme_reaction_organisms = db.relationship('EnzymeReactionOrganism', back_populates='mechanism', lazy='dynamic')
 
@@ -981,7 +982,7 @@ class EnzymeOrganism(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     enzyme_id = db.Column(db.Integer, db.ForeignKey(Enzyme.id), nullable=False)
     organism_id = db.Column(db.Integer, db.ForeignKey(Organism.id), nullable=False)
-    uniprot_id = db.Column(db.String, unique=True, nullable=False)
+    uniprot_id = db.Column(db.String, unique=True)
     n_active_sites = db.Column(db.Integer)
 
     enzyme = db.relationship('Enzyme', back_populates='enzyme_organisms')
@@ -1123,27 +1124,27 @@ class EnzymeReactionOrganism(db.Model):
 
     def add_enzyme_reaction_inhibition(self, enzyme_reaction_inhibition):
         if not self.has_inhib(enzyme_reaction_inhibition):
-            self.enzyme_reaction_inhibitions.append(enzyme_reaction_inhibition)
+            self.enzyme_reaction_inhibitors.append(enzyme_reaction_inhibition)
 
     def remove_enzyme_reaction_inhibition(self, enzyme_reaction_inhibition):
         if self.has_inhib(enzyme_reaction_inhibition):
-            self.enzyme_reaction_inhibitions.remove(enzyme_reaction_inhibition)
+            self.enzyme_reaction_inhibitors.remove(enzyme_reaction_inhibition)
 
     def has_inhib(self, enzyme_reaction_inhibition):
-        return self.references.filter(
+        return self.enzyme_reaction_inhibitors.filter(
             EnzymeReactionInhibition.id == enzyme_reaction_inhibition.id).count() > 0
 
 
     def add_enzyme_reaction_activation(self, enzyme_reaction_activation):
         if not self.has_activation(enzyme_reaction_activation):
-            self.enzyme_reaction_activations.append(enzyme_reaction_activation)
+            self.enzyme_reaction_activators.append(enzyme_reaction_activation)
 
     def remove_enzyme_reaction_activation(self, enzyme_reaction_activation):
         if self.has_activation(enzyme_reaction_activation):
-            self.enzyme_reaction_activations.remove(enzyme_reaction_activation)
+            self.enzyme_reaction_activators.remove(enzyme_reaction_activation)
 
     def has_activation(self, enzyme_reaction_activation):
-        return self.enzyme_reaction_activations.filter(
+        return self.enzyme_reaction_activators.filter(
             EnzymeReactionActivation.id == enzyme_reaction_activation.id).count() > 0
 
 
@@ -1229,17 +1230,21 @@ class EnzymeReactionInhibition(db.Model):
 
     def __repr__(self):
         if self.inhibitor_met:
-            return ''.join(['Inhibitor: ', str(self.inhibitor_met), ', Affected metabolite: ', str(self.affected_met),
-                            ', Inhibition type: ', str(self.inhibition_type),  ', Inhibition constant: ', str(round(self.inhibition_constant, 6)),
-                            ', Evidence level: ', str(self.evidence)])
+            return ''.join(['Inhibitor: ', str(self.inhibitor_met),
+                            ', Affected metabolite: ', str(self.affected_met) if self.affected_met else 'NA',
+                            ', Inhibition type: ', str(self.inhibition_type) if self.inhibition_type else 'NA',
+                            ', Inhibition constant: ', str(round(self.inhibition_constant, 6)) if self.inhibition_constant else 'NA',
+                            ', Evidence level: ', str(self.evidence) if self.evidence else 'NA'])
         else:
             return ''
 
     def __str__(self):
         if self.inhibitor_met:
-            return ''.join(['Inhibitor: ', str(self.inhibitor_met), ', Affected metabolite: ', str(self.affected_met),
-                            ', Inhibition type: ', str(self.inhibition_type),  ', Inhibition constant: ', str(round(self.inhibition_constant, 6)),
-                            ', Evidence level: ', str(self.evidence)])
+            return ''.join(['Inhibitor: ', str(self.inhibitor_met),
+                            ', Affected metabolite: ', str(self.affected_met) if self.affected_met else 'NA',
+                            ', Inhibition type: ', str(self.inhibition_type) if self.inhibition_type else 'NA',
+                            ', Inhibition constant: ', str(round(self.inhibition_constant, 6)) if self.inhibition_constant else 'NA',
+                            ', Evidence level: ', str(self.evidence) if self.evidence else 'NA'])
         else:
             return ''
 
@@ -1296,15 +1301,17 @@ class EnzymeReactionActivation(db.Model):
 
     def __repr__(self):
         if self.activator_met:
-            return ''.join(['Activator: ', str(self.activator_met),  ', Activation constant: ', str(round(self.activation_constant, 6)),
-                            ', Evidence level: ', str(self.evidence)])
+            return ''.join(['Activator: ', str(self.activator_met),
+                            ', Activation constant: ', str(round(self.activation_constant, 6)) if self.activation_constant else 'NA',
+                            ', Evidence level: ', str(self.evidence) if self.evidence else 'NA'])
         else:
             return ''
 
     def __str__(self):
         if self.activator_met:
-            return ''.join(['Activator: ', str(self.activator_met),  ', Activation constant: ', str(round(self.activation_constant, 6)),
-                            ', Evidence level: ', str(self.evidence)])
+            return ''.join(['Activator: ', str(self.activator_met),
+                            ', Activation constant: ', str(round(self.activation_constant, 6)) if self.activation_constant else 'NA',
+                            ', Evidence level: ', str(self.evidence) if self.evidence else 'NA'])
         else:
             return ''
 
@@ -1362,15 +1369,17 @@ class EnzymeReactionEffector(db.Model):
 
     def __repr__(self):
         if self.effector_met:
-            return ''.join(['Effector: ', str(self.effector_met),  ', Effector type: ', str(self.effector_type),
-                            ', Evidence level: ', str(self.evidence)])
+            return ''.join(['Effector: ', str(self.effector_met),
+                            ', Effector type: ', str(self.effector_type) if self.effector_type else 'NA',
+                            ', Evidence level: ', str(self.evidence) if self.evidence else 'NA'])
         else:
             return ''
 
     def __str__(self):
         if self.effector_met:
-            return ''.join(['Effector: ', str(self.effector_met),  ', Effector type: ', str(self.effector_type),
-                            ', Evidence level: ', str(self.evidence)])
+            return ''.join(['Effector: ', str(self.effector_met),
+                            ', Effector type: ', str(self.effector_type) if self.effector_type else 'NA',
+                            ', Evidence level: ', str(self.evidence) if self.evidence else 'NA'])
         else:
             return ''
 
