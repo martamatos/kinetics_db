@@ -14,9 +14,7 @@ dependencies:
   - flask=1.0.2=py36_1
   - flask-login=0.4.1=py36_0
   - flask-sqlalchemy=2.3.2=py36_0
-  - flask-wtf=0.14.2=py36_1
   - idna=2.7=py36_0
-  - jinja2=2.10=py36_0
   - krb5=1.16.1=h173b8e3_7
   - libedit=3.1.20170329=h6b74fdf_2
   - libffi=3.2.1=hd88cf55_4
@@ -39,8 +37,6 @@ dependencies:
   - six=1.11.0=py36_1
   - sqlite=3.26.0=h7b6447c_0
   - tk=8.6.8=hbc83047_0
-  - urllib3=1.23=py36_0
-  - werkzeug=0.14.1=py36_0
   - wheel=0.32.3=py36_0
   - wtforms=2.2.1=py36_0
   - xlrd=1.2.0=py36_0
@@ -59,9 +55,11 @@ dependencies:
     - flask-bootstrap==3.3.7.1
     - flask-mail==0.9.1
     - flask-migrate==2.3.0
+    - flask-wtf==0.14.3
     - httplib2==0.12.0
     - imagesize==1.2.0
     - itsdangerous==0.24
+    - jinja2==2.11.1
     - mako==1.0.7
     - markupsafe==1.0
     - numpy==1.15.4
@@ -86,7 +84,9 @@ dependencies:
     - sphinxcontrib-napoleon==0.7
     - sphinxcontrib-qthelp==1.0.3
     - sphinxcontrib-serializinghtml==1.1.4
-    - sqlalchemy==1.2.12
+    - sqlalchemy==1.3.15
+    - urllib3==1.25.8
     - visitor==0.1.3
+    - werkzeug==1.0.1
 prefix: /home/mrama/miniconda3/envs/kineticsDB
 
