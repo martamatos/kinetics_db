@@ -5,6 +5,7 @@ Flask-Mail==0.9.1
 Flask-Migrate==2.3.0
 Flask-SQLAlchemy==2.3.2
 Flask-WTF==0.14.3
+python-dotenv==0.10.0
 Sphinx==2.4.4
 sphinx-autodoc-typehints==1.10.3
 sphinx-rtd-theme==0.4.3
