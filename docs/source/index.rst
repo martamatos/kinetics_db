@@ -3,8 +3,12 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to kinetics DB's documentation!
+Welcome to kinetics DB's API documentation!
 =======================================
+
+Here you can find the API documentation, the remaining relevant information can be found on Github_.
+
+.. _Github: https://github.com/martamatos/kinetics_db
 
 .. toctree::
    :maxdepth: 2
