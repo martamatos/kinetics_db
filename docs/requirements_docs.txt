@@ -7,7 +7,7 @@ Flask-SQLAlchemy==2.3.2
 Flask-WTF==0.14.3
 pandas==0.23.4
 python-dotenv==0.10.0
-PyJWT==1.6.4
+PyJWT==2.4.0
 Sphinx==2.4.4
 sphinx-autodoc-typehints==1.10.3
 sphinx-rtd-theme==0.4.3
