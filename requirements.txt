@@ -34,7 +34,7 @@ psycopg2==2.6.2
 pycparser==2.19
 Pygments==2.6.1
 pygraphviz==1.5
-PyJWT==1.6.4
+PyJWT==2.4.0
 pyOpenSSL==18.0.0
 pyparsing==2.4.6
 PySocks==1.6.8
