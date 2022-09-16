@@ -24,7 +24,7 @@ idna==2.7
 imagesize==1.2.0
 itsdangerous==0.24
 Jinja2==2.11.1
-Mako==1.0.7
+Mako==1.2.2
 MarkupSafe==1.0
 numpy==1.15.4
 packaging==20.3
